@@ -13,7 +13,7 @@ with sync_playwright() as p:
     pg.click('[data-p="kennedy"]'); pg.wait_for_timeout(300)
     ok("tab says Castle for Kennedy", pg.text_content("#tabHome").strip().endswith("Castle"))
     pg.click("#goBtn"); pg.wait_for_timeout(400)
-    ok("battle bar shows during maths", pg.is_visible("#knBar"))
+    ok("battle scene shows during maths", pg.locator(".say.scene-knight .sc-r").count() + pg.locator(".tp-talk.scene-knight .sc-r").count() >= 1)
     kinds = {}; answered = 0
     for _ in range(500):
         r = pg.evaluate(STEP)

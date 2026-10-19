@@ -52,6 +52,7 @@
       if (TopicHost.isOpen() && st.topic === s.play.topic) TopicHost.again(s.play.level);
       else { closeTopic(); TopicHost.play(s.play.topic, s.play.level, { onAnswer: r => Mission.answered(r), onQuit: () => Mission.pause() }); }
     }
+    if (window.World) World.set(inSet);
   }
   // Questions a parent wrote: the question in words and the number answer.
   function askParent(item) {
@@ -74,6 +75,7 @@
   const esc = s => String(s).replace(/[&<>"]/g, ch => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[ch]);
 
   function reward() {
+    if (window.World) World.finish();
     const d = dayLog(); d.sets++;
     P.round = []; save(); renderTop();
     if (who === "kennedy") return knightWin();
@@ -98,14 +100,14 @@
         const known = [9, 8, 7, 6, 5, 4, 3, 2, 1].find(l => (eng().skills["sums." + l]?.lvl || 0) >= 3) || 1;
         return KnightWorld.defence($("cover"), Math.min(known, 4), () => { d.defended = true; save(); $("cover").hidden = true; Mission.afterReward(); });
       }
-      $("cover").hidden = true; KnightWorld.showBar(0); Mission.afterReward();
+      $("cover").hidden = true; Mission.afterReward();
     };
   }
   const BADGUY = '<svg viewBox="0 0 100 100" aria-hidden="true"><path d="M22 92 Q20 50 50 46 Q80 50 78 92 Z" fill="#7a6a9e" stroke="#3b2a33" stroke-width="3"/><circle cx="50" cy="36" r="22" fill="#b6d68a" stroke="#3b2a33" stroke-width="3"/><path d="M30 22 L38 8 L44 20 L50 6 L56 20 L62 8 L70 22" fill="#ffd45c" stroke="#3b2a33" stroke-width="2.5" stroke-linejoin="round"/><path d="M38 33 L46 36 M62 33 L54 36" stroke="#3b2a33" stroke-width="3" stroke-linecap="round"/><path d="M42 48 Q50 44 58 48" fill="none" stroke="#3b2a33" stroke-width="2.5" stroke-linecap="round"/></svg>';
 
   const Mission = {
     on: false, sumsLevel: 0,
-    start() { this.on = true; lastTouch = now(); inSet = P.round.length % SET; if (who === "kennedy" && window.KnightWorld) KnightWorld.showBar(inSet); if (overLimit()) return bye("See you tomorrow!"); nextSet(); },
+    start() { this.on = true; lastTouch = now(); inSet = P.round.length % SET;  if (overLimit()) return bye("See you tomorrow!"); nextSet(); },
     pause() { this.on = false; this.sumsLevel = 0; closeTopic(); if (window.KnightWorld) KnightWorld.hideBar(); showStart(); },
     answered(r) {
       if (!this.on) return;
@@ -118,13 +120,13 @@
       d.n++; if (clean) d.clean++;
       if (typeof id === "string") { const k = d.skills[id] || (d.skills[id] = [0, 0]); k[0]++; if (clean) k[1]++; }
       P.round.push(clean ? 1 : 0); inSet++; i++;
-      if (who === "kennedy" && window.KnightWorld) KnightWorld.showBar(inSet);
+      if (window.World) World.hit(inSet);   // the knight swings, or a treat goes on the tray
       save(); renderTop();
       if (inSet >= SET) { inSet = 0; return reward(); }
       if (i >= set.items.length) return nextSet();
       play();
     },
-    afterReward() { if (!this.on) return; if (overLimit()) return bye("See you tomorrow!"); if (i >= set.items.length) nextSet(); else play(); },
+    afterReward() { if (!this.on) return; if (window.World) World.reset(); if (overLimit()) return bye("See you tomorrow!"); if (i >= set.items.length) nextSet(); else play(); },
     map, eng
   };
   window.Mission = Mission;

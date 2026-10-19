@@ -14,7 +14,7 @@
   // 4 number choices around the answer; each button shows the numeral and its dots, so a non-reader can match.
   function numChoices(ans, lo, hi, dots) {
     const set = new Set([ans]); while (set.size < 4) set.add(rnd(lo, hi));
-    return shuffle([...set]).map(v => ({ value: String(v), label: String(v), html: `<span style="font:800 28px/1 inherit">${v}</span>${dots ? `<span style="display:block;font-size:10px;letter-spacing:1px;color:#7b55e6">${"●".repeat(v)}</span>` : ""}` }));
+    return shuffle([...set]).map(v => ({ value: String(v), label: String(v), html: `<span style="font-size:36px;font-weight:800;line-height:1">${v}</span>${dots ? `<span style="display:block;font-size:10px;letter-spacing:1px;color:#7b55e6">${"●".repeat(v)}</span>` : ""}` }));
   }
   const SHAPES = {
     circle: '<circle cx="30" cy="30" r="22"/>', square: '<rect x="9" y="9" width="42" height="42"/>',

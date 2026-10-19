@@ -19,30 +19,15 @@
   const INK = "#3b2a33";
 
   /* ---------- Drawings (our own) ---------- */
+  /* Drawings come from knight_art.js (window.KnightArt). sized() sets the svg's own size or position. */
+  function sized(svg, attrs) { return svg.replace(/^<svg /, "<svg " + attrs + " "); }
   function knightSVG(size) {
-    return `<svg viewBox="0 0 100 120" width="${size}" height="${size * 1.2}" aria-hidden="true">
-      ${has("horse") ? "" : ""}
-      <rect x="30" y="62" width="40" height="40" rx="12" fill="${has("armour") ? "#dfe6ef" : "#8fb3e8"}" stroke="${INK}" stroke-width="3"/>
-      <rect x="36" y="100" width="10" height="16" rx="4" fill="#6d5a4e" stroke="${INK}" stroke-width="2.5"/><rect x="54" y="100" width="10" height="16" rx="4" fill="#6d5a4e" stroke="${INK}" stroke-width="2.5"/>
-      <path d="M50 8 Q${has("plume") ? "62 -4 78 4 Q66 6 58 14" : "56 6 60 10 Q55 10 54 14"} Z" fill="#4f7ff0" stroke="${INK}" stroke-width="2"/>
-      <circle cx="50" cy="38" r="26" fill="#cfd8e4" stroke="${INK}" stroke-width="3"/>
-      <rect x="35" y="28" width="30" height="26" rx="11" fill="#ffd9bd" stroke="${INK}" stroke-width="2.5"/>
-      <circle cx="44" cy="40" r="2.6" fill="${INK}"/><circle cx="56" cy="40" r="2.6" fill="${INK}"/>
-      <path d="M45 47 Q50 51 55 47" fill="none" stroke="${INK}" stroke-width="2" stroke-linecap="round"/>
-      ${has("shield") ? `<path d="M14 66 H32 V84 Q32 96 23 100 Q14 96 14 84 Z" fill="#ffd45c" stroke="${INK}" stroke-width="2.5"/><path d="M23 70 V94 M16 80 H30" stroke="#c0305c" stroke-width="3"/>` : ""}
-      ${has("sword") ? `<path d="M76 56 L80 20" stroke="${has("sword2") ? "#c9d3e0" : "#c79a64"}" stroke-width="6" stroke-linecap="round"/><path d="M70 58 H86" stroke="${INK}" stroke-width="4" stroke-linecap="round"/>` : ""}
-    </svg>`;
+    const opts = { armour: has("armour"), plume: has("plume"), shield: has("shield"), sword: has("sword2") ? "silver" : has("sword") ? "wood" : "none" };
+    return sized(KnightArt.full("knight", "stand", opts), `width="${size}" height="${Math.round(size * 1.3)}"`);
   }
   function badSVG(tired, size) {
-    const sad = tired >= 3;
-    return `<svg viewBox="0 0 100 110" width="${size}" height="${size * 1.1}" aria-hidden="true">
-      <path d="M22 104 Q20 60 50 56 Q80 60 78 104 Z" fill="#7a6a9e" stroke="${INK}" stroke-width="3"/>
-      <circle cx="50" cy="40" r="24" fill="#b6d68a" stroke="${INK}" stroke-width="3"/>
-      <path d="M30 26 L38 10 L44 22 L50 8 L56 22 L62 10 L70 26" fill="#ffd45c" stroke="${INK}" stroke-width="2.5" stroke-linejoin="round"/>
-      ${tired >= 1 ? `<path d="M38 40 Q42 43 46 40 M54 40 Q58 43 62 40" fill="none" stroke="${INK}" stroke-width="2.5" stroke-linecap="round"/>` : `<path d="M37 36 L45 39 M63 36 L55 39" stroke="${INK}" stroke-width="3" stroke-linecap="round"/><circle cx="42" cy="42" r="2.5" fill="${INK}"/><circle cx="58" cy="42" r="2.5" fill="${INK}"/>`}
-      <path d="M42 52 Q50 ${sad ? 48 : 56} 58 52" fill="none" stroke="${INK}" stroke-width="2.5" stroke-linecap="round"/>
-      ${tired >= 4 ? `<text x="70" y="22" font-size="14" font-weight="800" fill="${INK}">z</text><text x="80" y="12" font-size="11" font-weight="800" fill="${INK}">z</text>` : ""}
-    </svg>`;
+    const pose = tired >= 5 ? "runaway" : tired >= 2 ? "tired" : "grumpy";
+    return sized(KnightArt.full("badguy", pose), `width="${size}" height="${Math.round(size * 1.3)}"`);
   }
   function castleSVG() {
     const w = has("wall"), g = has("gate");
@@ -55,8 +40,8 @@
       ${has("flag") ? `<path d="M71 22 V4" stroke="${INK}" stroke-width="2.5"/><path d="M71 4 L90 10 L71 16 Z" fill="#ffd45c" stroke="${INK}" stroke-width="2"/>` : ""}
       ${g ? `<path d="M140 155 V118 Q160 96 180 118 V155 Z" fill="#8a6a4e" stroke="${INK}" stroke-width="3"/>` : ""}
       ${has("bridge") ? `<rect x="138" y="155" width="44" height="26" fill="#c79a64" stroke="${INK}" stroke-width="2.5"/>` : ""}
-      ${has("horse") ? `<g transform="translate(14 112)"><ellipse cx="24" cy="22" rx="20" ry="11" fill="#c79a64" stroke="${INK}" stroke-width="2.5"/><path d="M40 16 L48 2 L54 8 L46 22 Z" fill="#c79a64" stroke="${INK}" stroke-width="2.5"/><path d="M10 30 V42 M18 32 V42 M30 32 V42 M38 30 V42" stroke="${INK}" stroke-width="3"/></g>` : ""}
-      ${has("buddy") ? `<g transform="translate(264 104) scale(.42)">${knightSVG(100).replace(/<svg[^>]*>|<\/svg>/g, "")}</g>` : ""}
+      ${has("horse") ? sized(KnightArt.full("horse", "stand"), 'x="8" y="96" width="78" height="78"') : ""}
+      ${has("buddy") ? sized(KnightArt.full("buddy", "stand"), 'x="258" y="92" width="52" height="68"') : ""}
     </svg>`;
   }
 
