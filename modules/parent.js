@@ -67,7 +67,9 @@
         <h4>Answered lately</h4>${answeredQs ? `<ul>${answeredQs}</ul>` : "<p>None yet.</p>"}</section>
       <section><h3>Voice and sound</h3>
         <div class="set"><input id="voiceChk" type="checkbox"${P.voice ? " checked" : ""}><label for="voiceChk">Read questions out loud</label></div>
-        <div class="set"><input id="soundChk" type="checkbox"${P.sound ? " checked" : ""}><label for="soundChk">Sounds</label></div></section>
+        <div class="set"><input id="soundChk" type="checkbox"${P.sound ? " checked" : ""}><label for="soundChk">Sounds</label></div>
+        <div class="set"><label for="voiceSel">${esc(name)}'s voice</label><select id="voiceSel"><option value="">Best voice on this device (automatic)</option>${englishVoices().map(v => `<option value="${esc(v.name)}"${P.voiceName === v.name ? " selected" : ""}>${esc(v.name)} (${esc(v.lang)})</option>`).join("")}</select><button class="mini" id="voiceTry" type="button">Try it</button></div>
+        <p>Now using: ${esc(kittyVoice ? kittyVoice.name : "no voice found")}. For a more natural voice on iPad: open Settings, then Accessibility, then Spoken Content, then Voices, then English, and download a voice marked Premium or Enhanced. For Marie try Ava; for Kennedy try Daniel or Arthur. The game then picks it by itself.</p></section>
       <section><h3>Daily email and backup</h3><p>${esc(KidsSync.status())}</p>
         ${KidsSync.connected() ? `<div class="set"><button class="mini" id="pSyncNow" type="button">Save to Google now</button><button class="mini" id="pMailPreview" type="button">Show today's email</button></div><pre id="pMail" style="white-space:pre-wrap"></pre>`
           : `<div class="set"><label for="pCode">Setup code (starts with KM1)</label><input id="pCode" autocomplete="off" style="width:100%"><button class="mini" id="pCodeOk" type="button">Connect</button></div><p id="pCodeMsg" aria-live="polite"></p>`}</section>
@@ -98,6 +100,9 @@
     } else $e("#pCodeOk").onclick = () => { if (KidsSync.setCode($e("#pCode").value)) redo(); else $e("#pCodeMsg").textContent = "That code does not look right. It starts with KM1 and has no spaces."; };
     $e("#voiceChk").onchange = e => { P.voice = e.target.checked; if (!P.voice) try { speechSynthesis.cancel(); } catch (x) {} save(); };
     $e("#soundChk").onchange = e => { P.sound = e.target.checked; save(); };
+    const sample = () => speak(who === "kennedy" ? "Hello, brave knight! Let's send the bad guys home." : "Hello Marie! Let's do some maths in the cafe.", true);
+    $e("#voiceSel").onchange = e => { P.voiceName = e.target.value; kittyVoice = pickVoice(); save(); sample(); redo(); };
+    $e("#voiceTry").onclick = sample;
     if (resetAsk) {
       $e("#resetYes").onclick = () => { adopt({ voice: P.voice, sound: P.sound, limitMin: P.limitMin }); resetAsk = false; save(); if (window.HomeGame) HomeGame.refresh(); redo(); };
       $e("#resetNo").onclick = () => { resetAsk = false; redo(); };

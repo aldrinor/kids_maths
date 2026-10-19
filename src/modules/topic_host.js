@@ -1,8 +1,8 @@
-/* Topic host: the "Maths" tab of Kitty Number Blocks.
+/* Topic host: the "Maths" tab of Mimi Number Blocks.
    It shows a map of every Grade 1-3 topic module (window.MathTopics) and plays one topic full screen.
    Teaching rules (the same as the sums screen):
    - The answer is never shown while Marie works. Hints say how, never the answer.
-   - 1st mistake: try again. 2nd: a how-to hint from the topic. 3rd: Hello Kitty teaches it step by step and Marie does each step.
+   - 1st mistake: try again. 2nd: a how-to hint from the topic. 3rd: Mimi teaches it step by step and Marie does each step.
    - After the lesson, 2 more misses show the answer faintly, so she never gets stuck.
    Rewards: 2 stars right first time, 1 star otherwise; a cooking break every 5 questions (shared with the sums).
    Each topic moves up a level after LEVEL_UP_NEED of the last 10 right first time, and gently down after 3 lessons in a row.
@@ -337,7 +337,7 @@
     if (btn) { const now = Date.now(); if (now - lastMissAt < 500) return; lastMissAt = now; }
     ctx.tone([330], .2, "triangle"); typed = "";
     // A missed choice is NOT greyed out or switched off: with only 2 or 3 choices that would leave just the
-    // answer to tap, which hands her the answer and skips the hint and Kitty's lesson. The question shakes instead.
+    // answer to tap, which hands her the answer and skips the hint and Mimi's lesson. The question shakes instead.
     els.ask.classList.remove("shake"); void els.ask.offsetWidth; els.ask.classList.add("shake");
     if (phase === "afterTeach") {
       afterTries++;

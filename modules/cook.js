@@ -28,7 +28,7 @@
  *
  * Layout: a square stage of 800 x 800 units is scaled to fit the free space. The wall and counter run far
  * past the stage edges, so wide screens show more kitchen, never empty bars. Buttons, cards, the drawer of
- * decorations, Kitty's speech bubble and the back button are real pixels (never scaled), so every tap target
+ * decorations, Mimi's speech bubble and the back button are real pixels (never scaled), so every tap target
  * stays 44 px or more on an iPhone SE.
  * Kitty is always her whole body (window.KittyChars.full, with a chef hat). On a wide screen she has her own
  * column at the left. On a phone or an upright iPad she stands inside the stage, behind every prop: on the
@@ -254,7 +254,7 @@
       '<path d="M33 2 C33.6 5.4 34.6 6.4 38 7 C34.6 7.6 33.6 8.6 33 12 C32.4 8.6 31.4 7.6 28 7 C31.4 6.4 32.4 5.4 33 2 Z" fill="#ffc94a" stroke="' + INK + '" stroke-width="1.6" stroke-linejoin="round"/>');
   }
   /* The chef hat, drawn in the head's 100 x 100 box (stroke matches the head outline). It sits in front of
-     the ears, across the forehead, with Kitty's red bow pinned on the band in front of it. */
+     the ears, across the forehead, with a small pink flower pinned on the band. */
   function hatMarkup() {
     var s = 'stroke="' + INK + '" stroke-width="3.1" stroke-linejoin="round" stroke-linecap="round"';
     var bowS = 'stroke="' + INK + '" stroke-width="3.07" stroke-linejoin="round" stroke-linecap="round"';
@@ -263,14 +263,12 @@
       '<path d="M24 -2 C26 -10 32 -14 40 -12 M68 -14 C76 -14 82 -8 82 -2" fill="none" stroke="#e8dce2" stroke-width="3.4" stroke-linecap="round"/>' +
       '<rect x="8" y="22" width="84" height="19" rx="7" fill="#fff" ' + s + "/>" +
       '<path d="M28 26 L28 37 M46 26 L46 37 M64 26 L64 37" stroke="#e8dce2" stroke-width="3" stroke-linecap="round"/>' +
-      '<g transform="translate(82 26) rotate(14)">' +
-      '<path d="M0 0 C-14 -17 -24 -4 -18 6 C-14 12 -6 8 0 3 Z" fill="#e8203f" ' + bowS + "/>" +
-      '<path d="M0 0 C14 -17 24 -4 18 6 C14 12 6 8 0 3 Z" fill="#e8203f" ' + bowS + "/>" +
-      '<path d="M-14 -5 Q-10 -9 -6 -5 M14 -5 Q10 -9 6 -5" fill="none" stroke="#ff7d92" stroke-width="2" stroke-linecap="round"/>' +
-      '<circle cx="0" cy="1.5" r="5.5" fill="#e8203f" ' + bowS + "/></g></g>";
+      '<g transform="translate(80 31)">' +
+      [0, 72, 144, 216, 288].map(function (r) { return '<ellipse cx="0" cy="-5.2" rx="3.8" ry="5.2" fill="#ff9cc4" ' + bowS + ' transform="rotate(' + r + ')"/>'; }).join("") +
+      '<circle r="3.2" fill="#ffd24a" ' + bowS + "/></g></g>";
   }
   /* Heart eyes drawn over a character's eyes (head box units). */
-  var EYES = { kitty: [61, 13], melody: [64, 11], kuromi: [66, 11], purin: [60, 12], cinna: [59, 12] };
+  var EYES = { kitty: [60, 13], melody: [63, 13], kuromi: [60, 13], purin: [57, 14], cinna: [62, 12] };
   function heartsMarkup(id) {
     var e = EYES[id] || EYES.kitty, out = '<g class="ck-hearts">';
     [50 - e[1], 50 + e[1]].forEach(function (x) {
@@ -483,9 +481,9 @@
     minimac: { cat: "sweets", name: "little macaron", d: function () { return E(50, 36, 34, 16, "#b9a7ff", 4) + R(18, 42, 64, 12, 6, "#fff", 4) + E(50, 64, 34, 16, "#b9a7ff", 4) + HL("M30 32 L44 28", 4, 0.8); } },
     cookie: { cat: "sweets", name: "cookie", d: function () { return C(50, 50, 38, "#e3a964", 4) + C(36, 40, 5, "#6b4430", 0) + C(60, 34, 5, "#6b4430", 0) + C(62, 60, 5, "#6b4430", 0) + C(42, 64, 5, "#6b4430", 0) + C(50, 50, 3, "#6b4430", 0); } },
     /* cute */
-    bow: { cat: "cute", name: "Kitty bow", d: function () { return bowInner("#e8203f"); } },
+    bow: { cat: "cute", name: "Red bow", d: function () { return bowInner("#e8203f"); } },
     pinkbow: { cat: "cute", name: "pink bow", d: function () { return bowInner("#ff8fb4"); } },
-    kittyface: { cat: "cute", name: "Kitty face", sz: 1.15, d: function () { return window.KittyChars && window.KittyChars.headInner ? '<g transform="translate(4 6) scale(.92)">' + window.KittyChars.headInner("kitty") + "</g>" : C(50, 52, 40, "#fff", 4) + bowInner("#e8203f"); } },
+    kittyface: { cat: "cute", name: "Mimi face", sz: 1.15, d: function () { return window.KittyChars && window.KittyChars.headInner ? '<g transform="translate(4 6) scale(.92)">' + window.KittyChars.headInner("kitty") + "</g>" : C(50, 52, 40, "#fff", 4) + bowInner("#e8203f"); } },
     heart: { cat: "cute", name: "heart", d: function () { return Pa(heartPath(50, 52, 1.2), "#ff6f9f", 4) + HL("M28 36 C30 30 36 28 40 30", 4, 0.8); } },
     star: { cat: "cute", name: "star", d: function () { return Pa(starPath(50, 52, 44), "#ffc94a", 4) + HL("M42 30 L48 22", 4, 0.8); } },
     flower: { cat: "cute", name: "flower", d: function () { var s = ""; for (var i = 0; i < 5; i++) { var a = i * Math.PI * 2 / 5 - Math.PI / 2; s += C((50 + Math.cos(a) * 24).toFixed(1), (50 + Math.sin(a) * 24).toFixed(1), 18, "#ffb3d1", 4); } return s + C(50, 50, 14, "#ffc94a", 4); } },
@@ -2104,7 +2102,7 @@
     ]
   };
 
-  /* ---------------------------------------- Hello Kitty onigiri bento: squeeze the rice, wrap the seaweed, fill the box */
+  /* ---------------------------------------- Mimi onigiri bento: squeeze the rice, wrap the seaweed, fill the box */
   function riceShape(t) {
     /* t 0 = a soft heap, 1 = a neat rounded triangle */
     var pts = [];
@@ -2137,7 +2135,7 @@
       (withRice ? '<g transform="translate(20 20) scale(.7)">' + onigiriSVG(1, true).replace(/^<svg[^>]*>|<\/svg>$/g, "") + "</g>" : ""));
   }
   var R_BENTO = {
-    key: "bento", name: "Kitty bento", one: "bento", say: "Let's make a Hello Kitty rice ball bento!", iceName: "Rice", iceSay: "Pick a rice colour!",
+    key: "bento", name: "Mimi bento", one: "bento", say: "Let's make a Mimi rice ball bento!", iceName: "Rice", iceSay: "Pick a rice colour!",
     ice: [["white", "#ffffff"], ["sakura pink", "#ffd6e4"], ["egg yellow", "#fff1a0"], ["green", "#d9f3c4"], ["blue", "#d6ecff"], ["lilac", "#eadfff"]],
     cats: ["face", "ice", "sides", "cute", "fruit", "plate"],
     zone: [{ r: [140, 290, 520, 340] }], view: "90 220 620 490", itemScale: 0.75,
@@ -2501,7 +2499,7 @@
     var ck = document.createElement("div");
     ck.className = "ck";
     ck.setAttribute("role", "application");
-    ck.setAttribute("aria-label", "Cooking time with Hello Kitty");
+    ck.setAttribute("aria-label", "Cooking time with Mimi");
     g.root.appendChild(ck);
     el.ck = ck;
     var stage = document.createElement("div");
@@ -2583,7 +2581,7 @@
   }
 
   /* In a cooking step on a narrow screen some props stand high on the wall (cutters, bottles, a blender).
-     At each new instruction Kitty's spot is chosen so that no prop and no button overlaps her: the left of
+     At each new instruction Mimi's spot is chosen so that no prop and no button overlaps her: the left of
      the rail first, then the right, then a little smaller. She is only placed there; she never walks or acts. */
   function kitFit() {
     var g = G, n = g.kitN;
@@ -2715,7 +2713,7 @@
     var k = Math.min(bw / (ST - 40), bh / ST);
     g.k = k; g.sx = x0 + (bw - ST * k) / 2; g.sy = y0 + (bh - ST * k) * (wide ? 0.5 : 0.7);
     /* low studio: the stage is only as tall as the panel, so zoom in on the treat (its view box) to fill the
-       free space between Kitty's column and the drawer */
+       free space between Mimi's column and the drawer */
     if (low && deco && g.R && g.R.view) {
       var v = studioBox(g);
       var vk = Math.min(bw / v[2], bh / v[3]);
@@ -2845,7 +2843,7 @@
     g.layoutPick = function () {
       var T = 62, ax0 = g.wide ? g.KW : 8, ax1 = g.cw - 8, ay0 = T + 2, ay1 = g.ch - 8;
       var aw = ax1 - ax0, ah = ay1 - ay0, goH = 58, gap = 10;
-      /* narrow screens: Kitty stands at the bottom left, beside "Let's cook!", in a band of her own height.
+      /* narrow screens: Mimi stands at the bottom left, beside "Let's cook!", in a band of her own height.
          The band never takes more than about 45% of the height, so the cards always keep their room. */
       var kwP = g.wide ? 0 : Math.max(44, Math.min(clamp(Math.round(g.cw * 0.22), 60, 130), (ah * 0.45) / KIT_TALL));
       var bandH = g.wide ? goH : Math.max(goH, kwP * KIT_TALL);
@@ -3220,7 +3218,7 @@
         pop(serveB, 1.1);
         if (!D0.toldServe) { D0.toldServe = true; later(function () { if (G === g && g.phase === "decorate" && count() > 0) say("Tap Serve when you are done!"); }, 1600); }
       }
-      /* the treat is empty again (dragged off or undone): Serve hides, so Kitty must not keep saying "Tap Serve" */
+      /* the treat is empty again (dragged off or undone): Serve hides, so Mimi must not keep saying "Tap Serve" */
       if (n === 0 && was) { D0.toldServe = false; say("Drag things onto your " + R0.one + "!"); }
     }
     function remember(a) { D0.undo.push(a); if (D0.undo.length > 60) D0.undo.shift(); g.prog += 1; refresh(); }

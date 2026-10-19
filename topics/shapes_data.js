@@ -15,7 +15,7 @@
   const TINT = { pink: "#ffe4ee", blue: "#e0f3ff", green: "#e2f8f0", yellow: "#fff3cf", purple: "#efe8ff" };
   const CREAM = "#fff8ef", WOOD = "#f0bf87", WOOD_DEEP = "#c98a52", SUN = "#ffc94a", GOLD = "#ffb020";
   const FONT = `font-family="Baloo 2, Comic Sans MS, sans-serif" font-weight="800"`;
-  const NAMES = { kitty: "Hello Kitty", melody: "My Melody", kuromi: "Kuromi", purin: "Pompompurin", cinna: "Cinnamoroll" };
+  const NAMES = { kitty: "Mimi", melody: "Bella", kuromi: "Lulu", purin: "Momo", cinna: "Puff" };
   const ri = (a, b) => a + Math.floor(Math.random() * (b - a + 1));
   const pick = a => a[Math.floor(Math.random() * a.length)];
   const shuffle = a => { a = a.slice(); for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
@@ -141,7 +141,7 @@
     if (n > TALLY_CAP) s += `<circle cx="${r1(gx - gGap / 2 + 3)}" cy="${r1(y)}" r="2.5" fill="${INK}"/><circle cx="${r1(gx - gGap / 2 + 10)}" cy="${r1(y)}" r="2.5" fill="${INK}"/>`;
     return `<g pointer-events="none" data-tally="${n}">${s}</g>`;
   }
-  // Hello Kitty style bow, centred at (x, y), about s units wide.
+  // Bow, centred at (x, y), about s units wide.
   const BOW_PATH = c => `<path d="M0 1 C-6 -15 -25 -18 -25 -3 C-25 11 -8 12 0 4 Z" fill="${c}" stroke="${INK}" stroke-width="3" stroke-linejoin="round"/><path d="M0 1 C6 -15 25 -18 25 -3 C25 11 8 12 0 4 Z" fill="${c}" stroke="${INK}" stroke-width="3" stroke-linejoin="round"/><ellipse cx="0" cy="2" rx="6.5" ry="7" fill="${c}" stroke="${INK}" stroke-width="3"/><path d="M-18 -8 q-3 4 -1 8" fill="none" stroke="#fff" stroke-width="2.6" stroke-linecap="round" opacity=".75"/>`;
   const bow = (x, y, s, c) => `<g transform="translate(${r1(x)} ${r1(y + s * 0.05)}) scale(${r1(s / 52 * 100) / 100})">${BOW_PATH(c)}</g>`;
   const bowSVG = c => `<svg viewBox="-28 -18 56 32" aria-hidden="true">${BOW_PATH(c)}</svg>`;
@@ -227,8 +227,8 @@
       ctx.onlyMsg = opt.onlyMsg || "Try the one that glows.";
       if (opt.say) ctx.say(opt.say);
       ctx.render();
-      // The host pulses ONE element. Kitty's own pick (data-teach) comes first. When several things glow alike (the
-      // pictures to choose from, both hoops) and none is Kitty's pick, nothing is pulsed: the first one in the page
+      // The host pulses ONE element. Mimi's own pick (data-teach) comes first. When several things glow alike (the
+      // pictures to choose from, both hoops) and none is Mimi's pick, nothing is pulsed: the first one in the page
       // would be pointed at only because it is drawn first. Otherwise the first glowing element (as before).
       const lit = [...root.querySelectorAll(".sd-glow")], kind = e => (e.dataset.tap || e.dataset.drag || e.dataset.zone || "").split(":")[0];
       const first = lit.find(e => e.dataset.teach) || (lit.length > 1 && lit.every(e => kind(e) === kind(lit[0])) ? null : lit[0] || null);
@@ -365,22 +365,22 @@
   function ctxTimer(ctx, fn, ms) { ctx.timers = ctx.timers || []; ctx.timers.push(setTimeout(() => { if (!ctx.dead) fn(); }, ms)); }
 
   /* ================= Topic wrapper ================= */
-  // How many of the first counting taps Kitty says out loud in her lesson, before "Your turn. Keep counting."
+  // How many of the first counting taps Mimi says out loud in her lesson, before "Your turn. Keep counting."
   // n is the number of taps the count needs. 2 when n is 5 or more, 1 when n is 3 or 4, none when n is 1 or 2,
   // so the last number she says is always well before the final count.
   const demoTaps = n => (n >= 5 ? 2 : n >= 3 ? 1 : 0);
   const YOUR_TURN = "Your turn. Keep counting.";
-  // The words for counting step k (0 = the first tap) of a lesson where Kitty shows the first `show` taps:
+  // The words for counting step k (0 = the first tap) of a lesson where Mimi shows the first `show` taps:
   // the opening words on the first step, "Your turn. Keep counting." when Marie takes over, nothing otherwise.
   // When Kitty shows no taps at all, the opening words already hand the counting to Marie.
-  // In the count-together lesson (recount) Kitty counts every tap with her, so there is no "Your turn".
+  // In the count-together lesson (recount) Mimi counts every tap with her, so there is no "Your turn".
   function countSay(ctx, k, show, first) {
-    if (k === 0) return ctx.recounting ? `${first} Kitty counts with you.` : show ? first : `${first} You count them.`;
+    if (k === 0) return ctx.recounting ? `${first} Mimi counts with you.` : show ? first : `${first} You count them.`;
     if (!ctx.recounting && k === show) return YOUR_TURN;
     return undefined;
   }
   // Waits for every counting tap in order. steps: [{ pred, glow, only, onlyMsg }], first: the opening words.
-  // Between Kitty's last shown number and "Your turn" there is a short pause, so the number is not cut off.
+  // Between Mimi's last shown number and "Your turn" there is a short pause, so the number is not cut off.
   async function countAlong(ctx, steps, first, show) {
     if (show == null) show = demoTaps(steps.length);
     ctx.aloud = ctx.recounting ? 0 : show;
@@ -615,7 +615,7 @@
     }
   };
   async function teachCountColours(ctx, Q, items, what) {
-    // items: [{id, c}] in display order. Marie counts one colour at a time. Kitty shows how on the first colour's
+    // items: [{id, c}] in display order. Marie counts one colour at a time. Mimi shows how on the first colour's
     // first taps only; every other count is Marie's own (lesson rule of 16 Oct 2026).
     const colours = Q.data.colours;
     for (let ci = 0; ci < colours.length; ci++) {
@@ -829,7 +829,7 @@
      HOP LINE — a wooden ruler Kitty hops along (shared by graphs and patterns)
      state fields on st: pos (null until placed), start, hops[]
      cfg: { lo, hi, sizes:[1,2,...] (negative allowed), marks:[numbers to flag], placeable, allLabels }
-     Where Kitty lands is never written or spoken (outside Kitty's lesson): she reads it off the ruler herself.
+     Where Mimi lands is never written or spoken (outside Mimi's lesson): she reads it off the ruler herself.
      The ruler is labelled only at landmarks (every 5, or every 10 or 20 when crowded) and at the start number,
      unless cfg.allLabels (the table ruler, where the answer is the number of hops, not a place).
      ===================================================================================== */
@@ -840,7 +840,7 @@
       // labels at least about 30 units apart (so 2-digit numbers never touch); ticks at least 6 units apart
       const digits = String(hi).length, gapNeed = hi <= 10 ? 22 : digits >= 3 ? 36 : 30;
       const labelEvery = (cfg.allLabels ? [1, 2, 5, 10, 20] : [5, 10, 20]).find(k => k * u >= gapNeed) || 20, tickEvery = u >= 6 ? 1 : u * 5 >= 6 ? 5 : 10;
-      // Kitty's pink badge shows a number only where she was put (a number given on the screen), never where she lands
+      // Mimi's pink badge shows a number only where she was put (a number given on the screen), never where she lands
       const badgeAt = st.pos != null && st.pos === st.start ? st.pos : null;
       // once Kitty has hopped away, her start number stays written on the ruler (pink), so Marie sees where she began
       const startLab = badgeAt == null && st.start != null && st.pos != null ? st.start : null;
@@ -853,7 +853,7 @@
       for (let n = Math.ceil(lo / tickEvery) * tickEvery; n <= hi; n += tickEvery) {
         const major = n % labelEvery === 0;
         s += `<line x1="${r1(X(n))}" y1="${r1(y - 12)}" x2="${r1(X(n))}" y2="${r1(y + (major ? 4 : -2))}" stroke="${INK}" stroke-width="${major ? 2.5 : 1.5}" pointer-events="none"/>`;
-        // labels under Kitty's pink badge are left out; the start number's own label is drawn pink below
+        // labels under Mimi's pink badge are left out; the start number's own label is drawn pink below
         const under = badgeAt != null && near(n, badgeAt);
         // cfg.hide: numbers that must not be written on the ruler (on a number pattern: every number of the pattern)
         if (major && !under && n !== startLab && !(cfg.hide && cfg.hide.includes(n))) { s += txt(X(n), y + 26, n, 15, { fill: "#6e5562", extra: ' data-scale="1"' }); drawn.push(n); }
@@ -897,7 +897,7 @@
       const k = id.slice(4);
       if (k === "undo") { if (st.hops.length) st.pos -= st.hops.pop(); return true; }
       if (k === "reset") { st.hops = []; st.pos = st.start; return true; }
-      if (st.pos == null) { ctx.say(cfg.placeable ? "First tap a number to put Kitty on it." : "First tap a number box to put Kitty on it."); return true; }
+      if (st.pos == null) { ctx.say(cfg.placeable ? "First tap a number to put Mimi on it." : "First tap a number box to put Mimi on it."); return true; }
       const size = +k, to = st.pos + size;
       if (to < cfg.lo || to > cfg.hi) { ctx.say("That hop goes off the ruler!"); ctx.tone([330], 0.15, "triangle"); return true; }
       st.hops.push(size); st.pos = to;
@@ -1227,7 +1227,7 @@
           s += `<line x1="${r1(x - colW / 2 + 8)}" y1="${r1(ty + 3 + colH * 0.58)}" x2="${r1(x + colW / 2 - 8)}" y2="${r1(ty + 3 + colH * 0.58)}" stroke="${INK}" stroke-opacity=".25" stroke-width="2"/>`;
           s += txt(x, ty + 3 + colH * 0.79, d.counts[c], 24, { extra: ' data-given="1"' });
         });
-        if (st.pos == null) s += txt(vw / 2, ty + colH + 6 + gap + 22, "Tap a food to put Kitty here", vw < 340 ? 15 : 16, { fill: "#8a6f7d" });
+        if (st.pos == null) s += txt(vw / 2, ty + colH + 6 + gap + 22, "Tap a food to put Mimi here", vw < 340 ? 15 : 16, { fill: "#8a6f7d" });
         s += hop.draw(ctx, tableCfg(), 30, ty + colH + 6 + gap + 56, vw - 60);
         return s;
       }
@@ -1243,11 +1243,11 @@
         s += txt(tx + tw - 35, y, d.counts[c], 24, { extra: ' data-given="1"' });
       });
       const ly = ty + rowH * n + 6 + gap + 56;
-      if (st.pos == null) s += txt(vw / 2, ly - 34, "Tap a food to put Kitty here", vw < 340 ? 15 : 16, { fill: "#8a6f7d" });
+      if (st.pos == null) s += txt(vw / 2, ly - 34, "Tap a food to put Mimi here", vw < 340 ? 15 : 16, { fill: "#8a6f7d" });
       s += hop.draw(ctx, tableCfg(), 30, ly, vw - 60);
       return s;
     },
-    // no "N hops" count: Marie counts Kitty's hops (the arcs) herself
+    // no "N hops" count: Marie counts Mimi's hops (the arcs) herself
     controls: ctx => hop.controls(ctx, tableCfg()),
     onTap(ctx, id) {
       // a row tap says the food's name, never its number (the number is written on the table). Saying every number
@@ -1278,7 +1278,7 @@
         hint: Q => `Tap each plate until it is empty, so every thing is in its line. Which line is ${Q.data.ask === "most" ? "the longest" : "the shortest"}?`,
         async teach(ctx, Q) {
           const d = Q.data;
-          // Kitty says only the first plate's first numbers; the other lines Marie builds and counts herself
+          // Mimi says only the first plate's first numbers; the other lines Marie builds and counts herself
           for (let c = 0; c < d.cats.length; c++) {
             const id = "heap:" + c, many = foodOf(d.cats[c]).many;
             const steps = [...Array(d.counts[c]).keys()].map(i => ({ pred: s => (s.placed[c] || 0) > i, glow: [id], only: (k, x) => k !== "tap" || x === id }));
@@ -1337,7 +1337,7 @@
             onDrop: (c, id, at) => (c.d.kind === "bar" ? barSpec.onDrop(c, id, at) : undefined), tallBelow: 1.25 }; })(),
         hint: Q => Q.data.kind === "picto" ? `Look at the key. Each picture means 2. Tap each ${foodOf(Q.data.cats[Q.data.ask[0]]).one || "picture"} and count by 2s.`
           : Q.data.kind === "bar" ? `Drag the purple line to the end of the ${foodOf(Q.data.cats[Q.data.y]).many} bar. Count the ${foodOf(Q.data.cats[Q.data.x]).many} squares past the line.`
-          : `Tap the food with the smaller number to put Kitty there. Hop +1 until you reach the bigger number. Count the hops.`,
+          : `Tap the food with the smaller number to put Mimi there. Hop +1 until you reach the bigger number. Count the hops.`,
         async teach(ctx, Q) {
           const d = Q.data;
           if (d.kind === "picto") {
@@ -1360,11 +1360,11 @@
           } else {
             // the answer is the number of hops: Kitty says the first hop numbers only (never where she lands), and
             // never the smaller table number aloud (it can be the same as the answer)
-            await ctx.wait(s => s.pos === Y && s.hops.length === 0, { glow: ["trow:" + d.y], say: `Find the ${ny}. Tap the ${ny} to put Kitty on its number.`, only: (k, id) => k !== "tap" || id === "trow:" + d.y, onlyMsg: `Tap the ${ny}.` });
+            await ctx.wait(s => s.pos === Y && s.hops.length === 0, { glow: ["trow:" + d.y], say: `Find the ${ny}. Tap the ${ny} to put Mimi on its number.`, only: (k, id) => k !== "tap" || id === "trow:" + d.y, onlyMsg: `Tap the ${ny}.` });
             const steps = [];
             for (let i = Y; i < X; i++) steps.push({ pred: s => s.hops.length > i - Y || s.pos === X, glow: ["hop:1"], only: (k, id) => k !== "tap" || id === "hop:1" });
-            await countAlong(ctx, steps, `Tap +1 until Kitty reaches the ${nx} number. Count the hops.`);
-            ctx.say((ctx.recounting ? "The last number we said is how many hops. " : "How many hops did Kitty make? ") + "That is how many more. Type it.");
+            await countAlong(ctx, steps, `Tap +1 until Mimi reaches the ${nx} number. Count the hops.`);
+            ctx.say((ctx.recounting ? "The last number we said is how many hops. " : "How many hops did Mimi make? ") + "That is how many more. Type it.");
           }
         } }
     ]
@@ -1521,7 +1521,7 @@
   // "Which part repeats?" lesson step: Marie taps where the row starts again after the cut at `base` (want is the
   // right place, which Kitty never lights or says). The pictures after the cut all glow alike. A miss is not simply
   // refused: Kitty checks it WITH her, tap by tap: the first picture after the cut, then the one she chose, the
-  // next two, and so on, until two of them are not the same ("So it does not start again there"). Kitty says how
+  // next two, and so on, until two of them are not the same ("So it does not start again there"). Mimi says how
   // to check, never where the answer is. st.finding holds the cut while she looks (tests read it).
   async function findRestart(ctx, Q, base, want, ask) {
     const d = Q.data, st = ctx.st, n = d.seq.length, keep = () => { st.cuts = {}; for (let c = d.core.length; c < want; c += d.core.length) st.cuts[c] = true; };
@@ -1606,7 +1606,7 @@
     // no dots on the ruler for the numbers in the boxes: evenly spaced dots with one missing would point straight at
     // the answer's place, and Marie must find it by hopping
     // No landmark label is written at any number of the pattern (the missing one, or the ones in the boxes): when the
-    // pattern counts by 5 or 10, the landmarks ARE the pattern, so the next label would be the answer. Kitty's start
+    // pattern counts by 5 or 10, the landmarks ARE the pattern, so the next label would be the answer. Mimi's start
     // number is still shown in pink once she stands on it, and the major ticks stay, so Marie counts along herself.
     return { lo: L0, hi: Math.max(H0, L0 + 10), sizes: sizes.filter(k => Math.abs(k) <= span), marks: [], placeable: false, hide: d.seq.slice() };
   }
@@ -1628,7 +1628,7 @@
       }
       const ly = Math.min(vh - 44, sy + gapY);
       // until Kitty is placed, the place where she will stand says how to put her there
-      if (ctx.st.pos == null) s += txt(vw / 2, ly - 34, "Tap a number box to put Kitty here", vw < 340 ? 15 : 16, { fill: "#8a6f7d" });
+      if (ctx.st.pos == null) s += txt(vw / 2, ly - 34, "Tap a number box to put Mimi here", vw < 340 ? 15 : 16, { fill: "#8a6f7d" });
       s += hop.draw(ctx, cfg, 26, ly, vw - 52);
       return s;
     },
@@ -1643,7 +1643,7 @@
     // Marie puts Kitty on the starting number herself (unless Kitty is already standing there)
     if (st.pos !== from) {
       const k = ctx.d.seq.findIndex((v, i) => v === from && i !== ctx.d.miss);
-      await ctx.wait(s => s.pos === from, { glow: ["stone:" + k], say: `Tap ${from} to put Kitty on it.`, only: (kd, id) => kd !== "tap" || id === "stone:" + k, onlyMsg: `Tap the ${from}.` });
+      await ctx.wait(s => s.pos === from, { glow: ["stone:" + k], say: `Tap ${from} to put Mimi on it.`, only: (kd, id) => kd !== "tap" || id === "stone:" + k, onlyMsg: `Tap the ${from}.` });
     }
     st.start = from; st.hops = [];
     const dir = to >= from ? 1 : -1;
@@ -1676,7 +1676,7 @@
     const choice = Q.input.type === "choice";
     // Lesson rule (16 Oct 2026): Kitty never says the size of the jump as a number. With the jump and the number
     // before the gap, the answer would be one easy step away. Marie reads her own hops (the +2 on the arcs).
-    const tell = () => "Look at your hops. How far did Kitty go?";
+    const tell = () => "Look at your hops. How far did Mimi go?";
     if (b === a + 1) {
       const j1 = await hopTo(ctx, seq[a], seq[b], `How far is each jump? Hop from ${seq[a]} to ${seq[b]}.`);
       ctx.say(tell(j1)); await ctx.pause(1300);
@@ -1686,7 +1686,7 @@
         const c = known.find(i => i >= b && known.includes(i + 1));
         if (c !== undefined) { j2 = await hopTo(ctx, seq[c], seq[c + 1], `Now hop from ${seq[c]} to ${seq[c + 1]}.`); ctx.say(tell(j2)); await ctx.pause(1300); }
       }
-      if (choice) ctx.say("Was the jump the same both times, or did it get bigger? Did Kitty go up or down?");
+      if (choice) ctx.say("Was the jump the same both times, or did it get bigger? Did Mimi go up or down?");
       else if (d.rule.op === "double") { ctx.say(j2 !== null ? "The jump got bigger. Each number is doubled: the number plus the same again." : "Each number is doubled: the number plus the same again."); await ctx.pause(2200); }
       else ctx.say(`Each jump is the same. ${j1 > 0 ? "It goes up" : "It goes down"} by the same jump each time.`);
       await ctx.pause(1600);
@@ -1695,13 +1695,13 @@
     const from = seq[miss - 1] !== undefined ? seq[miss - 1] : null;
     if (from === null) return;
     const step = d.rule.op === "double" ? from : d.rule.op === "sub" ? -d.rule.k : d.rule.k;
-    // a doubling pattern's jump grows each time, so "the same jump" would be wrong: Kitty doubles the number she is on
+    // a doubling pattern's jump grows each time, so "the same jump" would be wrong: Mimi doubles the number she is on
     // (from is a number given in the question, so saying it is not the answer)
-    await hopTo(ctx, from, from + step, d.rule.op === "double" ? `Kitty is on ${from}. Double it: hop as far as the number she is on.` : `Kitty is on ${from}. Make the same jump again.`, true);
+    await hopTo(ctx, from, from + step, d.rule.op === "double" ? `Mimi is on ${from}. Double it: hop as far as the number she is on.` : `Mimi is on ${from}. Make the same jump again.`, true);
     // Kitty does not say where she landed (that number is the answer): Marie counts on from her start on the ruler.
     // In the count-together lesson Kitty said each landing with her, the last one included.
     // a falling pattern (take away) hops down the ruler, so Marie counts BACK from the start; the others count on
-    ctx.say(ctx.recounting ? "The last number we said is where Kitty landed. Type it." : `Where did Kitty land? Count ${step < 0 ? "back" : "on"} from ${from} on the ruler. Type it.`);
+    ctx.say(ctx.recounting ? "The last number we said is where Mimi landed. Type it." : `Where did Mimi land? Count ${step < 0 ? "back" : "on"} from ${from} on the ruler. Type it.`);
   }
 
   function makeNumberPattern(level) {
@@ -1837,7 +1837,7 @@
             answer: String(p.seq[p.miss]), input: { type: "number", unit: "" }, data: p };
         },
         spec: numSpec,
-        hint: () => "Tap the first number to put Kitty on it. Hop to the next number and count how far. Then make the same hop again.",
+        hint: () => "Tap the first number to put Mimi on it. Hop to the next number and count how far. Then make the same hop again.",
         teach: teachNumbers },
       { name: "Pattern rules", grade: 3, note: "BC Gr 3: increasing and decreasing patterns; pattern rules such as add 3, take away 2, doubling.",
         make() {
@@ -1858,8 +1858,8 @@
             answer: String(p.seq[p.miss]), input: { type: "number", unit: "" }, data: p };
         },
         spec: numSpec,
-        hint: Q => Q.input.type === "choice" ? "Tap the first number to put Kitty on it. Hop to the next one. How far did she hop? Up or down? Check the next jump too."
-          : "Tap a number to put Kitty on it. Hop to the next number and count how far. Is the jump the same each time, or does it get bigger?",
+        hint: Q => Q.input.type === "choice" ? "Tap the first number to put Mimi on it. Hop to the next one. How far did she hop? Up or down? Check the next jump too."
+          : "Tap a number to put Mimi on it. Hop to the next number and count how far. Is the jump the same each time, or does it get bigger?",
         teach: teachNumbers }
     ]
   });
@@ -2481,7 +2481,7 @@
           }
           st.want = undefined; st.goal = undefined;
           if (d.mode === "which") { ctx.say("Which one is in the middle?"); return; }
-          // "how many": Marie counts the middle shapes, one tap each (Kitty says a first number only when there are
+          // "how many": Marie counts the middle shapes, one tap each (Mimi says a first number only when there are
           // 3 or more; in the count-together lesson she says every number with her)
           const mid = d.shapes.map((sh, i) => i).filter(i => goalOf(d.shapes[i]) === "AB");
           st.cnt = {}; st.cn = 0; st.counting = true;
@@ -2819,7 +2819,7 @@
         const model = foldModel(cells, NET_COLOURS[st.pickNet], ...st.box, cells.map((c, j) => st.ft[j] || 0)), root = netTree(cells).root;
         s += model.map(f => `<polygon data-tap="flap:${f.i}" class="${ctx.g("flap:" + f.i).trim()}" points="${ptsStr(f.pts)}" fill="${f.fill}" fill-opacity=".9" stroke="${INK}" stroke-width="3.5" stroke-linejoin="round"/>`).join("");
         // a flat square can end up behind squares that stand up: an invisible copy on top keeps it tappable
-        // the copy of the square that glows (Kitty's lesson) goes last, so another flat square's copy can not cover it
+        // the copy of the square that glows (Mimi's lesson) goes last, so another flat square's copy can not cover it
         const lit = f => (ctx.glow.has("flap:" + f.i) ? 1 : 0);
         s += model.filter(f => f.i !== root && !st.fold[f.i]).sort((f, g) => lit(f) - lit(g)).map(f => `<polygon data-tap="flap:${f.i}" data-hitcopy="1" points="${ptsStr(f.pts)}" fill="#fff" fill-opacity=".01"/>`).join("");
         if (cue) s += txt(x + w / 2, y + 20, "Tap a square to fold it up", 16, { fill: "#8a6f7d" });

@@ -7,7 +7,7 @@
  *                                   or a level's `id` string, is accepted too. Out-of-range is clamped.
  *   mount(el, Q, api) -> { destroy(), reset() }
  *   hint(Q, tries) -> string        says HOW, never the answer
- *   teach(Q, el, api) -> Promise    Kitty's guided lesson; Marie does every step in the picture
+ *   teach(Q, el, api) -> Promise    Mimi's guided lesson; Marie does every step in the picture
  *
  * Pictures are drawn as one SVG sized to the box in real pixels and redrawn when the box changes size.
  * Every tap target is at least 44 x 44 px (small things get a bigger invisible tap area; the nearest wins).
@@ -17,7 +17,7 @@
  * THE COUNTING RULE (15 Oct 2026): a tap only MARKS a thing (a tick, a heart, a glow). While Marie works, no tap
  * shows or says a running number, a running total or the answer. Tones do not climb with each tap either.
  * THE LESSON RULE (16 Oct 2026, the same in every lesson of this module):
- *   1. Kitty shows HOW on the first part only. She says the number on Marie's first 1 or 2 taps and always stops
+ *   1. Mimi shows HOW on the first part only. She says the number on Marie's first 1 or 2 taps and always stops
  *      at least 3 counts before the answer (with 3 or fewer things to count she says no number at all).
  *      She never says the final count, nor a group count that gives the answer in one easy step.
  *   2. Then she says "Your turn. Keep counting." Every tap after that gets the same tick and the same tone. No number.
@@ -44,8 +44,8 @@
     O: { key: "O", name: "Ones", one: "cube", many: "cubes", value: 1, who: "cinna", color: "#2386c8", tint: "#e0f3ff" }
   };
   const SIDE = {
-    L: { who: "kitty", color: "#e8203f", tint: "#ffe3ea", name: "Kitty" },
-    R: { who: "kuromi", color: "#6b4bd6", tint: "#ece6ff", name: "Kuromi" }
+    L: { who: "kitty", color: "#e8203f", tint: "#ffe3ea", name: "Mimi" },
+    R: { who: "kuromi", color: "#6b4bd6", tint: "#ece6ff", name: "Lulu" }
   };
   const CANDY = ["#ff6f9f", "#ffc94a", "#63d3b3", "#74c8ff", "#a98bff", "#ff9f5a"];
   const MINUS = "−";
@@ -145,21 +145,21 @@
     return `<g class="nm-pop" data-role="tick"><circle cx="${f(cx)}" cy="${f(cy)}" r="${f(r)}" fill="${C.mintD}" stroke="${C.ink}" stroke-width="2"/>` +
       `<path d="M${f(cx - r * .45)} ${f(cy + r * .02)} L${f(cx - r * .1)} ${f(cy + r * .38)} L${f(cx + r * .5)} ${f(cy - r * .36)}" fill="none" stroke="#fff" stroke-width="${f(Math.max(2, r * .3))}" stroke-linecap="round" stroke-linejoin="round"/></g>`;
   }
-  // A counting badge. Only used in Kitty's lesson, never while Marie works alone.
+  // A counting badge. Only used in Mimi's lesson, never while Marie works alone.
   function badge(cx, cy, n, size) {
     const s = String(n), fs = clamp(size || 15, 11, 22), w = Math.max(fs * 1.5, s.length * fs * .62 + fs * .7), h = fs * 1.45;
     return `<g class="nm-pop" data-role="badge">${rr(cx - w / 2, cy - h / 2, w, h, h / 2, C.sun, 2)}${text(cx, cy + 1, s, fs)}</g>`;
   }
-  // Is this value the answer? Kitty's lesson never says or shows it (only the full recount does).
+  // Is this value the answer? Mimi's lesson never says or shows it (only the full recount does).
   const isAns = (pic, v) => v != null && String(v) === String(pic.Q.answer);
   // THE LESSON RULE (see the top of this file).
   const TURN = "Your turn. Keep counting.";
-  // How many of Marie's first taps Kitty counts out loud: at most 2, and always 3 or more counts left for Marie.
+  // How many of Marie's first taps Mimi counts out loud: at most 2, and always 3 or more counts left for Marie.
   const demoTaps = (pic, total) => pic.full ? Infinity : clamp(total - 3, 0, 2);
-  // Kitty's "show how" step lasts for her counted taps, and always for Marie's first tap, so the words she says
-  // are the same for every amount ("Your turn" comes after the first tap even when Kitty counts nothing).
+  // Mimi's "show how" step lasts for her counted taps, and always for Marie's first tap, so the words she says
+  // are the same for every amount ("Your turn" comes after the first tap even when Mimi counts nothing).
   const showing = (pic, taps, total) => pic.full || taps < Math.max(1, demoTaps(pic, total));
-  // One counting step: Kitty's first line while she shows how, then "Your turn. Keep counting." (with an optional tail).
+  // One counting step: Mimi's first line while she shows how, then "Your turn. Keep counting." (with an optional tail).
   function countStep(pic, taps, total, want, first, tail) {
     if (!want.length) return null;
     if (pic.full) return { id: "all", say: `Let's count all of it together, out loud. ${first}`, want };
@@ -311,7 +311,7 @@
     }
     down(e) {
       if (this.dead || (e.button != null && e.button > 0)) return;
-      // Kitty's bubble can change height and resize the picture just before a tap. Lay the picture out for its
+      // Mimi's bubble can change height and resize the picture just before a tap. Lay the picture out for its
       // current size first (render() does nothing when the size is unchanged), so the tap meets fresh tap areas.
       this.render();
       const p = this.pt(e), t = this.find(p);
@@ -408,14 +408,14 @@
 
   /* ================= Shared counting behaviour =================
      While Marie works: a tap puts a tick on a thing (tap again to take it off). No running total.
-     In Kitty's lesson (THE LESSON RULE): on Marie's first 1 or 2 taps Kitty says the number and shows it on a badge;
+     In Mimi's lesson (THE LESSON RULE): on Marie's first 1 or 2 taps Mimi says the number and shows it on a badge;
      every later tap gets a tick and the same tone, no number. `total` is how many things this count has. */
   function countTap(pic, st, id, value, total) {
     if (pic.teachMode) {
       if (st.cnt[id] != null || st.mine[id]) return false;
       st.run += value || 1; st.taps++;
       if (st.taps <= demoTaps(pic, total) && (pic.full || !isAns(pic, st.run))) { st.cnt[id] = st.run; st.lastId = id; pic.speak(String(st.run)); }
-      else { st.mine[id] = true; st.lastId = null; }   // Marie's own tap: Kitty's last badge turns into a tick too
+      else { st.mine[id] = true; st.lastId = null; }   // Marie's own tap: Mimi's last badge turns into a tick too
       pic.tone([620], .07);
       pic.pop("m:" + id); return true;
     }
@@ -426,12 +426,12 @@
     return true;
   }
   function markFor(st, id, cx, cy, r) {
-    if (st.cnt && st.cnt[id] != null) return id === st.lastId ? badge(cx, cy, st.cnt[id], r * 1.15) : tickMark(cx, cy, r);   // only Kitty's newest number is written
+    if (st.cnt && st.cnt[id] != null) return id === st.lastId ? badge(cx, cy, st.cnt[id], r * 1.15) : tickMark(cx, cy, r);   // only Mimi's newest number is written
     if (st.mine && st.mine[id]) return tickMark(cx, cy, r);
     if (st.tick && st.tick[id]) return tickMark(cx, cy, r);
     return "";
   }
-  // cnt: Kitty's counted taps (with their number); mine: Marie's own taps in the lesson (a tick, no number).
+  // cnt: Mimi's counted taps (with their number); mine: Marie's own taps in the lesson (a tick, no number).
   const countState = () => ({ tick: {}, cnt: {}, mine: {}, run: 0, taps: 0, lastId: null });
 
   /* ================= Ten-frame ================= */
@@ -571,7 +571,7 @@
       countTap(pic, st, t.key.split(":")[1], 1, pic.Q.data.n - 10);
     },
     teachStep(pic, st) {
-      // The full frame is the level's landmark ("10 and some more"): Kitty names it, like a ruler landmark.
+      // The full frame is the level's landmark ("10 and some more"): Mimi names it, like a ruler landmark.
       if (!st.tenDone) return { id: "ten", say: "This frame is full. A full frame is 10. Tap it.", want: ["fr:0"] };
       const m = pic.Q.data.n - 10, left = range(m).filter(i => st.cnt["b" + i] == null && !st.mine["b" + i]).map(i => "dot:b" + i);
       return countStep(pic, st.taps, m, left, "Now count on from 10. Tap each blue dot.", "Tap each blue dot.");
@@ -607,13 +607,13 @@
     teachEnd: () => "How many did you add to make 10? Type the number."
   };
 
-  // A 0-20 number track like a game board. Only the start, Kitty's landmarks (0, 5, 10, 15, 20) and
+  // A 0-20 number track like a game board. Only the start, Mimi's landmarks (0, 5, 10, 15, 20) and
   // nothing else carry numbers. A landmark that is the answer is left blank.
   const K_TRACK = {
     init: Q => ({ pos: Q.data.s, visited: {}, counted: {}, said: {}, taps: 0, cn: null, hopped: false }),
-    // Kitty counts from this landmark square up to Kitty's square in the lesson.
+    // Mimi counts from this landmark square up to Mimi's square in the lesson.
     from: d => d.target % 5 === 0 ? d.target - 5 : Math.floor(d.target / 5) * 5,
-    label: () => "A number track with Hello Kitty on it",
+    label: () => "A number track with Mimi on it",
     geom(w, h) {
       let best = null;
       for (const c of [7, 11]) {
@@ -649,7 +649,7 @@
       if (pic.teachMode && st.cn != null) {
         if (i !== st.cn) return;
         st.counted[i] = true; st.cn++; st.taps++;
-        // Kitty says only her first squares, 3 or more squares before Kitty's square. Then Marie counts on.
+        // Mimi says only her first squares, 3 or more squares before Mimi's square. Then Marie counts on.
         if (st.taps <= demoTaps(pic, d.target - this.from(d) + 1) && (pic.full || i !== d.target)) { st.said[i] = true; pic.speak(String(i)); }
         pic.tone([620], .07);
         return;
@@ -659,14 +659,14 @@
     },
     teachStep(pic, st) {
       const d = pic.Q.data, after = d.dir === "after", target = d.target;
-      if (st.pos !== target) return { id: "hop", say: `Kitty is on ${d.s}. ${after ? "After means one hop forward" : "Before means one hop back"}. Tap the next square.`, want: ["sq:" + target] };
+      if (st.pos !== target) return { id: "hop", say: `Mimi is on ${d.s}. ${after ? "After means one hop forward" : "Before means one hop back"}. Tap the next square.`, want: ["sq:" + target] };
       const L = this.from(d);
       if (st.cn == null) st.cn = L;
       if (st.cn > target) return null;
-      const s = countStep(pic, st.taps, target - L + 1, ["sq:" + st.cn], `Now count from ${L}. Tap ${L}, then each square to Kitty.`, "Tap each square to Kitty.");
+      const s = countStep(pic, st.taps, target - L + 1, ["sq:" + st.cn], `Now count from ${L}. Tap ${L}, then each square to Mimi.`, "Tap each square to Mimi.");
       return Object.assign(s, { id: "c" + s.id });
     },
-    teachEnd: () => "What number is Kitty on? Type it."
+    teachEnd: () => "What number is Mimi on? Type it."
   };
 
   const K_WORDS = {
@@ -809,7 +809,7 @@
       if (st.digits[p] != null) continue;
       const P = PLACE[p];
       if (!counts[p]) return { id: "zero" + p, say: `No ${P.many} on the ${P.name} mat. So that digit is 0. Tap the ${P.name} mat.`, want: ["mat:" + p] };
-      // After Kitty's first piece or two: "Your turn. Keep counting." (the same words for every amount).
+      // After Mimi's first piece or two: "Your turn. Keep counting." (the same words for every amount).
       if (p === fp && !showing(pic, st.cntN[p] || 0, counts[p])) return { id: "turn" + p, say: `${TURN} Tap the ${P.name} mat for each ${P.one}.`, want: ["mat:" + p] };
       const first = !places.slice(0, places.indexOf(p)).some(q => st.digits[q] != null);
       // When the first place has just 1 piece (199 has 1 flat), "Your turn" comes with the next place to count instead,
@@ -819,7 +819,7 @@
     }
     return null;
   }
-  // Only Kitty's newest said value is written on a badge; every other counted piece (and all of Marie's own) gets a tick.
+  // Only Mimi's newest said value is written on a badge; every other counted piece (and all of Marie's own) gets a tick.
   const teachMark = (st, p) => (i, x, y, w, h) => (st.cntN[p] || 0) > i ? (st.said[p + i] != null && i === st.cntN[p] - 1 ? badge(x + w / 2, y + Math.min(h / 2, 18), st.said[p + i], clamp(w * .32, 11, 16))
     : tickMark(x + w / 2, y + Math.min(h / 2, 18), clamp(w * .22, 8, 12))) : "";
 
@@ -828,7 +828,7 @@
   // drag it, or tap it (it gets a yellow ring) and then tap a mat. A wrong mat sends it back with a short reason.
   // Level 2 ("What is the 8 worth in 83?") also has the two digit cards in the pile: she puts each digit on
   // the mat for its place, puts the blocks on the mats, then counts the rods by tens.
-  // Kitty's lesson starts from the same loose pile, and Marie does every move.
+  // Mimi's lesson starts from the same loose pile, and Marie does every move.
   function digitCardSVG(x, y, w, h, digit, lift) {
     return card(x, y, w, h, { fill: "#fff", r: Math.min(14, w * .22), sh: lift ? 5 : 3 }) + text(x + w / 2, y + h * .54, String(digit), Math.min(h * .62, w * .8), { fill: C.ink });
   }
@@ -1103,7 +1103,7 @@
   // Compare two numbers. Both sides start EMPTY. Marie builds each number herself:
   // each row has a round "+" button that adds one block of that kind (cubes; or flats, rods and cubes),
   // and tapping a block she built takes it off again. Only after building can she see which side has more.
-  // Kitty's lesson builds the same way: Marie taps "+" for every block. Kitty counts only the first 1 or 2 blocks.
+  // Mimi's lesson builds the same way: Marie taps "+" for every block. Mimi counts only the first 1 or 2 blocks.
   const K_CMP = {
     init() { return { built: { L: { H: 0, T: 0, O: 0 }, R: { H: 0, T: 0, O: 0 } }, cnt: {}, mine: {}, plan: null, pi: 0, run: 0, taps: 0, wrong: 0, sayPrefix: "" }; },
     label: () => "Two sides to build the numbers with blocks",
@@ -1202,7 +1202,7 @@
       if (!pic.teachMode) return;
       const s = st.plan[st.pi];
       if (!s || s.type !== "choose") return;
-      // Each choice is Marie's: she looks at both sides and decides. Kitty only says if it was right after she taps.
+      // Each choice is Marie's: she looks at both sides and decides. Mimi only says if it was right after she taps.
       if (t.key === s.right) { s.done = true; st.wrong = 0; pic.tone([523, 659, 784], .08); return; }
       st.wrong++; pic.tone([330], .14, "triangle");
       // A wrong tap gets the same open question again. It never says which side or "the same" (that is the answer).
@@ -1215,7 +1215,7 @@
       const side0 = (x, y) => x > y ? "side:L" : x < y ? "side:R" : "bow:0";
       if (d.mode === "cubes") { plan.push({ type: "build", side: "L", p: "O" }, { type: "build", side: "R", p: "O" }, { type: "choose", p: null, right: side0(d.a, d.b) }); return plan; }
       // Place by place: build both sides, then Marie judges that place herself (more on one side, or the same).
-      // Only when she says "the same" does Kitty go on to the next place. A place with no blocks on either side is skipped.
+      // Only when she says "the same" does Mimi go on to the next place. A place with no blocks on either side is skipped.
       for (const p of places) {
         if (A[p]) plan.push({ type: "build", side: "L", p });
         if (B[p]) plan.push({ type: "build", side: "R", p });
@@ -1251,7 +1251,7 @@
           if (nx && nx.type === "build") st.sayPrefix = `Now the ${PLACE[nx.p].name.toLowerCase()}. `;
           continue;
         }
-        // Only after 2 wrong taps on this choice does Kitty show it (the father's rule).
+        // Only after 2 wrong taps on this choice does Mimi show it (the father's rule).
         const shown = st.wrong >= 2;
         return { id: "choose" + st.pi + (shown ? "!" : ""), free: !shown, want: shown ? [s.right] : ["side:L", "side:R", "bow:0"],
           say: shown ? (s.right === "bow:0" ? "They are the same. Tap the bow." : "This side has more. Tap it.") : this.ask(d, s) };
@@ -1378,7 +1378,7 @@
         const x1 = G.x(hp.from), x2 = G.x(hp.to), lift = Math.min(fsz * .9, 10 + Math.abs(x2 - x1) * .45);
         o += `<path d="M${f(x1)} ${f(y - 4)} Q${f((x1 + x2) / 2)} ${f(y - 4 - lift)} ${f(x2)} ${f(y - 4)}" fill="none" stroke="${C.lilacD}" stroke-width="3.5" stroke-linecap="round" stroke-dasharray="${hp.teach ? "0" : "7 6"}" opacity=".85"/>`;
       });
-      // Lesson only: marks above the hops. Only Kitty's newest counted hop has a number badge; every other hop
+      // Lesson only: marks above the hops. Only Mimi's newest counted hop has a number badge; every other hop
       // (and every hop Marie counts herself) gets a small tick, so no number is left for Marie's own count.
       const hm = st.hopMarks || [];
       hm.forEach((m, k) => {
@@ -1652,8 +1652,8 @@
     },
     teachEnd: (pic, st) => {
       const d = pic.Q.data;
-      // The same words for every amount. Kitty never says "less than one hundred": that would point at the small choice.
-      // No extra "Kitty stops at the heart" line: it would be missing for small amounts and so point at the small choice.
+      // The same words for every amount. Mimi never says "less than one hundred": that would point at the small choice.
+      // No extra "Mimi stops at the heart" line: it would be missing for small amounts and so point at the small choice.
       return (d.g === 10 ? "How many tens? Is that closer to 25, 50 or 100? Pick one." : "How many hundreds? Which number is closest? Pick one.");
     }
   };
@@ -1670,7 +1670,7 @@
     };
     t.mount = function (el, Q, api) { return handleFor(new Pic(el, Q, api, KINDS[Q.data.kind], false)); };
     t.teach = function (Q, el, api) { const p = new Pic(el, Q, api, KINDS[Q.data.kind], true); return p.teachPromise; };
-    // THE LESSON RULE, step 4: if Marie's answer after the lesson is still wrong, Kitty counts ALL of it with her,
+    // THE LESSON RULE, step 4: if Marie's answer after the lesson is still wrong, Mimi counts ALL of it with her,
     // out loud, tap by tap (the last number too). Marie still taps every step herself, then types the number.
     t.recount = function (Q, el, api) { const p = new Pic(el, Q, api, KINDS[Q.data.kind], true, true); return p.teachPromise; };
     delete t.makers;
@@ -1747,7 +1747,7 @@
         case "pics": return d.n > 10 ? "Each yellow tray holds 5. Count by fives, then count on the rest. Tap each one you count." : "Tap each one as you count it. A tick shows it is counted. Do not skip any.";
         case "tenmore": return "A full frame is 10. Start at 10. Count on with the blue dots.";
         case "make10": return "Count the empty boxes. Tap each one to fill it.";
-        case "track": return d.dir === "after" ? `Find Kitty on ${d.s}. Hop one square forward. Say the next number.` : `Find Kitty on ${d.s}. Hop one square back. Say the number before.`;
+        case "track": return d.dir === "after" ? `Find Mimi on ${d.s}. Hop one square forward. Say the next number.` : `Find Mimi on ${d.s}. Hop one square back. Say the number before.`;
         default: return d.n > 10 ? "It is ten and some more. Count the dots. Listen for the teen word." : "Count the dots. Then listen to each word.";
       }
     }

@@ -4,7 +4,7 @@ from pathlib import Path
 
 HERE = Path(__file__).parent
 s = (HERE / "kitty_world3.html").read_text(encoding="utf-8")
-TOPIC_FILES = ["numbers", "groups", "money", "fractions", "time_measure", "shapes_data", "times"]
+TOPIC_FILES = ["numbers", "groups", "money", "fractions", "time_measure", "shapes_data", "times", "kinder"]
 
 
 def rep(old, new, count=1):
@@ -31,7 +31,7 @@ rep('.tab { font-size: 16px; gap: 4px; } .tab img { width: 24px; height: 24px; }
 # 2. Load the topic modules and the host after the cooking module.
 rep('<script src="modules/cook.js"></script>\n',
     '<script src="modules/cook.js"></script>\n' + "".join(f'<script src="topics/{t}.js"></script>\n' for t in TOPIC_FILES) +
-    '<script src="modules/topic_host.js"></script>\n<script src="modules/engine.js"></script>\n<script src="modules/mission.js"></script>\n<script src="modules/parent.js"></script>\n<script src="modules/sync.js"></script>\n<script src="modules/knight.js"></script>\n<script src="modules/marie_world.js"></script>\n<script src="modules/brain_games.js"></script>\n<script src="modules/chess_coach.js"></script>\n<script src="modules/think.js"></script>\n')
+    '<script src="modules/topic_host.js"></script>\n<script src="modules/engine.js"></script>\n<script src="modules/mission.js"></script>\n<script src="modules/parent.js"></script>\n<script src="modules/sync.js"></script>\n<script src="modules/knight.js"></script>\n<script src="modules/marie_world.js"></script>\n<script src="modules/brain_games.js"></script>\n<script src="modules/chess_coach.js"></script>\n<script src="modules/think.js"></script>\n<script src="modules/calm.js"></script>\n')
 
 # 3. Saved progress: per-topic levels and counts. Cloud copy wins when it holds more answered questions in all.
 rep('home: [{ uid: 1, id: "kitty", x: 40, y: 90 }, { uid: 2, id: "plant", x: 84, y: 72 }], homeSeq: 2 };',

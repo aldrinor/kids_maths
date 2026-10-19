@@ -16,7 +16,7 @@
      Before she answers, the answer is nowhere: not in the picture, a label, or speech.
    - Lesson rule (lead, 2026-10-16), the same in every lesson here. In a counting step Kitty may say the count
      for her first 1 or 2 taps only, to show HOW, and always stops at least 2 before the step's total. She never
-     says a number that is part of the answer and not printed in the question. Then Kitty says "Your turn. Keep
+     says a number that is part of the answer and not printed in the question. Then Mimi says "Your turn. Keep
      counting." and each tap gets a tick and a soft tone, no number. The lesson ends; Marie types or picks.
    - recount(Q, el, api): only for when her answer after the lesson is still wrong. The same lesson, but Kitty
      counts every tap out loud with her, to the end. Then Marie types the number herself.
@@ -148,14 +148,14 @@
   // r: the tick's radius, smaller on small things so the thing stays easy to see.
   const mark = (x, y, r = 15) => { const k = r / 15; return `<g pointer-events="none" data-mark="1"><circle cx="${r2(x)}" cy="${r2(y)}" r="${r2(r)}" fill="${C.mint}" stroke="${C.ink}" stroke-width="2.5"/><path d="M${r2(x - 7 * k)} ${r2(y + k)}l${r2(5 * k)} ${r2(5 * k)} ${r2(9 * k)} ${r2(-11 * k)}" fill="none" stroke="${C.ink}" stroke-width="${r2(Math.max(2.5, 3.5 * k))}" stroke-linecap="round" stroke-linejoin="round"/></g>`; };
   // One tap on a thing: tick it. Outside a lesson a second tap takes the tick off, and no number is said.
-  // Inside Kitty's lesson the ticks stay. Kitty says the count only for the first taps of the step (see lessonCount).
+  // Inside Mimi's lesson the ticks stay. Mimi says the count only for the first taps of the step (see lessonCount).
   function markTap(s, i) {
     const st = s.st, lesson = !!s.teaching;
     if (st.badges.has(i)) { if (!lesson) { st.badges.delete(i); s.tone([480], .06); } return; }
     st.count++; st.badges.set(i, st.count); s.tone([660], .06);
     if (lesson) lessonCount(s, st.count);
   }
-  // Lesson rule: Kitty says "1" (and "2") for the first taps only, then "Your turn. Keep counting." After that a
+  // Lesson rule: Mimi says "1" (and "2") for the first taps only, then "Your turn. Keep counting." After that a
   // tap gets a tick and a tone, never a number. In recount (her answer after the lesson was still wrong) she says every number.
   function lessonCount(s, n) {
     const T = s.st.teach, k = T && T.demo !== undefined ? T.demo : 0;
@@ -167,7 +167,7 @@
     const shown = new Set(String(Q.show || "").replace(/<[^>]+>/g, " ").match(/\d+/g) || []);
     return String(Q.answer).split("/").filter(x => /^\d+$/.test(x) && !shown.has(x)).map(Number);
   }
-  // How many of a counting step's first taps Kitty counts out loud: at most 2, always 2 or more short of the
+  // How many of a counting step's first taps Mimi counts out loud: at most 2, always 2 or more short of the
   // total, and never a number that is part of the answer (when the answer is 1/4, she never says "1").
   function demoFor(s, total) {
     if (s.countAll) return Infinity;
@@ -361,7 +361,7 @@
     if (s && !s.dead && s.Q && s.Q.key === Q.key) { s.api = api || s.api; return s; }
     return mountStage(el, Q, api);
   }
-  // Lesson helper for a counting step of `total` taps: Kitty shows the first tap or two, then it is Marie's turn.
+  // Lesson helper for a counting step of `total` taps: Mimi shows the first tap or two, then it is Marie's turn.
   function countStep(s, info, say, total, pred) {
     const k = demoFor(s, total);
     const tail = k > 0 ? "" : " Your turn."; // short (small phones), and no number words: "one" could be part of the answer
@@ -955,7 +955,7 @@
     recount(Q, el, api) { return fractionName.teach(Q, el, api, { countAll: true }); },
     hint(Q, tries) {
       const D = Q.data;
-      if (D.kind === "equal") return "Tap a part. Kitty lays a copy on the other parts. Do all the parts match?";
+      if (D.kind === "equal") return "Tap a part. Mimi lays a copy on the other parts. Do all the parts match?";
       if (D.colour) return "The top number tells how many to colour. Tap them pink. Then count the parts that are not pink. The tick button lets you tick them as you count.";
       return "Count all the parts. That number goes on the bottom. Then count the pink parts. That goes on top.";
     },

@@ -30,7 +30,7 @@
   const ROW_ITEMS = ["strawberry", "tulip", "sunflower", "cupcake"];
   const SHARE_ITEMS = ["cookie", "cupcake", "candy", "lollipop", "strawberry", "donut"];
   const FRIENDS = ["kitty", "melody", "kuromi", "purin", "cinna"];
-  const NAMES = { kitty: "Kitty", melody: "Melody", kuromi: "Kuromi", purin: "Purin", cinna: "Cinna" };
+  const NAMES = { kitty: "Mimi", melody: "Bella", kuromi: "Lulu", purin: "Momo", cinna: "Puff" };
   const one = k => ITEMS[k][0], many = k => ITEMS[k][1];
   /* The marks a tap leaves: a heart on a plate or bag, a tick on a row. Never a number. */
   const HEART = `<svg class="gp-mk" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20.5C6 16 3 13 3 9.2 3 6.6 5 4.7 7.4 4.7c1.9 0 3.3 1 4.6 2.7 1.3-1.7 2.7-2.7 4.6-2.7 2.4 0 4.4 1.9 4.4 4.5 0 3.8-3 6.8-9 11.3z" fill="#ff6f9f" stroke="${INK}" stroke-width="2.4" stroke-linejoin="round"/></svg>`;
@@ -146,7 +146,7 @@
 .gp-dish .gp-dc{display:flex;flex-direction:column;gap:max(5px,calc(var(--db,13px) * .45));justify-content:center;flex:none}
 .gp-dish .gp-tf{display:grid;grid-template-columns:repeat(5,var(--db,13px));grid-auto-rows:var(--db,13px);gap:2px}
 .gp-dish .gp-dc b{width:var(--db,13px);height:var(--db,13px);border:2px solid ${INK};border-radius:4px;background:#ff6f9f}
-.gp-bal.narrow .gp-dish svg.gp-face{width:26px;height:26px} /* still Kuromi, so "Kuromi's basket" makes sense */
+.gp-bal.narrow .gp-dish svg.gp-face{width:26px;height:26px} /* still Lulu, so "Lulu's basket" makes sense */
 .gp-bal.narrow .gp-bal-ctl .gp-chunky{min-width:54px;padding:0 7px;gap:4px}
 .gp-dish .gp-dc b.lit{background:#ffc94a}
 .gp-dish .gp-badge{top:-14px;right:-10px}
@@ -247,7 +247,7 @@
     return inst;
   }
   /* The lesson works on the picture the host already mounted; if there is none, it mounts one. */
-  /* Kitty's lesson talks through this: it remembers her current step, so a warning can repeat the step after it. */
+  /* Mimi's lesson talks through this: it remembers her current step, so a warning can repeat the step after it. */
   function lessonSay(inst, api) {
     inst.lessonLine = "";
     return Object.assign({}, api, { say: t => { inst.lessonLine = String(t); api.say(t); } });
@@ -431,7 +431,7 @@
   async function teachEqual(Q, el, api) {
     const inst = ensure(el, Q, api, mountEqual); inst.reset();
     const { g, n, item, form } = Q.data, s = inst.s, P = many(item);
-    /* Only numbers from the question: "4 + 4 + 4" does not show how many 4s there are, so Kitty does not say it. */
+    /* Only numbers from the question: "4 + 4 + 4" does not show how many 4s there are, so Mimi does not say it. */
     if (form === "add") { api.say(`Each ${n} in the sum is one plate with ${n} on it.`); await wait(2200); }
     if (form === "mul") { api.say(`${g} times ${n} means ${g} plates, with ${n} on each.`); await wait(2200); }
     api.say(`Fill one plate. Put ${n} ${P} on it.`); light(api, inst.parts.plate(0));
@@ -582,7 +582,7 @@
     function render() {
       pile.innerHTML = Array(s.pile).fill(imgTag(api, item)).join("");
       pile.classList.toggle("empty", !s.pile);
-      /* Treats on a friend's plate stand in rows of 5 (like a ten-frame), so she can count Kitty's plate. */
+      /* Treats on a friend's plate stand in rows of 5 (like a ten-frame), so she can count Mimi's plate. */
       s.got.forEach((v, i) => { fr.children[i].querySelector(".gp-fplate").innerHTML = v ? `<div class="gp-fpi">${Array(v).fill(imgTag(api, item)).join("")}</div>` : ""; });
       if (inst.fitCheck) inst.fitCheck();
     }
@@ -742,7 +742,7 @@
         if (!(await inst.waitFor(() => s.got.every(v => v >= round)))) return;
       }
       s.cap = 0;
-      api.say(`How many does Kitty have? Count her ${P}.`); light(api, inst.parts.friend(0));
+      api.say(`How many does Mimi have? Count her ${P}.`); light(api, inst.parts.friend(0));
       await wait(400);
       return;
     }
@@ -757,7 +757,7 @@
   }
   function hintShare(Q, tries) {
     const d = Q.data;
-    if (d.mode === "share") return `Give one to each friend. Go round again. Then count Kitty's ${many(d.item)}.`;
+    if (d.mode === "share") return `Give one to each friend. Go round again. Then count Mimi's ${many(d.item)}.`;
     return `Put ${d.b} in a bag. Fill the next bag. Then tap each bag to count.`;
   }
 
@@ -774,8 +774,8 @@
                  the pink pan (one at a time; level 3 also has a ten-rod) until it is level, then taps
                  her blocks to count them.
         Level 4  "15 - ? = 10": she puts the bags on, then takes blocks off the pink pan, one at a time,
-                 into Kuromi's basket until it is level, then counts the basket.
-                 "? - 5 = 9": Kuromi's basket holds the 5 that were taken away (a number in the question).
+                 into Lulu's basket until it is level, then counts the basket.
+                 "? - 5 = 9": Lulu's basket holds the 5 that were taken away (a number in the question).
                  She puts the 9 bag on the green pan, adds blocks to the pink pan until it is level (what
                  was left), then counts everything: the basket first, then her blocks.
         "Level" only counts once every bag is on and she has done her part, so an empty scale never
@@ -882,7 +882,7 @@
         return { key: "bags:" + BAGS.map(b => (s.placed[b.id] ? 1 : 0)).join(""), cls: "gp-bal-ctl bags", html: side("L") + side("R") };
       }
       const out = [];
-      if (hasDish) out.push(`<div class="gp-dish${d.mode === "sub" ? " keep" : ""}" role="button" tabindex="0" data-tap="pile" data-g="${d.mode === "take" ? "dish" : "mine"}" data-drop="dish"${d.mode === "take" ? ' data-src="basket"' : ""} aria-label="Kuromi's basket">${faceSvg(api, "kuromi")}<span class="gp-dl">${d.mode === "sub" ? "took" : "Take away<br>here"}</span><div class="gp-dc"></div></div>`);
+      if (hasDish) out.push(`<div class="gp-dish${d.mode === "sub" ? " keep" : ""}" role="button" tabindex="0" data-tap="pile" data-g="${d.mode === "take" ? "dish" : "mine"}" data-drop="dish"${d.mode === "take" ? ' data-src="basket"' : ""} aria-label="Lulu's basket">${faceSvg(api, "kuromi")}<span class="gp-dl">${d.mode === "sub" ? "took" : "Take away<br>here"}</span><div class="gp-dc"></div></div>`);
       if (hers) {
         /* The tool buttons show a plus or minus and the block itself (a cube, or a rod of ten): no digits anywhere in the picture. */
         out.push(`<button type="button" class="gp-chunky" data-tap="add1" data-src="cube" aria-label="Add one block">+<span class="gp-cube"></span></button>`);
@@ -890,7 +890,7 @@
         out.push(`<button type="button" class="gp-chunky" data-tap="sub1" aria-label="Take one block off">${MINUS}<span class="gp-cube"></span></button>`);
       }
       if (d.mode === "take") {
-        out.push(`<button type="button" class="gp-chunky" data-tap="take" aria-label="Take one block off, into Kuromi's basket">${MINUS}<span class="gp-cube" style="--c:${BCOL.pink}"></span></button>`);
+        out.push(`<button type="button" class="gp-chunky" data-tap="take" aria-label="Take one block off, into Lulu's basket">${MINUS}<span class="gp-cube" style="--c:${BCOL.pink}"></span></button>`);
         out.push(`<button type="button" class="gp-chunky" data-tap="putback" aria-label="Put one block back">+<span class="gp-cube" style="--c:${BCOL.pink}"></span></button>`);
       }
       return { key: "work", cls: "gp-bal-ctl", html: out.join("") };
@@ -910,7 +910,7 @@
       const dish = q(".gp-dish");
       if (!dish) return;
       const dc = dish.querySelector(".gp-dc"), g = P.dish.g, lit = s.lit[g] || 0;
-      /* Cubes in Kuromi's basket stand in ten-frames: rows of 5, two rows to a frame, a second frame under the
+      /* Cubes in Lulu's basket stand in ten-frames: rows of 5, two rows to a frame, a second frame under the
          first after 10. She counts them herself; a tap only lights a cube (no number). */
       const two = P.dish.n > 10;
       dish.classList.toggle("has", P.dish.n > 0);
@@ -923,7 +923,7 @@
       }
       dc.innerHTML = h;
     }
-    /* How big the blocks in Kuromi's basket can be. She counts them herself, so they grow with the room:
+    /* How big the blocks in Lulu's basket can be. She counts them herself, so they grow with the room:
        the basket may use the row's width left over by the tool buttons (at most about 62% of the row), and
        the frames may use about a quarter of the picture's height. 9 px is the floor; 30 px the ceiling.
        If the basket's word ("took") leaves too little room, the word goes and the blocks keep the room. */
@@ -1004,7 +1004,7 @@
             ${p.n ? "" : `<text x="${x + widths[idx] / 2}" y="${base - h / 2 + 9}" text-anchor="middle" font-family="Baloo 2,sans-serif" font-weight="800" font-size="26" fill="#7b55e6">?</text>`}
             ${dp.svg}</g>`;
         } else if (d.mode === "take" && g === "c") {
-          /* The pink pile in a take-away question: she can drag a block from it to Kuromi's basket. */
+          /* The pink pile in a take-away question: she can drag a block from it to Lulu's basket. */
           const hitTop = Math.min(Math.min(dp.top, base - 40) - 6, base + 14 - mh);
           out += `<g data-src="lpile" style="cursor:grab"><rect x="${x - 4}" y="${hitTop}" width="${widths[idx] + 8}" height="${base - hitTop + 14}" fill="transparent"/>${dp.svg}</g>`;
         } else {
@@ -1158,7 +1158,7 @@
       s.lit[g] = lit + stepN; render(); sfx(api, 600 + Math.min(30, s.lit[g]) * 12); inst.changed();
     }
     const MAXCUP = big ? 60 : 20;
-    /* In Kitty's lesson the warning keeps the lesson step after it, so the bubble and "Say it again" still hold the step. */
+    /* In Mimi's lesson the warning keeps the lesson step after it, so the bubble and "Say it again" still hold the step. */
     function wrongSide(sd, what) { nope(svg); sfx(api, 220); try { api.say(`${what} on the ${SIDE_NAME[sd]} pan.` + (inst.lessonLine ? " " + inst.lessonLine : "")); } catch (e) {} }
     /* After Kitty asks her to type, the scale must not change (a tip there would make her count one off). */
     function lockedNope() { nope(ctlEl); sfx(api, 220); try { api.say("Keep the scale level." + (inst.lessonLine ? " " + inst.lessonLine : "")); } catch (e) {} }
@@ -1233,7 +1233,7 @@
       return;
     }
     /* Make it level, then count. While she counts, the scale must stay level: if one more tap tips it again,
-       Kitty goes back to "make it level" (the counting starts again), and asks her to type only when it is level.
+       Mimi goes back to "make it level" (the counting starts again), and asks her to type only when it is level.
        When Kitty asks her to type, plus, minus and take are locked, so the scale she counted cannot tip again. */
     const levelThenCount = async (makeLine, againLine, makePart, countLine, countPart, counted) => {
       let line = makeLine;
@@ -1259,15 +1259,15 @@
       if (!(await levelThenCount(
         "Take blocks off the pink pan, one at a time. Tap the minus button. Stop when it stops level.",
         "Oh, it tipped again. Use the minus or plus button until it stops level.", () => inst.parts.take(),
-        "It is level! Now count the blocks in Kuromi's basket. Tap the basket and say the number for each block.",
+        "It is level! Now count the blocks in Lulu's basket. Tap the basket and say the number for each block.",
         () => inst.parts.dish(), () => (s.lit.dish || 0) >= s.moved))) return;
       inst.lockTools(); light(api, null); api.say("How many did you take away? Type your number.");
       return;
     }
     if (!(await levelThenCount(
-      `Kuromi took ${d.b} away. They are in her basket. Add blocks to the pink pan until it stops level.`,
+      `Lulu took ${d.b} away. They are in her basket. Add blocks to the pink pan until it stops level.`,
       "Oh, it tipped again. Use the plus or minus button until it stops level.", () => inst.parts.ctl,
-      "It is level! Now count all the blocks. Tap Kuromi's basket first, then your blocks. Say the number for each one.",
+      "It is level! Now count all the blocks. Tap Lulu's basket first, then your blocks. Say the number for each one.",
       () => inst.parts.dish(), () => (s.lit.mine || 0) >= d.b + s.cup))) return;
     inst.lockTools(); light(api, null); api.say("How many were there at the start? Type your number.");
   }
@@ -1275,8 +1275,8 @@
     const d = Q.data;
     if (d.mode === "eq") return "Put every bag on the scale. Stops level means the same. Tipped means not the same.";
     if (d.mode === "add") return "Put the bags on. Add blocks to the pink pan until it stops level. Then count your blocks.";
-    if (d.mode === "take") return "Put the bags on. Take blocks off the pink pan until it stops level. Then count Kuromi's basket.";
-    return `Kuromi took ${d.b}. Add blocks until it stops level. Then count all the blocks, Kuromi's and yours.`;
+    if (d.mode === "take") return "Put the bags on. Take blocks off the pink pan until it stops level. Then count Lulu's basket.";
+    return `Lulu took ${d.b}. Add blocks until it stops level. Then count all the blocks, Lulu's and yours.`;
   }
 
   /* =====================================================================
@@ -1513,7 +1513,7 @@
       { name: "Same or not?", grade: 1, note: "BC Grade 1: meaning of equality and inequality (= and ≠). Both pans start empty. She puts the bags on (6 and 7 on the pink pan, 13 on the green pan), watches the beam stop level or keep rocking, then answers." },
       { name: "Missing part", grade: 2, note: "BC Grades 1-2: change unknown, 7 + ? = 10. She puts the bags on, adds blocks one at a time until it is level, then counts her blocks. First 5 questions up to 10, then up to 20." },
       { name: "Missing start", grade: 3, note: "BC Grade 3: start unknown, ? + 15 = 20, up to 50. Same as level 2, with tens rods and single blocks." },
-      { name: "Take away", grade: 3, note: "BC Grade 3: subtraction unknowns up to 20. 20 − ? = 12: she puts the bags on, then takes blocks off the pink pan into Kuromi's basket until it is level, then counts the basket. ? − 5 = 9: the 5 taken away are in Kuromi's basket; she adds blocks until it is level, then counts everything." }
+      { name: "Take away", grade: 3, note: "BC Grade 3: subtraction unknowns up to 20. 20 − ? = 12: she puts the bags on, then takes blocks off the pink pan into Lulu's basket until it is level, then counts the basket. ? − 5 = 9: the 5 taken away are in Lulu's basket; she adds blocks until it is level, then counts everything." }
     ],
     make: makeBalance, mount: mountBalance, hint: hintBalance, teach: teachBalance
   });

@@ -1,5 +1,6 @@
 /* characters.js — full-body chibi characters for Marie's Kitty World.
- * Our OWN fan drawings (no Sanrio artwork is used or copied).
+ * Our own original characters: Mimi (cat), Bella (bunny), Lulu (fox), Momo (puppy), Puff (lamb).
+ * Ids stay kitty | melody | kuromi | purin | cinna so the rest of the app keeps working.
  *
  * API (window.KittyChars):
  *   KittyChars.full(id, pose)  -> "<svg ...>" string, viewBox 0 0 200 260,
@@ -27,7 +28,7 @@
   var IDS = ["kitty", "melody", "kuromi", "purin", "cinna"];
   var POSES = ["stand", "wave", "sit", "held", "happy", "bath", "walk", "eat", "eatsit", "sleep", "five_r", "five_l", "hug"];
   var EYES = ["open", "happy", "closed", "wink", "sleepy", "surprised", "sad"];
-  var NAMES = { kitty: "Hello Kitty", melody: "My Melody", kuromi: "Kuromi", purin: "Pompompurin", cinna: "Cinnamoroll" };
+  var NAMES = { kitty: "Mimi", melody: "Bella", kuromi: "Lulu", purin: "Momo", cinna: "Puff" };
 
   /* Head placement inside the 200 x 260 body box: the 100 x 100 head is scaled 1.42 and centred. */
   var HEAD_SCALE = 1.5;
@@ -49,14 +50,14 @@
   function defs(p) {
     return "<defs>" +
       radial(p + "fur", [[0, "#ffffff"], [0.72, "#fdf7fa"], [1, "#ead9e2"]]) +
+      radial(p + "cream", [[0, "#fffbf0"], [0.7, "#fdf0d8"], [1, "#ecd9b8"]]) +
       radial(p + "furGold", [[0, "#fff3bf"], [0.65, "#ffd66b"], [1, "#e8ad3c"]]) +
-      radial(p + "hoodPink", [[0, "#ffc8de"], [1, "#ff86b5"]]) +
-      radial(p + "hoodBlack", [[0, "#5e4e68"], [1, "#241b2a"]]) +
+      radial(p + "lilacFur", [[0, "#ece0ff"], [0.65, "#cdb4f4"], [1, "#a98ae0"]]) +
+      radial(p + "lilacDress", [[0, "#e6d6ff"], [0.6, "#c4a8f2"], [1, "#a98ae0"]]) +
+      radial(p + "mint", [[0, "#dcf9ea"], [0.6, "#a3e6c4"], [1, "#74cfa4"]]) +
+      radial(p + "sky", [[0, "#d6edff"], [1, "#84c6f4"]]) +
+      radial(p + "red", [[0, "#ff8a8a"], [1, "#e0405a"]]) +
       radial(p + "nose", [[0, "#ffe680"], [1, "#f2a900"]], "35%", "30%", "70%") +
-      radial(p + "denim", [[0, "#6fb2f2"], [1, "#2a6fc4"]]) +
-      radial(p + "shirt", [[0, "#fff1a6"], [1, "#ffc928"]]) +
-      radial(p + "dress", [[0, "#ffd3e5"], [0.6, "#ff9cc4"], [1, "#f27aab"]]) +
-      radial(p + "beret", [[0, "#b98250"], [1, "#7a4d24"]]) +
       radial(p + "ear", [[0, "#c79052"], [1, "#94622c"]]) +
       "</defs>";
   }
@@ -114,106 +115,117 @@
   }
   function flower(x, y, scale) {
     var petals = [0, 72, 144, 216, 288].map(function (r) {
-      return '<ellipse cx="0" cy="-5.2" rx="4" ry="5.6" fill="#fff" stroke="#ff4f95" stroke-width="1.6" transform="rotate(' + r + ')"/>';
+      return '<ellipse cx="0" cy="-5.2" rx="4" ry="5.6" fill="#ff9cc4" stroke="#e0558f" stroke-width="1.4" transform="rotate(' + r + ')"/>';
     }).join("");
     return '<g transform="translate(' + x + " " + y + ") scale(" + (scale || 1) + ')">' + petals + '<circle r="3.2" fill="#ffd24a" stroke="#f2a900" stroke-width="1"/></g>';
+  }
+  function star(x, y, r) {
+    var pts = [];
+    for (var i = 0; i < 10; i += 1) {
+      var a = -Math.PI / 2 + i * Math.PI / 5, rr = i % 2 ? r * 0.45 : r;
+      pts.push((x + rr * Math.cos(a)).toFixed(1) + "," + (y + rr * Math.sin(a)).toFixed(1));
+    }
+    return '<polygon points="' + pts.join(" ") + '" fill="#ffd93d" stroke="#e0a800" stroke-width="1.2" stroke-linejoin="round"/>';
+  }
+  /* Mouth under the nose at y. Open for happy / wink / surprised, otherwise the supplied closed-mouth markup. */
+  function mouth(mode, y, sw, closed) {
+    if (mode === "surprised") return '<ellipse cx="50" cy="' + (y + 6) + '" rx="3.2" ry="4" fill="#e8546f" ' + st(sw * 0.55) + "/>";
+    if (mode === "happy" || mode === "wink") return '<path d="M43.5 ' + (y + 2) + " Q50 " + (y + 12) + " 56.5 " + (y + 2) + ' Z" fill="#e8546f" ' + st(sw * 0.65) + "/>";
+    return closed;
+  }
+  function smile(y, w, sw) {
+    return '<path d="M' + (50 - w) + " " + y + " Q50 " + (y + 5.5) + " " + (50 + w) + " " + y + '" fill="none" stroke="' + INK + '" stroke-width="' + (sw * 0.7) + '" stroke-linecap="round"/>';
   }
 
   function headMarkup(id, p, sw, eyes) {
     var S = st(sw);
     var mode = eyes || "open";
+    var thin = st(sw * 0.55);
     switch (id) {
-      case "kitty":
+      case "kitty": /* Mimi: white cat, flower on the ear, smiling mouth */
         return '<g class="kc-ears">' +
-          '<path d="M14 46 Q14 22 21 10 Q33 15 45 28 Z" fill="url(#' + p + 'fur)" ' + S + "/>" +
-          '<path d="M86 46 Q86 22 79 10 Q67 15 55 28 Z" fill="url(#' + p + 'fur)" ' + S + "/>" +
-          '<path d="M21 19 Q20 30 22 37 L35 30 Q28 23 21 19 Z" fill="#ffc9d9"/>' +
-          '<path d="M79 19 Q80 30 78 37 L65 30 Q72 23 79 19 Z" fill="#ffc9d9"/></g>' +
-          '<ellipse cx="50" cy="60" rx="43" ry="34" fill="url(#' + p + 'fur)" ' + S + "/>" +
-          '<g transform="translate(72 23) rotate(14)">' +
-          '<path d="M0 0 C-14 -17 -24 -4 -18 6 C-14 12 -6 8 0 3 Z" fill="#e8203f" ' + S + "/>" +
-          '<path d="M0 0 C14 -17 24 -4 18 6 C14 12 6 8 0 3 Z" fill="#e8203f" ' + S + "/>" +
-          '<path d="M-14 -5 Q-10 -9 -6 -5" fill="none" stroke="#ff7d92" stroke-width="2" stroke-linecap="round"/>' +
-          '<path d="M14 -5 Q10 -9 6 -5" fill="none" stroke="#ff7d92" stroke-width="2" stroke-linecap="round"/>' +
-          '<circle cx="0" cy="1.5" r="5.5" fill="#e8203f" ' + S + "/></g>" +
-          eyePair(61, 4.2, 5.8, INK, sw, mode, 13) +
-          '<ellipse cx="50" cy="70" rx="5.6" ry="4" fill="url(#' + p + 'nose)" stroke="' + INK + '" stroke-width="' + (sw * 0.6) + '"/>' +
+          '<path d="M13 50 Q10 24 18 6 Q33 11 46 28 Z" fill="url(#' + p + 'fur)" ' + S + "/>" +
+          '<path d="M87 50 Q90 24 82 6 Q67 11 54 28 Z" fill="url(#' + p + 'fur)" ' + S + "/>" +
+          '<path d="M82 19 Q83 30 82 38 L68 30 Q74 24 82 19 Z" fill="#ffc9d9"/></g>' +
+          '<ellipse cx="50" cy="61" rx="41" ry="34" fill="url(#' + p + 'fur)" ' + S + "/>" +
+          '<path d="M18 22 Q17 31 19 38 L33 30 Q26 25 18 22 Z" fill="#ffc9d9"/>' +
+          flower(27, 22, 1.05) +
+          blush(73, 26, 0.55) +
+          eyePair(60, 4.2, 5.8, INK, sw, mode, 13) +
+          '<ellipse cx="50" cy="68" rx="4.2" ry="3" fill="#ff9fbd" stroke="' + INK + '" stroke-width="' + (sw * 0.5) + '"/>' +
+          mouth(mode, 72, sw, smile(72.5, 5.5, sw)) +
           '<g stroke="' + INK + '" stroke-width="' + (sw * 0.72) + '" stroke-linecap="round">' +
-          '<line x1="3" y1="57" x2="18" y2="61"/><line x1="2" y1="66" x2="17" y2="67"/><line x1="4" y1="76" x2="18" y2="72"/>' +
-          '<line x1="97" y1="57" x2="82" y2="61"/><line x1="98" y1="66" x2="83" y2="67"/><line x1="96" y1="76" x2="82" y2="72"/></g>' +
-          (mode === "happy" || mode === "wink" ? blush(74, 27, 0.6) : "");
+          '<line x1="4" y1="63" x2="19" y2="65"/><line x1="5" y1="73" x2="19" y2="71"/>' +
+          '<line x1="96" y1="63" x2="81" y2="65"/><line x1="95" y1="73" x2="81" y2="71"/></g>';
 
-      case "melody":
+      case "melody": /* Bella: cream bunny, long upright ears, star clip */
         return '<g class="kc-ears">' +
-          '<g transform="rotate(-10 34 44)"><ellipse cx="34" cy="22" rx="10.5" ry="22" fill="url(#' + p + 'hoodPink)" ' + S + "/>" +
-          '<ellipse cx="34" cy="22" rx="4.5" ry="14" fill="#ffd7e7"/></g>' +
-          '<g transform="rotate(10 66 44)"><ellipse cx="66" cy="22" rx="10.5" ry="22" fill="url(#' + p + 'hoodPink)" ' + S + "/>" +
-          '<ellipse cx="66" cy="22" rx="4.5" ry="14" fill="#ffd7e7"/></g></g>' +
-          '<circle cx="50" cy="60" r="38" fill="url(#' + p + 'hoodPink)" ' + S + "/>" +
-          '<ellipse cx="50" cy="66" rx="30" ry="25" fill="url(#' + p + 'fur)" stroke="' + INK + '" stroke-width="' + (sw * 0.75) + '"/>' +
-          flower(72, 12, 1.05) +
-          eyePair(64, 3.6, 5, INK, sw, mode, 11) +
-          '<ellipse cx="50" cy="72" rx="3.6" ry="2.7" fill="url(#' + p + 'nose)" stroke="' + INK + '" stroke-width="' + (sw * 0.4) + '"/>' +
-          (mode === "surprised" ? '<ellipse cx="50" cy="79" rx="2.8" ry="3.4" fill="#e8546f" ' + st(sw * 0.5) + "/>" : "") +
-          blush(73, 21);
+          '<g transform="rotate(-9 38 50)"><ellipse cx="36" cy="23" rx="10" ry="24" fill="url(#' + p + 'cream)" ' + S + "/>" +
+          '<ellipse cx="36" cy="25" rx="4.6" ry="16" fill="#ffd0df"/></g>' +
+          '<g transform="rotate(9 62 50)"><ellipse cx="64" cy="23" rx="10" ry="24" fill="url(#' + p + 'cream)" ' + S + "/>" +
+          '<ellipse cx="64" cy="25" rx="4.6" ry="16" fill="#ffd0df"/></g></g>' +
+          '<ellipse cx="50" cy="63" rx="41" ry="33" fill="url(#' + p + 'cream)" ' + S + "/>" +
+          star(72, 37, 7.5) +
+          blush(74, 25, 0.55) +
+          eyePair(63, 3.9, 5.3, INK, sw, mode, 13) +
+          '<ellipse cx="50" cy="70" rx="3.2" ry="2.4" fill="#ff9fbd" stroke="' + INK + '" stroke-width="' + (sw * 0.4) + '"/>' +
+          mouth(mode, 74, sw, '<path d="M45 75 Q47.5 78.5 50 74 Q52.5 78.5 55 75" fill="none" stroke="' + INK + '" stroke-width="' + (sw * 0.65) + '" stroke-linecap="round" stroke-linejoin="round"/>');
 
-      case "kuromi":
+      case "kuromi": /* Lulu: lilac fox, pointed ears, white cheeks */
         return '<g class="kc-ears">' +
-          '<path d="M17 47 C6 28 5 12 11 4 C20 12 31 21 39 30 Z" fill="url(#' + p + 'hoodBlack)" ' + S + "/>" +
-          '<path d="M83 47 C94 28 95 12 89 4 C80 12 69 21 61 30 Z" fill="url(#' + p + 'hoodBlack)" ' + S + "/>" +
-          '<circle cx="11" cy="5" r="5" fill="#ff8fc2" ' + st(sw * 0.7) + "/>" +
-          '<circle cx="89" cy="5" r="5" fill="#ff8fc2" ' + st(sw * 0.7) + "/></g>" +
-          '<circle cx="50" cy="60" r="38" fill="url(#' + p + 'hoodBlack)" ' + S + "/>" +
-          '<ellipse cx="50" cy="67" rx="28.5" ry="23.5" fill="url(#' + p + 'fur)" stroke="' + INK + '" stroke-width="' + (sw * 0.75) + '"/>' +
-          '<g transform="translate(50 33)"><path d="M-7 -1 A7 7 0 0 1 7 -1 Q7 4 4 5 L4 8 L-4 8 L-4 5 Q-7 4 -7 -1 Z" fill="#ff8fc2"/>' +
-          '<circle cx="-2.6" cy="0" r="1.7" fill="' + INK + '"/><circle cx="2.6" cy="0" r="1.7" fill="' + INK + '"/>' +
-          '<path d="M-1.8 8 v-2.4 M1.8 8 v-2.4" stroke="' + INK + '" stroke-width="1"/></g>' +
-          eyePair(66, 3.8, 5.4, INK, sw, mode, 11) +
-          (mode === "surprised" ? '<ellipse cx="50" cy="78" rx="3.4" ry="4.2" fill="#e8546f" ' + st(sw * 0.55) + "/>" : mode === "happy" || mode === "wink"
-            ? '<path d="M43 75 Q50 84 57 75 Z" fill="#e8546f" ' + st(sw * 0.65) + "/>"
-            : '<path d="M43 76 Q50 82 57 76" fill="none" stroke="' + INK + '" stroke-width="' + (sw * 0.7) + '" stroke-linecap="round"/>' +
-              '<path d="M53.5 78.4 l1.2 2.6 l1.4 -3.4" fill="#fff" stroke="' + INK + '" stroke-width="' + (sw * 0.35) + '"/>') +
-          blush(75, 20);
+          '<path d="M13 52 Q8 24 13 5 Q30 11 45 30 Z" fill="url(#' + p + 'lilacFur)" ' + S + "/>" +
+          '<path d="M87 52 Q92 24 87 5 Q70 11 55 30 Z" fill="url(#' + p + 'lilacFur)" ' + S + "/>" +
+          '<path d="M18 38 Q16 24 19 15 Q28 19 35 29 Z" fill="#fff4fb"/>' +
+          '<path d="M82 38 Q84 24 81 15 Q72 19 65 29 Z" fill="#fff4fb"/></g>' +
+          '<ellipse cx="50" cy="61" rx="41" ry="33" fill="url(#' + p + 'lilacFur)" ' + S + "/>" +
+          '<path d="M11 67 Q22 60 36 68 Q50 62 64 68 Q78 60 89 67 Q84 89 50 93 Q16 89 11 67 Z" fill="#fffafd"/>' +
+          '<ellipse cx="50" cy="61" rx="41" ry="33" fill="none" ' + S + "/>" +
+          blush(74, 27, 0.5) +
+          eyePair(60, 3.9, 5.4, INK, sw, mode, 13) +
+          '<ellipse cx="50" cy="69" rx="3.6" ry="2.7" fill="#6a4a8c" stroke="' + INK + '" stroke-width="' + (sw * 0.4) + '"/>' +
+          mouth(mode, 73, sw, smile(73, 5, sw));
 
-      case "purin":
+      case "purin": /* Momo: golden puppy, floppy brown ears, no hat */
         return '<g class="kc-ears">' +
           '<path d="M16 44 C4 46 2 70 9 80 C13 85 21 82 22 74 C23 62 23 50 16 44 Z" fill="url(#' + p + 'ear)" ' + S + "/>" +
           '<path d="M84 44 C96 46 98 70 91 80 C87 85 79 82 78 74 C77 62 77 50 84 44 Z" fill="url(#' + p + 'ear)" ' + S + "/></g>" +
           '<ellipse cx="50" cy="60" rx="39" ry="34" fill="url(#' + p + 'furGold)" ' + S + "/>" +
-          '<g class="kc-beret"><ellipse cx="50" cy="28" rx="21" ry="8" fill="url(#' + p + 'beret)" ' + S + "/>" +
-          '<path d="M48 20 Q49 13 54 13" fill="none" stroke="' + INK + '" stroke-width="' + (sw * 1.4) + '" stroke-linecap="round"/>' +
-          '<path d="M48 20 Q49 13 54 13" fill="none" stroke="#7a4d24" stroke-width="' + (sw * 0.6) + '" stroke-linecap="round"/></g>' +
-          eyePair(60, 3.6, 4.6, INK, sw, mode, 12) +
-          (mode === "surprised" ? '<ellipse cx="50" cy="71" rx="3.4" ry="4.2" fill="#e8546f" ' + st(sw * 0.55) + "/>" : mode === "happy" || mode === "wink"
-            ? '<path d="M43 69 Q50 79 57 69 Z" fill="#e8546f" ' + st(sw * 0.65) + "/>"
-            : '<path d="M44 69 Q47 73 50 69 Q53 73 56 69" fill="none" stroke="#7a4a1a" stroke-width="' + (sw * 0.7) + '" stroke-linecap="round"/>') +
-          blush(70, 22);
+          '<path d="M44 28 Q50 20 56 28 Q50 33 44 28 Z" fill="#e8ad3c"/>' +
+          '<ellipse cx="50" cy="71" rx="16" ry="11.5" fill="#fff3cf"/>' +
+          blush(73, 28, 0.5) +
+          eyePair(57, 3.8, 4.9, INK, sw, mode, 14) +
+          '<ellipse cx="50" cy="66" rx="5.2" ry="3.7" fill="#6b4226" stroke="' + INK + '" stroke-width="' + (sw * 0.45) + '"/>' +
+          mouth(mode, 70, sw, '<path d="M50 70 L50 72.5 M43.5 72 Q47 77.5 50 72.5 Q53 77.5 56.5 72" fill="none" stroke="#7a4a1a" stroke-width="' + (sw * 0.7) + '" stroke-linecap="round" stroke-linejoin="round"/>');
 
-      default: /* cinna */
+      default: /* Puff: white lamb, curly cloud wool, small round ears */
+        var bumps = [[22, 42, 11], [33, 27, 13], [50, 21, 13.5], [67, 27, 13], [78, 42, 11]];
+        var wool = '<ellipse cx="50" cy="58" rx="38" ry="32"/>' + bumps.map(function (b) { return '<circle cx="' + b[0] + '" cy="' + b[1] + '" r="' + b[2] + '"/>'; }).join("");
         return '<g class="kc-ears">' +
-          '<path d="M33 31 C14 24 -7 36 -7 56 C-7 69 6 71 14 63 C22 55 29 46 35 41 Z" fill="url(#' + p + 'fur)" ' + S + "/>" +
-          '<path d="M67 31 C86 24 107 36 107 56 C107 69 94 71 86 63 C78 55 71 46 65 41 Z" fill="url(#' + p + 'fur)" ' + S + "/>" +
-          '<path d="M20 36 C8 38 0 48 0 57" fill="none" stroke="#d6ecfa" stroke-width="' + (sw * 1.3) + '" stroke-linecap="round"/>' +
-          '<path d="M80 36 C92 38 100 48 100 57" fill="none" stroke="#d6ecfa" stroke-width="' + (sw * 1.3) + '" stroke-linecap="round"/></g>' +
-          '<ellipse cx="50" cy="59" rx="38" ry="32" fill="url(#' + p + 'fur)" ' + S + "/>" +
-          eyePair(59, 4.4, 5.6, "#2a5fc4", sw, mode, 12) +
-          (mode === "surprised" ? '<ellipse cx="50" cy="69.5" rx="3.4" ry="4.2" fill="#e8546f" ' + st(sw * 0.55) + "/>" : mode === "happy" || mode === "wink"
-            ? '<path d="M44 67 Q50 76 56 67 Z" fill="#e8546f" ' + st(sw * 0.65) + "/>"
-            : '<path d="M45 68 Q50 72.5 55 68" fill="none" stroke="' + INK + '" stroke-width="' + (sw * 0.65) + '" stroke-linecap="round"/>') +
-          blush(68, 23, 0.7);
+          '<ellipse cx="11" cy="59" rx="10" ry="7.5" transform="rotate(-16 11 59)" fill="url(#' + p + 'cream)" ' + S + "/>" +
+          '<ellipse cx="12" cy="59.5" rx="5" ry="3.6" transform="rotate(-16 11 59)" fill="#ffc9d9"/>' +
+          '<ellipse cx="89" cy="59" rx="10" ry="7.5" transform="rotate(16 89 59)" fill="url(#' + p + 'cream)" ' + S + "/>" +
+          '<ellipse cx="88" cy="59.5" rx="5" ry="3.6" transform="rotate(16 89 59)" fill="#ffc9d9"/></g>' +
+          '<g fill="url(#' + p + 'fur)" ' + S + ">" + wool + "</g>" +
+          '<g fill="url(#' + p + 'fur)" stroke="none">' + wool + "</g>" +
+          '<ellipse cx="50" cy="64" rx="29" ry="24" fill="#fff0e2" ' + thin + "/>" +
+          blush(72, 21, 0.6) +
+          eyePair(62, 4, 5.4, INK, sw, mode, 12) +
+          '<ellipse cx="50" cy="70" rx="3.2" ry="2.4" fill="#ff9fbd" stroke="' + INK + '" stroke-width="' + (sw * 0.4) + '"/>' +
+          mouth(mode, 73, sw, smile(73, 4.8, sw));
     }
   }
 
   /* ------------------------------------------------------------------ outfits / colours per character */
   var LOOK = {
-    kitty:  { arm: "shirt", paw: "fur", leg: "denim", foot: "fur", pads: true },
-    melody: { arm: "dress", paw: "fur", leg: "fur", foot: "shoePink", pads: false },
-    kuromi: { arm: "hoodBlack", paw: "fur", leg: "hoodBlack", foot: "fur", pads: true },
+    kitty:  { arm: "mint", paw: "fur", leg: "fur", foot: "fur", pads: true },
+    melody: { arm: "lilacDress", paw: "cream", leg: "cream", foot: "shoeLilac", pads: false },
+    kuromi: { arm: "lilacFur", paw: "lilacFur", leg: "lilacFur", foot: "fur", pads: true },
     purin:  { arm: "furGold", paw: "furGold", leg: "furGold", foot: "furGold", pads: true, padColour: "#b07a3e" },
-    cinna:  { arm: "fur", paw: "fur", leg: "fur", foot: "fur", pads: true }
+    cinna:  { arm: "fur", paw: "fur", leg: "fur", foot: "shoeHoof", pads: false }
   };
+  var SHOES = { shoeLilac: "#b99af0", shoeHoof: "#d9c3b0" };
   function fill(p, key) {
-    if (key === "shoePink") return "#ff6fa8";
+    if (SHOES[key]) return SHOES[key];
     return "url(#" + p + key + ")";
   }
 
@@ -230,51 +242,42 @@
     var line = function (d, col, w) { return '<path d="' + pth(d) + '" fill="none" stroke="' + col + '" stroke-width="' + w + '" stroke-linecap="round" stroke-linejoin="round"/>'; };
     switch (id) {
       case "kitty":
-        return '<path class="kc-torso" d="' + slim + '" fill="url(#' + p + 'shirt)" ' + S + "/>" +
-          /* straps (under the bib edge) */
-          line("M85,174 L78,146", INK, SW + 7) + line("M115,174 L122,146", INK, SW + 7) +
-          line("M85,174 L78,146", "#3c86d8", 7) + line("M115,174 L122,146", "#3c86d8", 7) +
-          /* overalls: bib + shorts in one shape */
-          D("M80,177 Q80,170 87,170 L113,170 Q120,170 120,177 L120,192 C132,196 139,205 138,214 C128,227 72,227 62,214 C61,205 68,196 80,192 Z", "url(#" + p + "denim)") +
-          D("M91,182 L109,182 L109,189 Q109,195 100,195 Q91,195 91,189 Z", "#3c86d8", SW * 0.55) +
-          '<circle cx="86" cy="' + (176 + oy) + '" r="3.8" fill="#fff" stroke="' + INK + '" stroke-width="2.2"/>' +
-          '<circle cx="114" cy="' + (176 + oy) + '" r="3.8" fill="#fff" stroke="' + INK + '" stroke-width="2.2"/>' +
-          line("M100,207 L100,223", "#245ea8", 2.6);
+        return '<path class="kc-torso" d="' + slim + '" fill="url(#' + p + 'mint)" ' + S + "/>" +
+          line("M64,210 C74,222 126,222 136,210", "#fff", 5) +
+          D("M82,141 Q100,157 118,141 Q116,153 100,159 Q84,153 82,141 Z", "#fff", SW * 0.55) +
+          flower(100, 180 + oy, 0.85);
 
       case "melody":
-        return '<path class="kc-torso" d="' + pth("M73,138 C66,162 54,194 50,211 Q48,225 62,225 L138,225 Q152,225 150,211 C146,194 134,162 127,138 Z") + '" fill="url(#' + p + 'dress)" ' + S + "/>" +
+        return '<path class="kc-torso" d="' + pth("M73,138 C66,162 54,194 50,211 Q48,225 62,225 L138,225 Q152,225 150,211 C146,194 134,162 127,138 Z") + '" fill="url(#' + p + 'lilacDress)" ' + S + "/>" +
           line("M55,214 Q61,221 67,215 Q73,222 79,215 Q85,222 91,215 Q97,222 103,215 Q109,222 115,215 Q121,222 127,215 Q133,222 139,215 Q144,220 146,214", "#fff", 4.5) +
-          '<g transform="translate(100 ' + (172 + oy) + ')"><path d="M0 0 L-12 -7 Q-14 0 -12 7 Z M0 0 L12 -7 Q14 0 12 7 Z" fill="#fff" stroke="' + INK + '" stroke-width="2.6" stroke-linejoin="round"/>' +
-          '<circle r="3.6" fill="#ff5c9a" stroke="' + INK + '" stroke-width="2.2"/></g>';
+          D("M83,141 Q100,157 117,141 Q115,153 100,159 Q85,153 83,141 Z", "#fff", SW * 0.55) +
+          '<circle cx="100" cy="' + (178 + oy) + '" r="4" fill="#fff" stroke="' + INK + '" stroke-width="2.2"/>' +
+          '<circle cx="100" cy="' + (192 + oy) + '" r="4" fill="#fff" stroke="' + INK + '" stroke-width="2.2"/>';
 
       case "kuromi":
-        return '<path class="kc-torso" d="' + slim + '" fill="url(#' + p + 'hoodBlack)" ' + S + "/>" +
-          line("M61,203 Q100,212 139,203", "#8d6bd8", 7) +
-          '<g transform="translate(100 ' + (183 + oy) + ')"><path d="M-10 -2 A10 10 0 0 1 10 -2 Q10 6 5.5 7 L5.5 11 L-5.5 11 L-5.5 7 Q-10 6 -10 -2 Z" fill="#ff8fc2" stroke="' + INK + '" stroke-width="2.2"/>' +
-          '<circle cx="-3.8" cy="-0.5" r="2.4" fill="' + INK + '"/><circle cx="3.8" cy="-0.5" r="2.4" fill="' + INK + '"/></g>';
+        return '<path class="kc-torso" d="' + slim + '" fill="url(#' + p + 'lilacFur)" ' + S + "/>" +
+          '<ellipse cx="100" cy="' + (190 + oy) + '" rx="21" ry="26" fill="#fffafd"/>' +
+          '<g transform="translate(100 ' + (160 + oy) + ')"><path d="M0 0 L-19 -10 Q-23 0 -19 10 Z M0 0 L19 -10 Q23 0 19 10 Z" fill="#9a6ae0" stroke="' + INK + '" stroke-width="2.8" stroke-linejoin="round"/>' +
+          '<circle r="4.6" fill="#7a4fc0" stroke="' + INK + '" stroke-width="2.4"/></g>';
 
       case "purin":
         return '<path class="kc-torso" d="' + chubby + '" fill="url(#' + p + 'furGold)" ' + S + "/>" +
-          '<ellipse cx="100" cy="' + (197 + oy) + '" rx="27" ry="21" fill="#fff0c4" opacity=".9"/>';
+          '<ellipse cx="100" cy="' + (200 + oy) + '" rx="26" ry="19" fill="#fff0c4" opacity=".9"/>' +
+          D("M68,148 Q100,162 132,148 L100,186 Z", "url(#" + p + "red)", SW * 0.7);
 
-      default: /* cinna */
-        return '<path class="kc-torso" d="' + chubby + '" fill="url(#' + p + 'fur)" ' + S + "/>";
+      default: /* cinna: Puff */
+        return '<path class="kc-torso" d="' + chubby + '" fill="url(#' + p + 'fur)" ' + S + "/>" +
+          D("M70,146 Q100,163 130,146 L132,159 Q100,176 68,159 Z", "url(#" + p + "sky)", SW * 0.7) +
+          D("M110,164 L125,198 L111,203 L100,170 Z", "url(#" + p + "sky)", SW * 0.7);
     }
   }
 
   /* Tail (behind the body). */
-  function tail(id, oy) {
+  function tail(id, oy, p) {
     var pth = function (d) { return shiftPath(d, oy); };
     if (id === "kuromi") {
-      var d = pth("M128,208 C152,216 166,206 162,186");
-      return '<g class="kc-tail"><path d="' + d + '" fill="none" stroke="' + INK + '" stroke-width="' + (7 + SW) + '" stroke-linecap="round"/>' +
-        '<path d="' + d + '" fill="none" stroke="#3a2e40" stroke-width="7" stroke-linecap="round"/>' +
-        '<path d="' + pth("M162,171 C168,179 173,185 170,190 Q162,186 154,190 C151,185 156,179 162,171 Z") + '" fill="#ff8fc2" ' + st(SW * 0.8) + "/></g>";
-    }
-    if (id === "cinna") {
-      var c = pth("M130,206 C152,212 170,200 167,184 C164,171 147,172 147,184 C147,192 157,193 159,186");
-      return '<g class="kc-tail"><path d="' + c + '" fill="none" stroke="' + INK + '" stroke-width="' + (11 + SW) + '" stroke-linecap="round"/>' +
-        '<path d="' + c + '" fill="none" stroke="#ffffff" stroke-width="11" stroke-linecap="round"/></g>';
+      return '<g class="kc-tail"><path d="' + pth("M128,214 C150,232 190,218 186,184 C184,165 168,158 158,164 C166,178 158,196 130,198 Z") + '" fill="url(#' + p + 'lilacFur)" ' + st(SW) + "/>" +
+        '<path d="' + pth("M158,164 C168,158 184,165 186,184 C182,180 176,178 170,181 C163,177 160,171 158,164 Z") + '" fill="#fffafd" ' + st(SW * 0.8) + "/></g>";
     }
     return "";
   }
@@ -322,7 +325,7 @@
     }
     out += capsule(16) +
       '<ellipse cx="' + (hx + sgn * 3) + '" cy="' + (hy + 34) + '" rx="17" ry="9.5" fill="' + footFill + '" ' + st(SW) + "/>";
-    if (look.foot === "shoePink") {
+    if (SHOES[look.foot]) {
       out += '<path d="M' + (hx + sgn * 3 - 9) + " " + (hy + 30) + " Q" + (hx + sgn * 3) + " " + (hy + 27) + " " + (hx + sgn * 3 + 9) + " " + (hy + 30) + '" fill="none" stroke="#ffd3e5" stroke-width="2.6" stroke-linecap="round"/>';
     }
     return out + "</g>";
@@ -373,7 +376,7 @@
       : "";
     var legs = leg("kc-leg-l", "l", P.legs, look, p, oy) + leg("kc-leg-r", "r", P.legs, look, p, oy);
     var body = '<g class="kc-body" style="transform-origin:100px ' + hipY + 'px">' +
-      tail(id, oy) + torso(id, p, oy) +
+      tail(id, oy, p) + torso(id, p, oy) +
       (P.frontL ? "" : aL) + (P.frontR ? "" : aR) +
       head +
       (P.frontL ? aL : "") + (P.frontR ? aR : "") +

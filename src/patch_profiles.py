@@ -12,7 +12,7 @@ def rep(old, new):
     s = s.replace(old, new)
 
 
-# Our own drawings (not Sanrio): a white cat with a flower and a smile, and a friendly knight.
+# Our own drawings: a white cat with a flower and a smile, and a friendly knight.
 CAT = ('<svg viewBox="0 0 100 100" aria-hidden="true">'
        '<path d="M17 44 L21 9 L44 27 Z" fill="#fff" stroke="#3b2a33" stroke-width="3" stroke-linejoin="round"/>'
        '<path d="M83 44 L79 9 L56 27 Z" fill="#fff" stroke="#3b2a33" stroke-width="3" stroke-linejoin="round"/>'

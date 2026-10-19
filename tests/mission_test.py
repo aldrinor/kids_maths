@@ -6,21 +6,9 @@ URL = sys.argv[1]
 STUB = "window.speechSynthesis={speak(){},cancel(){},getVoices(){return[]},pause(){},resume(){}};window.SpeechSynthesisUtterance=function(){};window.AudioContext=window.webkitAudioContext=undefined;window.__cookAutoPlay=true;"
 res = []
 def ok(name, cond, extra=""): res.append(bool(cond)); print(("PASS " if cond else "FAIL ") + name + (" | " + str(extra) if extra != "" and not cond else ""))
-STEP = """() => {
-  if (!Mission.on) return "off";
-  const cov = document.getElementById("cover");
-  if (!cov.hidden && document.getElementById("winNext")) { document.getElementById("winNext").click(); return "win"; }
-  if (!cov.hidden && document.getElementById("pqIn")) return "parentq";
-  if (TopicHost.isOpen()) { const s = TopicHost.state; if (s.phase !== "ask" || !s.Q) return "wait";
-    const lay = document.getElementById("topicPlay");
-    if (s.Q.input.type === "number") { for (const ch of String(s.Q.answer)) lay.querySelector(`.tp-key[data-k="${ch}"]`).click(); lay.querySelector('.tp-key[data-k="go"]').click(); }
-    else { const b = [...lay.querySelectorAll(".tp-choice")].find(x => x.dataset.c === String(s.Q.answer)); if (!b) return "nochoice"; b.click(); }
-    return "topic:" + s.topic; }
-  if (phase === "cook") return "cook";
-  if (phase !== "ask" || !Q) return "wait";
-  if (col) { return "col"; }
-  typed = String(Q.ans); press("go"); return "sums:" + Mission.sumsLevel;
-}"""
+sys.path.insert(0, __file__.rsplit("\\", 1)[0].rsplit("/", 1)[0])
+from autoplay import STEP  # shared pretend child
+
 with sync_playwright() as p:
     b = p.chromium.launch(args=["--mute-audio"])
     for who in ["marie", "kennedy"]:

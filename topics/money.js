@@ -347,7 +347,7 @@ button.mny-price { min-height: 44px; }
 /* every digit the same width (the font shorthand above resets this), so a price is as wide as any other with as many digits */
 .mny-tag, .mny-price, .mny-shopline, .mny-badge { font-variant-numeric: tabular-nums; }
 .mny-five.mny-bills { flex-wrap: wrap; justify-content: center; }
-/* Third and last size step (2026-10-16, round 4): very short boards, such as an iPhone SE while Kitty's hint is
+/* Third and last size step (2026-10-16, round 4): very short boards, such as an iPhone SE while Mimi's hint is
    showing. Only empty room goes: thinner frames, no gap above a frame, no padding around a coin (the tap target
    stays 44 px), no "Purse" label (the pink purse says it), and an empty purse folds to a thin strip. The start-again button
    moves up beside the coin bank, so it never sits on a coin. */
@@ -472,7 +472,7 @@ button.mny-price { min-height: 44px; }
       cancelAnimationFrame(raf); if (!b.dead) { b.fit(); b.draw(); }
     }) : null;
     if (ro) ro.observe(el);
-    /* round 5: when Kitty's bubble changes height, the board is sized again at once, not one or more frames later
+    /* round 5: when Mimi's bubble changes height, the board is sized again at once, not one or more frames later
        when the observer gets to it (headless WebKit showed 4 px of cut-off money for about 80 ms after a lesson tap) */
     b.sync = () => { if (b.dead) return; const s = el.clientWidth + "x" + el.clientHeight; if (s === lastSize || !el.clientWidth) return; lastSize = s; b.fit(); b.draw(); };
     LIVE.add(b);
@@ -509,7 +509,7 @@ button.mny-price { min-height: 44px; }
         while (hi - lo > 1) { const mid = (lo + hi) >> 1; if (fits(mid)) lo = mid; else hi = mid; }
         set(lo); return { t: lo, ok: true };
       };
-      /* round 4 (speed): when the box only got smaller (Kitty's hint appeared), the frames can only get tighter, so the
+      /* round 4 (speed): when the box only got smaller (Mimi's hint appeared), the frames can only get tighter, so the
          search starts at the last size step. (The money size is still searched from the top, so the same box always
          gives the same money size, whatever came before.) */
       const last = key != null && b.lastFit && b.lastFit.key === key && w <= b.lastFit.w && h <= b.lastFit.h ? b.lastFit : null;
@@ -539,9 +539,9 @@ button.mny-price { min-height: 44px; }
       if (ck) b.fitCache[ck] = { t, compact: root.classList.contains("mny-compact"), tiny: root.classList.contains("mny-tiny"), over: tooBig };
       b.lastFit = { key, w, h, t, compact: root.classList.contains("mny-compact"), tiny: root.classList.contains("mny-tiny") };
     };
-    /* Lesson rule step 4 (2026-10-16, round 5): when her answer right after Kitty's lesson is still wrong, Kitty
+    /* Lesson rule step 4 (2026-10-16, round 5): when her answer right after Mimi's lesson is still wrong, Mimi
        counts all of it with her, tap by tap, out loud. The game tells a topic nothing about a wrong answer, so the
-       board watches Kitty's speech bubble: both game screens say "Not quite..." for that first wrong answer after a
+       board watches Mimi's speech bubble: both game screens say "Not quite..." for that first wrong answer after a
        lesson (the second one shows the answer faintly). Armed only once a lesson has ended; fires once. */
     b.armAlong = fn => {
       if (b.disarm) b.disarm();
@@ -569,8 +569,8 @@ button.mny-price { min-height: 44px; }
   const lesson = fn => fn().catch(e => { if (e !== DEAD) console.error(e); });
   const step = async (b, pred) => { const ev = await b.wait(pred); if (ev === DEAD) throw DEAD; return ev; };
   const amountShort = c => fmt(c);
-  /* Lesson rule (2026-10-16, round 5, from the lead): Kitty shows HOW on the first part only, then says "Your turn.
-     Keep counting." and Marie counts the rest (each tap gets a tick, never a number). Kitty never says or shows the
+  /* Lesson rule (2026-10-16, round 5, from the lead): Mimi shows HOW on the first part only, then says "Your turn.
+     Keep counting." and Marie counts the rest (each tap gets a tick, never a number). Mimi never says or shows the
      final count or total. showN: how many pieces Kitty may count out loud: at most 2, and at least 2 always left for
      Marie (so 2 pieces: none, 3: one). safeK: fewer still if a number Kitty would say or show is the answer. */
   const showN = n => Math.max(0, Math.min(2, n - 2));
@@ -650,9 +650,9 @@ button.mny-price { min-height: 44px; }
       if (b.disarm) b.disarm();
     };
     /* Father's rule: the adding is Marie's job. On her own, the tray never adds up the money for her
-       (no running total, no spoken sums). In Kitty's lesson (round 5) S.mode says who counts:
-       "show": Kitty counts the first piece or two out loud; "turn": Marie counts on, each piece gets a tick only;
-       "done": the lesson is over, she types; "along": her answer after the lesson was wrong, so Kitty counts all of
+       (no running total, no spoken sums). In Mimi's lesson (round 5) S.mode says who counts:
+       "show": Mimi counts the first piece or two out loud; "turn": Marie counts on, each piece gets a tick only;
+       "done": the lesson is over, she types; "along": her answer after the lesson was wrong, so Mimi counts all of
        it with her out loud. Only "show" and "along" put numbers on the badges and the tray label. */
     const run = () => S.tray.reduce((s, uid) => s + val(S.items.find(x => x.uid === uid).id), 0);
     const trayHTML = full => {
@@ -751,7 +751,7 @@ button.mny-price { min-height: 44px; }
     init(); b.fit(); b.draw();
     /* pieces in the order Kitty and Marie count them: biggest first, each kind together */
     const countOrder = () => S.rows ? S.rows.flatMap(g => sortItems(S.items.filter(y => groupOf(y.id) === g))) : sortItems(S.tray.map(uid => S.items.find(y => y.uid === uid)));
-    /* how many pieces Kitty counts out loud before "Your turn" (never a number that is the answer) */
+    /* how many pieces Mimi counts out loud before "Your turn" (never a number that is the answer) */
     const kittyK = () => { let r = 0; return safeK(showN(Q.data.coins.length), sortItems(S.items).map(x => { r += val(x.id); return amt(r) + " " + sayRun(r); }), Q.answer); };
     /* step 4: her answer after the lesson was wrong. Kitty counts every piece with her, out loud. */
     const along = async () => {
@@ -767,7 +767,7 @@ button.mny-price { min-height: 44px; }
       const types = ORDER.filter(id => Q.data.coins.includes(id));
       b.allow = key => b.next.has(key);
       const k = kittyK();
-      let done = 0;  /* pieces counted so far (Kitty's and hers) */
+      let done = 0;  /* pieces counted so far (Mimi's and hers) */
       if (types.length === 1) {
         S.rows = types; b.fit(); b.draw();
         S.counting = false;
@@ -812,7 +812,7 @@ button.mny-price { min-height: 44px; }
   }
   function ccHint(Q, tries) {
     const types = ORDER.filter(id => Q.data.coins.includes(id));
-    /* 2026-10-16 (round 4): short hints. On an iPhone SE every extra line in Kitty's bubble takes about 17 px from the
+    /* 2026-10-16 (round 4): short hints. On an iPhone SE every extra line in Mimi's bubble takes about 17 px from the
        board, and coins fell out of sight just when she needed the hint. Still how to do it, never the answer. */
     const step = id => val(id) >= 100 ? val(id) / 100 : val(id);
     const name = id => MONEY[id].kind === "bill" ? "bills" : MONEY[id].plural;
@@ -910,9 +910,9 @@ button.mny-price { min-height: 44px; }
     const S = {};
     const init = () => { S.tray = []; S.seq = 0; S.badges = {}; S.countRun = 0; S.counting = false; S.countCoins = false; S.purseBadges = {}; S.purseRun = {}; S.lesson = false; S.mode = ""; S.accept = null; b.allow = null; b.next = new Set(); b.hlKey = ""; if (b.disarm) b.disarm(); };
     /* Father's rule: on her own the picture never adds the money up for her. Her taps leave a tick (so she
-       knows which coins she has counted) and she does the adding. In Kitty's lesson (round 5) S.mode says who
-       counts: "show" (Kitty counts the first one or two out loud), "turn" (Marie counts on: a tick, no number),
-       "done" (she types or taps her answer), "along" (her answer after the lesson was wrong: Kitty counts all of it
+       knows which coins she has counted) and she does the adding. In Mimi's lesson (round 5) S.mode says who
+       counts: "show" (Mimi counts the first one or two out loud), "turn" (Marie counts on: a tick, no number),
+       "done" (she types or taps her answer), "along" (her answer after the lesson was wrong: Mimi counts all of it
        with her out loud). */
     const traySum = () => S.tray.reduce((s, x) => s + val(x.id), 0);
     const unit = D.unit || "¢";
@@ -921,7 +921,7 @@ button.mny-price { min-height: 44px; }
       b.render = () => {
         b.root.innerHTML = `
           <div class="mny-zone purse"><span class="mny-tag">This purse: ${fmt(D.target)}</span><div class="mny-row mny-refrow">${sortBig(D.ref).map(pic).join("")}</div></div>
-          <div class="mny-zone tray grow"><span class="mny-tag">${S.lesson ? "Count with Kitty" : "Tap as you count"}</span>
+          <div class="mny-zone tray grow"><span class="mny-tag">${S.lesson ? "Count with Mimi" : "Tap as you count"}</span>
             <button type="button" class="mny-btn round" data-key="reset" aria-label="Start again" ${Object.keys(S.purseBadges).length && !b.allow ? "" : "disabled"}>↺</button>
             <div class="mny-purses">${D.sets.map(s => `<div class="mny-prow"><span class="mny-letter mny-l${s.letter}">${s.letter}</span><div class="mny-row">${sortBig(s.ids).map((id, i) => { const k = "s:" + s.letter + ":" + i; return item(k, id, { badge: S.purseBadges[k], badgeCls: S.purseBadges[k] === "✓" ? "tick" : "" }); }).join("")}</div></div>`).join("")}</div>
           </div>`;
@@ -956,7 +956,7 @@ button.mny-price { min-height: 44px; }
         /* (and never as far as the amount asked: "$30" said on purse A would tell her too much) */
         const pA = sortBig(D.sets[0].ids);
         /* round 6 (2026-10-16): showN, like the other lessons: at least 2 pieces of purse A are always left for her.
-           Before, Kitty could leave only 1, and Kitty's last number plus that one piece was the amount asked. */
+           Before, Mimi could leave only 1, and Mimi's last number plus that one piece was the amount asked. */
         let k = showN(pA.length);
         while (k > 0 && sum(pA.slice(0, k)) >= D.target) k--;
         S.mode = k ? "show" : "turn"; b.draw();
@@ -1011,7 +1011,7 @@ button.mny-price { min-height: 44px; }
        35¢ needs 13). Change in dollars: 12 pieces (counting up by loonies needs 10 at most), and 3 bills at most,
        because bills are wide: they sit on their own line, the coins below them in rows of five.
        The fit step tries every full tray she can make: all of each coin (a row of five toonies is wider than a
-       line of bills), the most bills with the widest coin, and each of these as Kitty's lesson draws it. */
+       line of bills), the most bills with the widest coin, and each of these as Mimi's lesson draws it. */
     const CAP = D.kind === "count" ? MA_MAX[D.level][D.coin] + 2 : unit === "$" ? 12 : 15;
     const BILL_CAP = 3;
     const fullTrays = () => {
@@ -1024,7 +1024,7 @@ button.mny-price { min-height: 44px; }
     b.fit = () => {
       const keep = { lesson: S.lesson, counting: S.counting, countCoins: S.countCoins, mode: S.mode };
       const draws = [];
-      /* every lesson step is tried too (round 5: Kitty's part, her turn, the count-along), so the money size never
+      /* every lesson step is tried too (round 5: Mimi's part, her turn, the count-along), so the money size never
          changes between them */
       for (const tray of fullTrays()) for (const st of [[false, false, ""], [true, false, "show"], [true, false, "turn"], [true, true, "show"], [true, true, "turn"], [true, true, "along"]])
         draws.push(() => { S.lesson = st[0]; S.counting = st[1]; S.mode = st[2]; S.countCoins = st[1] && !isChange; b.render(tray); });
@@ -1164,7 +1164,7 @@ button.mny-price { min-height: 44px; }
   }
   function maHint(Q) {
     const D = Q.data;
-    /* short (round 4): each extra line in Kitty's bubble takes room from the board on an iPhone SE */
+    /* short (round 4): each extra line in Mimi's bubble takes room from the board on an iPhone SE */
     /* no "count by 5s" here: with 5 nickels (or 10 dimes) that number is the answer, said out loud */
     if (D.kind === "count") return `Add ${MONEY[D.coin].plural} one by one, counting on to ${D.target}. Then count the ${MONEY[D.coin].plural}.`;
     if (D.kind === "fewest") return "Biggest coin that fits first. Then count the coins.";
@@ -1304,7 +1304,7 @@ button.mny-price { min-height: 44px; }
     };
     init(); b.fit(); b.draw();
     /* after the lesson she may still change her coins (add, mark, drag back), but the start-again button stays off:
-       start again would also switch off Kitty's count-along for a wrong answer (step 4) */
+       start again would also switch off Mimi's count-along for a wrong answer (step 4) */
     const editOnly = key => key.startsWith("b:") || key.startsWith("t:");
     /* step 4: her choice after the lesson was wrong. Kitty counts the tray with her: coins and money, out loud. */
     const alongCp = async () => {
@@ -1332,7 +1332,7 @@ button.mny-price { min-height: 44px; }
       /* round 6 (2026-10-16): on her turn the board takes ANY coin she picks. Before, it refused every coin that is
          not in the answer and then made the right coin glow, so random taps always built the answer and she only had
          to match the pictures. Now Kitty only says HOW to check (count the coins, add the money); she never says if a
-         coin is right. A coin she wants to change goes back by dragging it to the coins. Kitty's lines stay short:
+         coin is right. A coin she wants to change goes back by dragging it to the coins. Mimi's lines stay short:
          a tall speech bubble makes the board too short for 8 coins on an iPhone SE. */
       S.mode = "turn"; b.draw();
       say(b.api, k ? "Your turn. Keep building. Count coins and money." : "Your turn. Build it. Count coins and money.");
@@ -1387,9 +1387,9 @@ button.mny-price { min-height: 44px; }
     if (r < 0.75) {
       const [art, name] = pick(SAVE_ITEMS), price = rnd(3, 20) * 100;
       const have = Math.random() < 0.5 ? rnd(price / 100, 25) * 100 : rnd(1, price / 100 - 1) * 100;
-      /* 2026-10-15: the question no longer says how much Kitty has. She counts Kitty's money in the picture
+      /* 2026-10-15: the question no longer says how much Mimi has. She counts Mimi's money in the picture
          herself (each tap leaves a tick, never a running total), then compares it with the price. */
-      return { key: "ms:ss:" + art + ":" + price + ":" + have, say: `Count Kitty's money. The ${name} costs ${spoken(price)}. Can she buy it now, or must she save?`, show: `Count Kitty's money. The ${name} costs ${fmt(price)}.`,
+      return { key: "ms:ss:" + art + ":" + price + ":" + have, say: `Count Mimi's money. The ${name} costs ${spoken(price)}. Can she buy it now, or must she save?`, show: `Count Mimi's money. The ${name} costs ${fmt(price)}.`,
         answer: have >= price ? "buy" : "save",
         input: { type: "choice", choices: [{ value: "buy", label: "Buy it now", html: lbl(BAG, "Buy now") }, { value: "save", label: "Save", html: lbl(PIGGY, "Save") }] },
         data: { kind: "save_spend", art, name, price, have, haveIds: haveSet(have) } };
@@ -1437,7 +1437,7 @@ button.mny-price { min-height: 44px; }
             <div class="mny-big"><div class="mny-card"><img src="${api.ART(D.art)}" alt="">${D.name}</div></div>`;
         } else b.root.innerHTML = `<div class="mny-big" style="flex:1"><div class="mny-card"><img src="${api.ART(D.art)}" alt="">${D.name}</div></div>`;
       } else if (D.kind === "save_spend") {
-        b.root.innerHTML = `<div class="mny-zone purse"><span class="mny-tag">Kitty's money</span><div class="mny-row">${D.haveIds.map((id, i) => item("h:" + i, id, { badge: S.badges["h:" + i], badgeCls: S.badges["h:" + i] === "✓" ? "tick" : "" })).join("")}</div></div>
+        b.root.innerHTML = `<div class="mny-zone purse"><span class="mny-tag">Mimi's money</span><div class="mny-row">${D.haveIds.map((id, i) => item("h:" + i, id, { badge: S.badges["h:" + i], badgeCls: S.badges["h:" + i] === "✓" ? "tick" : "" })).join("")}</div></div>
           <div class="mny-big" style="flex:1"><div class="mny-card"><img src="${api.ART(D.art)}" alt=""><button type="button" class="mny-price" data-key="tag" style="cursor:pointer">${fmt(D.price)}</button></div></div>`;
       } else {
         b.root.innerHTML = S.payGrid
@@ -1451,9 +1451,9 @@ button.mny-price { min-height: 44px; }
       if (z === "ex") { S.placed[a] = a === S.ex.need ? "need" : "want"; tone(b.api, [620, 780]); return { type: "place", a }; }
       if (z === "h" && S.badges[key] == null) {
         /* Father's rule (2026-10-15): on her own a tap only leaves a tick. The adding is her job.
-           Only in Kitty's lesson does Kitty count along with each tap. */
+           Only in Mimi's lesson does Mimi count along with each tap. */
         S.run += val(D.haveIds[+a]);
-        /* S.who (round 5): "show" Kitty counts out loud, "along" the count-along after a wrong answer; else a tick */
+        /* S.who (round 5): "show" Mimi counts out loud, "along" the count-along after a wrong answer; else a tick */
         if (S.who !== "show" && S.who !== "along") { S.badges[key] = "✓"; tone(b.api, [600]); return { type: "count" }; }
         S.badges[key] = fmt(S.run); tone(b.api, [600]); speak(b.api, spoken(S.run)); return { type: "count" };
       }
@@ -1478,9 +1478,9 @@ button.mny-price { min-height: 44px; }
         const n = D.haveIds.length;
         /* round 6: at least 2 pieces always left for her (showN). Before, with 2 or 3 pieces Kitty counted all but one. */
         let k = showN(n);
-        while (k > 0 && sum(D.haveIds.slice(0, k)) >= D.price) k--;  /* Kitty's part never reaches the price */
+        while (k > 0 && sum(D.haveIds.slice(0, k)) >= D.price) k--;  /* Mimi's part never reaches the price */
         S.lesson = true; S.who = k ? "show" : "turn"; b.draw();
-        say(b.api, k ? "Count Kitty's money with me. Tap each one." : "Your turn. Count Kitty's money. Tap each one.");
+        say(b.api, k ? "Count Mimi's money with me. Tap each one." : "Your turn. Count Mimi's money. Tap each one.");
         for (let i = 0; i < n; i++) {
           if (i === k && k) { S.who = "turn"; b.draw(); say(b.api, YOUR_TURN); }
           b.setNext(["h:" + i]); await step(b, e => e.type === "count");
@@ -1492,10 +1492,10 @@ button.mny-price { min-height: 44px; }
         /* step 4: her choice after the lesson was wrong. Kitty counts all of it with her, out loud. */
         b.armAlong(async () => {
           S.badges = {}; S.run = 0; S.who = "along"; b.allow = key => b.next.has(key); b.draw();
-          say(b.api, "Let's count Kitty's money together. Tap each one.");
+          say(b.api, "Let's count Mimi's money together. Tap each one.");
           for (let i = 0; i < n; i++) { b.setNext(["h:" + i]); await step(b, e => e.type === "count"); }
           b.setNext([]); b.allow = () => false; S.who = "done"; b.draw();
-          say(b.api, `Kitty has ${fmt(D.have)}. It costs ${fmt(D.price)}. Tap Buy or Save.`);
+          say(b.api, `Mimi has ${fmt(D.have)}. It costs ${fmt(D.price)}. Tap Buy or Save.`);
         });
       } else {
         /* the lesson names each thing; Marie decides which one pays (Kitty never marks it for her) */
@@ -1516,7 +1516,7 @@ button.mny-price { min-height: 44px; }
   function msHint(Q) {
     const D = Q.data;
     if (D.kind === "want_need") return "Ask: do we need it to live and stay healthy? Or is it just nice to have?";
-    if (D.kind === "save_spend") return "Count Kitty's money. Is it as much as the price, or more?";
+    if (D.kind === "save_spend") return "Count Mimi's money. Is it as much as the price, or more?";
     return "Look for money or a bank card.";
   }
 

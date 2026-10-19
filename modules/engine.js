@@ -38,7 +38,7 @@
   };
   // The first level of a game needs these skills first (links between games).
   const TOPIC_NEEDS = {
-    place_value: ["count_quick.2"], compare_numbers: ["count_quick.1"], skip_count: ["count_quick.1"], odd_even: ["skip_count.0"],
+    count_quick: ["kinder.1"], place_value: ["count_quick.2"], compare_numbers: ["count_quick.1"], skip_count: ["count_quick.1"], odd_even: ["skip_count.0"],
     estimate: ["compare_numbers.1"], equal_groups: ["skip_count.1", "sums.3"], arrays: ["equal_groups.0"],
     share_equally: ["equal_groups.0"], balance: ["sums.1"], fact_family: ["sums.4"],
     times_facts: ["arrays.1", "skip_count.1", "fact_family.1"], times_chant: ["skip_count.1"]
@@ -58,7 +58,7 @@
       t.levels.forEach((l, i) => {
         const id = `${t.id}.${i}`;
         const needs = i ? [`${t.id}.${i - 1}`] : (TOPIC_NEEDS[t.id] || []);
-        add({ id, name: `${t.title}: ${l.name}`, grade: Number(l.grade) || 1, group: TOPIC_GROUP[t.id] || STRAND_GROUP[t.strand] || "shapes",
+        add({ id, name: `${t.title}: ${l.name}`, grade: Number.isFinite(Number(l.grade)) ? Number(l.grade) : 1, group: TOPIC_GROUP[t.id] || STRAND_GROUP[t.strand] || "shapes",
           needs, play: { src: "topic", topic: t.id, level: i }, ready: true });
       });
     });
@@ -117,7 +117,8 @@
     return s.ready && (st.skills[id]?.lvl || 0) < LV.KNOWS && !(st.skills[id]?.parkedUntil > now) && s.needs.every(n => strong(st, n));
   }
   function cappedToday(st, id) { return (st.dayCounts[id] || 0) >= rules(st).dailyCap; }
-  function stuck(s) { return s.stuckN >= 10 && s.stuckRight < 3; }
+  // Stuck: at least 10 tries since the last repair, and fewer than 3 clean right in the last 10 (lucky guesses do not hide it).
+  function stuck(s) { return s.stuckN >= 10 && s.recent.slice(-10).reduce((a, b) => a + b, 0) < 3; }
   function acc(s) { return s.recent.length ? s.recent.reduce((a, b) => a + b, 0) / s.recent.length : 1; }
 
   function nextSet(st, M, now, rng) {

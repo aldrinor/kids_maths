@@ -41,11 +41,11 @@
     C.push(o);
   }
   // Friends (the five characters are unique)
-  add("kitty", "friends", "char", "char", 1, 0, "Hello Kitty", { unique: true });
-  add("melody", "friends", "char", "char", 1, 15, "My Melody", { unique: true });
-  add("kuromi", "friends", "char", "char", 1, 25, "Kuromi", { unique: true });
-  add("purin", "friends", "char", "char", 1, 35, "Pompompurin", { unique: true });
-  add("cinna", "friends", "char", "char", 1, 45, "Cinnamoroll", { unique: true });
+  add("kitty", "friends", "char", "char", 1, 0, "Mimi", { unique: true });
+  add("melody", "friends", "char", "char", 1, 15, "Bella", { unique: true });
+  add("kuromi", "friends", "char", "char", 1, 25, "Lulu", { unique: true });
+  add("purin", "friends", "char", "char", 1, 35, "Momo", { unique: true });
+  add("cinna", "friends", "char", "char", 1, 45, "Puff", { unique: true });
   add("cat", "friends", "png:fl_cat", "pet", .42, 20, "Kitten");
   add("bunnyfull", "friends", "png:fl_bunnyfull", "pet", .44, 20, "Bunny");
   add("teddy", "friends", "png:fl_teddy", "pet", .46, 12, "Teddy");
@@ -84,7 +84,7 @@
   add("tulip", "decor", "png:fl_tulip", "prop", .4, 5, "Tulip", { tap: "plant" });
   add("blossom", "decor", "png:fl_blossom", "prop", .32, 6, "Blossom", { tap: "plant" });
   add("picture", "decor", "png:fl_picture", "wall", .5, 10, "Picture");
-  add("kittyframe", "decor", "svg:kittyframe", "wall", .58, 15, "Kitty photo");
+  add("kittyframe", "decor", "svg:kittyframe", "wall", .58, 15, "Mimi photo");
   add("mirror", "decor", "svg:mirror", "wall", .62, 12, "Mirror");
   add("clock", "decor", "svg:clock", "wall", .46, 10, "Clock", { tap: "clock" });
   add("bunting", "decor", "svg:bunting", "wall", .42, 10, "Flags");
@@ -2175,7 +2175,7 @@
    * when a friend arrives somewhere, and it is saved at most every 5 seconds.
    * Speech bubbles are text only; nothing is spoken unless Marie taps.
    * ===================================================================== */
-  var SHORT = { kitty: "Kitty", melody: "Melody", kuromi: "Kuromi", purin: "Purin", cinna: "Cinna" };
+  var SHORT = { kitty: "Mimi", melody: "Bella", kuromi: "Lulu", purin: "Momo", cinna: "Puff" };
   var BEST = { "kitty|melody": 1, "cinna|purin": 1, "kitty|purin": 1, "cinna|melody": 1 };
   var HOPPERS = { cat: 1, bunnyfull: 1 };
   var TOYS = { drum: "music", guitar: "music", radio: "music", discoball: "music", dolls: "cuddle", teddy: "cuddle", unicorn: "cuddle",

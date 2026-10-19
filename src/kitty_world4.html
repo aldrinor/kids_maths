@@ -357,8 +357,6 @@ input[type="checkbox"] { width: 24px; height: 24px; accent-color: var(--pink-dee
   <defs>
     <radialGradient id="fur" cx="38%" cy="30%" r="80%"><stop offset="0" stop-color="#ffffff"/><stop offset=".75" stop-color="#fbf5f8"/><stop offset="1" stop-color="#e9d8e0"/></radialGradient>
     <radialGradient id="furGold" cx="38%" cy="30%" r="80%"><stop offset="0" stop-color="#fff2b8"/><stop offset=".7" stop-color="#ffd76a"/><stop offset="1" stop-color="#e9b440"/></radialGradient>
-    <radialGradient id="hoodPink" cx="38%" cy="30%" r="80%"><stop offset="0" stop-color="#ffc3da"/><stop offset="1" stop-color="#ff7fb0"/></radialGradient>
-    <radialGradient id="hoodBlack" cx="38%" cy="30%" r="80%"><stop offset="0" stop-color="#5a4a63"/><stop offset="1" stop-color="#231a28"/></radialGradient>
     <radialGradient id="nose" cx="35%" cy="30%" r="70%"><stop offset="0" stop-color="#ffe680"/><stop offset="1" stop-color="#f2a900"/></radialGradient>
     <linearGradient id="tile" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff" stop-opacity=".9"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></linearGradient>
     <linearGradient id="woodGrad" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ffdcae"/><stop offset="1" stop-color="#eaa968"/></linearGradient>
@@ -424,6 +422,7 @@ input[type="checkbox"] { width: 24px; height: 24px; accent-color: var(--pink-dee
 <script src="topics/time_measure.js"></script>
 <script src="topics/shapes_data.js"></script>
 <script src="topics/times.js"></script>
+<script src="topics/kinder.js"></script>
 <script src="modules/topic_host.js"></script>
 <script src="modules/engine.js"></script>
 <script src="modules/mission.js"></script>
@@ -434,6 +433,7 @@ input[type="checkbox"] { width: 24px; height: 24px; accent-color: var(--pink-dee
 <script src="modules/brain_games.js"></script>
 <script src="modules/chess_coach.js"></script>
 <script src="modules/think.js"></script>
+<script src="modules/calm.js"></script>
 <script>
 /* ================= Settings ================= */
 const LEVELS = [null,
@@ -449,26 +449,26 @@ const LEVELS = [null,
 ];
 const MAX_LEVEL = 9;
 const COOK_EVERY = 5;             // a cooking break after every 5 sums
-const TEACH_AFTER_MISTAKES = 3;   // more than twice wrong: Hello Kitty does the jumps with her
+const TEACH_AFTER_MISTAKES = 3;   // more than twice wrong: Mimi does the jumps with her
 const LEVEL_UP_NEED = 9;          // 9 of the last 10 right first time
 const MINUS = "−";
 const ART = k => `art/${k}.png`;
 const PRAISE = ["Great job!", "Yes!", "Super!", "You got it!", "Brilliant!", "Well done!", "Amazing!", "Hooray!"];
-// Our own fan drawings for private family use. The characters belong to Sanrio.
+// Our own original characters: Mimi, Bella, Lulu, Momo and Puff.
 const CHARS = {
-  kitty: { name: "Hello Kitty", color: "#e8203f", tint: "#ffe3ea" },
-  melody: { name: "My Melody", color: "#ff4f95", tint: "#ffe0ee" },
-  kuromi: { name: "Kuromi", color: "#6b4bd6", tint: "#ece6ff" },
-  purin: { name: "Pompompurin", color: "#c58a12", tint: "#fff1c9" },
-  cinna: { name: "Cinnamoroll", color: "#2386c8", tint: "#e0f3ff" }
+  kitty: { name: "Mimi", color: "#e8203f", tint: "#ffe3ea" },
+  melody: { name: "Bella", color: "#ff4f95", tint: "#ffe0ee" },
+  kuromi: { name: "Lulu", color: "#6b4bd6", tint: "#ece6ff" },
+  purin: { name: "Momo", color: "#c58a12", tint: "#fff1c9" },
+  cinna: { name: "Puff", color: "#2386c8", tint: "#e0f3ff" }
 };
 const FRIENDS = ["melody", "kuromi", "purin", "cinna"];
 const SHOP = [
-  { id: "kitty", cat: "friends", name: "Hello Kitty", price: 0, w: 15, char: true, unique: true },
-  { id: "melody", cat: "friends", name: "My Melody", price: 15, w: 15, char: true, unique: true },
-  { id: "kuromi", cat: "friends", name: "Kuromi", price: 25, w: 15, char: true, unique: true },
-  { id: "purin", cat: "friends", name: "Pompompurin", price: 35, w: 16, char: true, unique: true },
-  { id: "cinna", cat: "friends", name: "Cinnamoroll", price: 45, w: 16, char: true, unique: true },
+  { id: "kitty", cat: "friends", name: "Mimi", price: 0, w: 15, char: true, unique: true },
+  { id: "melody", cat: "friends", name: "Bella", price: 15, w: 15, char: true, unique: true },
+  { id: "kuromi", cat: "friends", name: "Lulu", price: 25, w: 15, char: true, unique: true },
+  { id: "purin", cat: "friends", name: "Momo", price: 35, w: 16, char: true, unique: true },
+  { id: "cinna", cat: "friends", name: "Puff", price: 45, w: 16, char: true, unique: true },
   { id: "cat", cat: "friends", name: "Kitten", price: 20, w: 12 }, { id: "bunnyfull", cat: "friends", name: "Bunny", price: 20, w: 12 },
   { id: "fish", cat: "friends", name: "Fish", price: 12, w: 9 }, { id: "unicorn", cat: "friends", name: "Unicorn", price: 40, w: 16 },
   { id: "teddy", cat: "friends", name: "Teddy", price: 12, w: 11 },
@@ -614,11 +614,18 @@ const VOICE_PREFS = [/Ana.*Natural/i, /Natural.*Ana/i, /Jenny.*Natural/i, /A
   /Samantha/i, /Karen/i, /Tessa/i, /Moira/i, /Fiona/i, /Google UK English Female/i, /Google US English/i, /Ana/i, /Jenny/i, /Aria/i, /Zira/i, /female/i];
 let kittyVoice = null;
 function englishVoices() { try { return speechSynthesis.getVoices().filter(v => /^en/i.test(v.lang)); } catch (e) { return []; } }
+// Each child has a voice: Marie a young, bright girl's voice; Kennedy a calm, deeper knight's voice.
+// The best voices on iPad are the free "Premium" or "Enhanced" ones (Settings, Accessibility, Spoken Content, Voices).
+const VOICE_STYLE = {
+  girl: { names: /Ana|Ava|Aria|Jenny|Samantha|Allison|Susan|Karen|Moira|Tessa|Zira|Libby|Sonia|Google US English/i, pitch: 1.3, rate: .92 },
+  knight: { names: /Arthur|Daniel|Oliver|Ryan|Thomas|George|Guy|Davis|Aaron|Rishi|Fred|Google UK English Male/i, pitch: .82, rate: .88, lang: /en-GB/i }
+};
+const voiceStyle = () => VOICE_STYLE[typeof who !== "undefined" && who === "kennedy" ? "knight" : "girl"];
 function pickVoice() {
-  const vs = englishVoices();
+  const vs = englishVoices(), st = voiceStyle();
   if (P.voiceName) { const v = vs.find(x => x.name === P.voiceName); if (v) return v; }
-  for (const re of VOICE_PREFS) { const v = vs.find(x => re.test(x.name)); if (v) return v; }
-  return vs[0] || null;
+  const score = v => (/Natural|Premium|Enhanced|Neural|Online/i.test(v.name) ? 4 : 0) + (st.names.test(v.name) ? 10 : 0) + (st.lang && st.lang.test(v.lang) ? 2 : 0) + (v.localService ? 1 : 0);
+  return vs.slice().sort((x, y) => score(y) - score(x))[0] || null;
 }
 if ("speechSynthesis" in window) { kittyVoice = pickVoice(); speechSynthesis.onvoiceschanged = () => { kittyVoice = pickVoice(); if (view === "grown") renderGrown(); }; }
 function speak(text, force) {
@@ -628,8 +635,9 @@ function speak(text, force) {
     const u = new SpeechSynthesisUtterance(text.replace(/−/g, " minus "));
     kittyVoice = kittyVoice || pickVoice();
     if (kittyVoice) { u.voice = kittyVoice; u.lang = kittyVoice.lang; } else u.lang = "en-CA";
-    const childVoice = kittyVoice && /Ana/i.test(kittyVoice.name);
-    u.pitch = childVoice ? 1.15 : 1.35; u.rate = .86; u.volume = .9;
+    const st = voiceStyle(), natural = kittyVoice && /Natural|Premium|Enhanced|Neural|Online/i.test(kittyVoice.name);
+    // Natural voices already sound right; only nudge them. Plain voices get more pitch to sound young or deep.
+    u.pitch = natural ? 1 + (st.pitch - 1) / 2 : st.pitch; u.rate = st.rate; u.volume = .9;
     speechSynthesis.speak(u);
   } catch (e) {}
 }
@@ -644,38 +652,9 @@ function tone(freqs, dur = .14, type = "sine", gap = .09) {
   } catch (e) {}
 }
 
-/* ================= Character drawings (our own fan drawings, 100 x 100) ================= */
+/* ================= Character drawings (our own original characters, from modules/characters.js, 100 x 100) ================= */
 const S = `stroke="#3b2a33" stroke-width="3.5" stroke-linejoin="round"`;
-function face(id) {
-  const eyes = (y, rx = 4.2, ry = 6) => `<ellipse cx="38" cy="${y}" rx="${rx}" ry="${ry}" fill="#3b2a33"/><ellipse cx="62" cy="${y}" rx="${rx}" ry="${ry}" fill="#3b2a33"/><circle cx="39.4" cy="${y - 2}" r="1.5" fill="#fff"/><circle cx="63.4" cy="${y - 2}" r="1.5" fill="#fff"/>`;
-  const blush = y => `<ellipse cx="27" cy="${y}" rx="6.5" ry="3.8" fill="#ff8fb4" opacity=".55"/><ellipse cx="73" cy="${y}" rx="6.5" ry="3.8" fill="#ff8fb4" opacity=".55"/>`;
-  switch (id) {
-    case "kitty": return `<path d="M15 44 L20 10 L44 28 Z" fill="url(#fur)" ${S}/><path d="M85 44 L80 10 L56 28 Z" fill="url(#fur)" ${S}/>
-      <path d="M22 18 L25 36 L36 31 Z" fill="#ffc9d9"/>
-      <ellipse cx="50" cy="60" rx="43" ry="34" fill="url(#fur)" ${S}/>
-      <g transform="translate(73 22) rotate(16)"><path d="M0 0 C-17 -15 -21 9 0 3 Z" fill="#e8203f" ${S}/><path d="M0 0 C17 -15 21 9 0 3 Z" fill="#e8203f" ${S}/><circle cx="0" cy="1.5" r="5.5" fill="#e8203f" ${S}/></g>
-      ${eyes(60)}<ellipse cx="50" cy="69" rx="5.5" ry="4" fill="url(#nose)" stroke="#3b2a33" stroke-width="2"/>
-      <g stroke="#3b2a33" stroke-width="2.6" stroke-linecap="round"><line x1="3" y1="58" x2="19" y2="61"/><line x1="2" y1="68" x2="18" y2="68"/><line x1="97" y1="58" x2="81" y2="61"/><line x1="98" y1="68" x2="82" y2="68"/></g>`;
-    case "melody": return `<ellipse cx="33" cy="22" rx="10" ry="22" fill="url(#hoodPink)" ${S}/><ellipse cx="67" cy="22" rx="10" ry="22" fill="url(#hoodPink)" ${S}/>
-      <circle cx="50" cy="60" r="38" fill="url(#hoodPink)" ${S}/><ellipse cx="50" cy="65" rx="30" ry="25" fill="url(#fur)" stroke="#3b2a33" stroke-width="2.5"/>
-      <g transform="translate(74 10)">${[0, 72, 144, 216, 288].map(r => `<ellipse cx="0" cy="-5" rx="4" ry="6" fill="#fff" stroke="#ff4f95" stroke-width="1.5" transform="rotate(${r})"/>`).join("")}<circle r="3.2" fill="#ffd24a"/></g>
-      ${eyes(63, 3.6, 5)}<ellipse cx="50" cy="71" rx="3.5" ry="2.6" fill="url(#nose)"/>${blush(72)}`;
-    case "kuromi": return `<path d="M16 46 C6 26 6 10 12 4 C20 12 30 22 38 30 Z" fill="url(#hoodBlack)" ${S}/><path d="M84 46 C94 26 94 10 88 4 C80 12 70 22 62 30 Z" fill="url(#hoodBlack)" ${S}/>
-      <circle cx="12" cy="5" r="4" fill="#ff8fc2"/><circle cx="88" cy="5" r="4" fill="#ff8fc2"/>
-      <circle cx="50" cy="60" r="38" fill="url(#hoodBlack)" ${S}/><ellipse cx="50" cy="67" rx="28" ry="23" fill="url(#fur)" stroke="#3b2a33" stroke-width="2.5"/>
-      <g transform="translate(50 33)"><circle r="7" fill="#ff8fc2"/><circle cx="-2.5" cy="-1" r="1.6" fill="#3b2a33"/><circle cx="2.5" cy="-1" r="1.6" fill="#3b2a33"/><path d="M-3 4 h6" stroke="#3b2a33" stroke-width="1.4"/></g>
-      ${eyes(65, 3.8, 5.4)}<path d="M44 76 Q50 81 56 76" fill="none" stroke="#3b2a33" stroke-width="2.4" stroke-linecap="round"/>${blush(74)}`;
-    case "purin": return `<ellipse cx="13" cy="62" rx="9" ry="17" fill="#a8743a" ${S}/><ellipse cx="87" cy="62" rx="9" ry="17" fill="#a8743a" ${S}/>
-      <ellipse cx="50" cy="60" rx="40" ry="34" fill="url(#furGold)" ${S}/>
-      <ellipse cx="50" cy="27" rx="20" ry="7.5" fill="#8a5a2b" ${S}/><rect x="47" y="15" width="6" height="7" rx="3" fill="#8a5a2b" stroke="#3b2a33" stroke-width="2"/>
-      ${eyes(60, 3.6, 4.6)}<path d="M44 70 Q47 74 50 70 Q53 74 56 70" fill="none" stroke="#7a4a1a" stroke-width="2.4" stroke-linecap="round"/>${blush(70)}`;
-    default: return `<ellipse cx="18" cy="42" rx="22" ry="9" fill="url(#fur)" stroke="#7cc4ec" stroke-width="3" transform="rotate(-18 18 42)"/><ellipse cx="82" cy="42" rx="22" ry="9" fill="url(#fur)" stroke="#7cc4ec" stroke-width="3" transform="rotate(18 82 42)"/>
-      <ellipse cx="50" cy="58" rx="38" ry="32" fill="url(#fur)" stroke="#7cc4ec" stroke-width="3.5"/>
-      <path d="M46 28 q4 -9 9 -3 q3 5 -3 6" fill="none" stroke="#7cc4ec" stroke-width="3" stroke-linecap="round"/>
-      <ellipse cx="38" cy="59" rx="4.4" ry="5.6" fill="#2a5fc4"/><ellipse cx="62" cy="59" rx="4.4" ry="5.6" fill="#2a5fc4"/><circle cx="39.6" cy="57" r="1.6" fill="#fff"/><circle cx="63.6" cy="57" r="1.6" fill="#fff"/>
-      <path d="M45 68 Q50 72 55 68" fill="none" stroke="#3b2a33" stroke-width="2.2" stroke-linecap="round"/>${blush(68)}`;
-  }
-}
+function face(id) { return window.KittyChars.headInner(id); }
 const faceSVG = id => `<svg viewBox="0 0 100 100" aria-hidden="true">${face(id)}</svg>`;
 function setKitty(mood) { const k = $("kitty"); k.innerHTML = face("kitty"); k.classList.remove("happy", "think"); void k.getBoundingClientRect(); if (mood) k.classList.add(mood); }
 function blockArt(who) {
@@ -776,10 +755,10 @@ function nextQuestion() {
   renderAll();
   const lead = Q.review ? "Let's try this one again. " : "";
   const big = isSmall(Q) ? "" : " Big blocks first.";
-  say(`${lead}${Q.op === "+" ? (walking() ? `Tap Hello Kitty's blocks to walk her to ${Q.a}. Then tap ${CHARS[friend].name}'s blocks to hop her along.` : `Hello Kitty starts on ${Q.a}. Tap ${CHARS[friend].name}'s blocks to hop her along.${big}`) : `Tap ${Q.b} of Hello Kitty's blocks to take them away. She hops back.${big}`}`, "", false);
+  say(`${lead}${Q.op === "+" ? (walking() ? `Tap Mimi's blocks to walk her to ${Q.a}. Then tap ${CHARS[friend].name}'s blocks to hop her along.` : `Mimi starts on ${Q.a}. Tap ${CHARS[friend].name}'s blocks to hop her along.${big}`) : `Tap ${Q.b} of Mimi's blocks to take them away. She hops back.${big}`}`, "", false);
   speak(`${lead}${Q.a} ${opWord(Q.op)} ${Q.b}`);
   if (col) say(`${lead}Let's add in columns. Start with the ones: ${colAsk()}`, "", false);
-  else if (makeTen(Q)) say(`${lead}Make 10 first! Tap Hello Kitty's blocks to walk her to ${Q.a}. Then tap ${CHARS[friend].name}'s blocks to fill Hello Kitty's ten. Kitty stops on 10.`, "", false);
+  else if (makeTen(Q)) say(`${lead}Make 10 first! Tap Mimi's blocks to walk her to ${Q.a}. Then tap ${CHARS[friend].name}'s blocks to fill Mimi's ten. Mimi stops on 10.`, "", false);
   qStart = performance.now();
 }
 
@@ -788,11 +767,11 @@ function wiggle(id) { const el = document.querySelector(`[data-b="${id}"]`); if 
 // Why a hop of this size cannot happen now: a message, "" (ignore quietly) or null (go ahead).
 function hopBlocked(sz) {
   if (!active()) return "";
-  if (stopPending()) return "First type the number where Hello Kitty stopped. Use the number buttons.";
-  if (phase === "ask" && walking() && walk < Q.a) return `First tap Hello Kitty's blocks to walk her to ${Q.a}.`;   // Kitty walks from 0 to her number first
+  if (stopPending()) return "First type the number where Mimi stopped. Use the number buttons.";
+  if (phase === "ask" && walking() && walk < Q.a) return `First tap Mimi's blocks to walk her to ${Q.a}.`;   // Kitty walks from 0 to her number first
   const st = nextStep();
-  if (st === undefined) return Q.op === "+" ? `All of ${CHARS[friend].name}'s blocks are used. Where did Hello Kitty land? Type it.` : `You took away ${Q.b} already. Where did Hello Kitty land? Type it.`;
-  if (sz !== Math.abs(st)) return Q.op === "+" ? `First hop with ${CHARS[friend].name}'s ${blockNames(Math.abs(st))}.` : `First take away Hello Kitty's ${blockNames(Math.abs(st))}.`;
+  if (st === undefined) return Q.op === "+" ? `All of ${CHARS[friend].name}'s blocks are used. Where did Mimi land? Type it.` : `You took away ${Q.b} already. Where did Mimi land? Type it.`;
+  if (sz !== Math.abs(st)) return Q.op === "+" ? `First hop with ${CHARS[friend].name}'s ${blockNames(Math.abs(st))}.` : `First take away Mimi's ${blockNames(Math.abs(st))}.`;
   return null;
 }
 // The block a hop button uses: the next unmarked friend block (adding), or Kitty's last block of that size (taking away).
@@ -817,8 +796,8 @@ function doHop(size, b) {
   if (phase === "teach") { teachCheck(); return; }
   renderAll();
   if (stopTeach) { stopTeachTalk(true); return; }   // keeps the glowing block in view
-  if (stopPending()) say(makeTen(Q) ? "The ten is full! Type Kitty's number in the glowing box." : "Kitty stopped! Type her number in the glowing box.", "");
-  else if (planDone()) say(Q.op === "+" ? "All hops done! Where did Hello Kitty land? Count, then type it." : `You took away ${Q.b}. Where did Hello Kitty land? Count, then type it.`, "");
+  if (stopPending()) say(makeTen(Q) ? "The ten is full! Type Mimi's number in the glowing box." : "Mimi stopped! Type her number in the glowing box.", "");
+  else if (planDone()) say(Q.op === "+" ? "All hops done! Where did Mimi land? Count, then type it." : `You took away ${Q.b}. Where did Mimi land? Count, then type it.`, "");
   // Keep the block she tapped in view (after the bubble text changed, as that can resize the blocks panel).
   keepBlockInView(document.querySelector(`[data-b="${b.id}"]`));
 }
@@ -851,22 +830,22 @@ function tapBlock(id) {
     if (stopPending()) { say(hopBlocked(b.size), "warn"); wiggle(id); return; }
     const sz = Math.abs(nextStep());
     if (b.size > sz) return openBlock(k, b);
-    if (b.size < sz) { say(`First take away Hello Kitty's ${blockNames(sz)}.`, "warn"); wiggle(id); return; }
+    if (b.size < sz) { say(`First take away Mimi's ${blockNames(sz)}.`, "warn"); wiggle(id); return; }
     return doHop(-b.size, b);
   }
-  // Hello Kitty's own blocks (adding): on small sums each one walks Kitty one step from 0, so the line moves with every tap.
+  // Mimi's own blocks (adding): on small sums each one walks Kitty one step from 0, so the line moves with every tap.
   if (b.mark) { wiggle(id); return; }
   b.mark = true;
   if (walking() && b.who !== friend) {
     walk = Math.min(Q.a, walk + b.size); hopAnim = { from: walk - b.size };
     tone([560 + walk * 12, 680 + walk * 12], .07, "sine", .06);
     renderAll(); wiggle(id);
-    if (walk >= Q.a) say(`Hello Kitty is on her number. Now tap ${CHARS[friend].name}'s blocks to hop her along.`, "");
+    if (walk >= Q.a) say(`Mimi is on her number. Now tap ${CHARS[friend].name}'s blocks to hop her along.`, "");
     return;
   }
   tone([560 + Math.min(blocks.filter(x => x.mark).length, 40) * 6], .05);
   renderAll();
-  if (Q.op === "+" && !kittyTold) { kittyTold = true; say(`Hello Kitty is already on ${Q.a}. Count on with ${CHARS[friend].name}'s blocks.`, ""); }
+  if (Q.op === "+" && !kittyTold) { kittyTold = true; say(`Mimi is already on ${Q.a}. Count on with ${CHARS[friend].name}'s blocks.`, ""); }
   else wiggle(id);
 }
 function clearCount() { restartLine(); }
@@ -922,13 +901,13 @@ function tapNumber(n) {
 
 /* ----- the stop number on big sums (typed by her; mistakes here do not count) ----- */
 function checkStop() {
-  if (!stopTyped) { say("Type the number where Hello Kitty stopped.", "warn"); return; }
+  if (!stopTyped) { say("Type the number where Mimi stopped.", "warn"); return; }
   const n = line.hops.length, want = line.pos;
   if (parseInt(stopTyped, 10) === want) {
     line.known.push({ n, v: want }); stopTyped = ""; delete stopMisses[n]; stopTeach = null;
     tone([660, 880]);
     renderAll();
-    say(makeTen(Q) ? `Yes! ${Q.a} + ${10 - Q.a} = 10. Now add the rest: 10 + ${Q.b - (10 - Q.a)}. Hop on!` : `Yes! Hello Kitty is on ${want}. Now hop by ${sizeWord(Math.abs(nextStep()))}.`, "good");
+    say(makeTen(Q) ? `Yes! ${Q.a} + ${10 - Q.a} = 10. Now add the rest: 10 + ${Q.b - (10 - Q.a)}. Hop on!` : `Yes! Mimi is on ${want}. Now hop by ${sizeWord(Math.abs(nextStep()))}.`, "good");
     return;
   }
   const stopMiss = stopMisses[n] = (stopMisses[n] || 0) + 1; stopTyped = ""; tone([330], .2, "triangle");
@@ -937,7 +916,7 @@ function checkStop() {
   // She already counted this stretch with Kitty: the number is under Kitty now. Only a tip, no new lesson.
   if (stopTeach) { say(`Not quite. ${lastHopTip()} Type where she stopped.`, "warn"); return; }
   const m = lastStopBefore(n), from = posAt(m), sz = Math.abs(line.hops[n - 1]);
-  if (makeTen(Q) && stopMiss < TEACH_AFTER_MISTAKES) say("Not quite. Look at Hello Kitty's ten-frame. Is it full? Count all the places.", "warn");
+  if (makeTen(Q) && stopMiss < TEACH_AFTER_MISTAKES) say("Not quite. Look at Mimi's ten-frame. Is it full? Count all the places.", "warn");
   else if (stopMiss < TEACH_AFTER_MISTAKES) say(`Not quite. Count by ${sizeWord(sz)} from ${from}. Look at the hops.`, "warn");
   else startStopTeach(m, sz, from);
 }
@@ -966,7 +945,7 @@ function stopTeachAsk() {
 function stopTeachTalk(counted) {
   // At the stop the number Kitty is on is what Marie must type: Kitty never says it. She says where the last hop
   // started and how big it was, and Marie works out the stop herself.
-  if (stopPending()) { say(`Kitty stopped. ${lastHopTip()} Type her number in the glowing box.`, "teach"); return; }
+  if (stopPending()) { say(`Mimi stopped. ${lastHopTip()} Type her number in the glowing box.`, "teach"); return; }
   say(`${counted ? line.pos + "! " : ""}${stopTeachAsk()}`, "teach");
   showGlow();   // the bubble may have changed size
 }
@@ -979,7 +958,7 @@ function colAsk() {
 }
 function colHint() {
   const i = col.i, da = digits(Q.a)[i] || 0, db = digits(Q.b)[i] || 0;
-  return `Count the ${PLACE[i]} blocks: Hello Kitty has ${da}, ${CHARS[friend].name} has ${db}${col.carry[i] ? ", and 1 more you carried" : ""}. Start at ${da} and count on.`;
+  return `Count the ${PLACE[i]} blocks: Mimi has ${da}, ${CHARS[friend].name} has ${db}${col.carry[i] ? ", and 1 more you carried" : ""}. Start at ${da} and count on.`;
 }
 function colCheck() {
   if (!col.typed) { say("Type your number with the number buttons.", "warn"); return; }
@@ -1014,7 +993,7 @@ function colBundle(sz) {
   const ten = blocks.filter(x => x.size === sz && x.mark).slice(0, 10), at = blocks.indexOf(ten[0]);
   blocks = blocks.filter(x => !ten.includes(x));
   blocks.forEach(b => { delete b.mark; });
-  // The new bigger block joins Hello Kitty's bigger blocks.
+  // The new bigger block joins Mimi's bigger blocks.
   let k = blocks.findIndex(x => x.who === "kitty" && x.size === sz * 10);
   if (k < 0) k = Math.max(0, at);
   blocks.splice(k, 0, { id: ++seq, who: "kitty", size: sz * 10, fresh: true });
@@ -1087,7 +1066,7 @@ function hint() {
   const who = CHARS[friend].name;
   if (col) return colHint();
   if (makeTen(Q)) return `Make 10 first: ${Q.a} and how many make 10? Then add the rest of ${CHARS[friend].name}'s blocks.`;
-  if (isSmall(Q)) return Q.op === "+" ? `Start at ${Q.a}. Count on ${Q.b} hops: tap ${who}'s blocks and count the ticks.` : `Start at ${Q.a}. Take away ${Q.b}: tap ${Q.b} of Hello Kitty's blocks and count the ticks back.`;
+  if (isSmall(Q)) return Q.op === "+" ? `Start at ${Q.a}. Count on ${Q.b} hops: tap ${who}'s blocks and count the ticks.` : `Start at ${Q.a}. Take away ${Q.b}: tap ${Q.b} of Mimi's blocks and count the ticks back.`;
   const plan = jumpPlan(Q), parts = [], sign = plan[0] > 0 ? "+" : MINUS;
   for (const size of [100, 10, 1]) { const n = plan.filter(p => Math.abs(p) === size).length; if (n) parts.push(`${sign}${size} ${times(n)}`); }
   return `Start at ${Q.a}. Hop ${parts.join(", then ")}. Type each stop.`;
@@ -1170,7 +1149,7 @@ function correct() {
   timers.push(setTimeout(nextQuestion, big ? 3200 : notes.length ? 2600 : 1300));
 }
 function burst(n, art) {
-  if (reduceMotion()) return;
+  if (reduceMotion() || window.CALM) return;   // calm design: no flying stars
   for (let i = 0; i < n; i++) { const img = document.createElement("img"); img.src = ART(art || (i % 2 ? "star" : "heart")); img.style.left = rand(3, 92) + "vw"; img.style.animationDelay = (i * .06).toFixed(2) + "s"; $("fx").appendChild(img); setTimeout(() => img.remove(), 3000); }
 }
 
@@ -1239,7 +1218,7 @@ function blockBtn(b, glow) {
 // Blocks sit in groups she can count: ten-frames (two rows of 5) for ones, groups of 5 for towers and plates.
 function rowHTML(who, n, plus, glow) {
   let mine = blocks.filter(b => b.who === who);
-  // Make 10: the friend's first blocks move into Hello Kitty's ten-frame; its empty places show what is still needed.
+  // Make 10: the friend's first blocks move into Mimi's ten-frame; its empty places show what is still needed.
   if (makeTen(Q)) {
     const need = 10 - Q.a, moved = line.links.slice(0, need).map(id => blocks.find(x => x.id === id)).filter(Boolean);
     if (who === "kitty") mine = mine.concat(moved, Array.from({ length: need - moved.length }, () => ({ slot: true })));
@@ -1379,7 +1358,7 @@ function renderLine() {
   box.classList.toggle("focus", guiding());
   const sign = Q.op === "+" ? 1 : -1, taps = line.hops.length, waiting = stopPending();
   const landings = []; { let at = line.start; line.hops.forEach(h => { at += h; landings.push(at); }); }
-  const sentence = makeTen(Q) ? (line.known.length ? `${Q.a} + ${10 - Q.a} = 10. Then 10 + ${Q.b - (10 - Q.a)}.` : `Make 10 first: ${Q.a} + ? = 10`) : walking() && walk < Q.a ? `Walk Hello Kitty to ${Q.a}.` : `Hello Kitty starts on ${line.start}.${line.known.length ? ` <small class="stops">Stops: ${line.known.map(k => k.v).join(", ")}</small>` : ""}`;
+  const sentence = makeTen(Q) ? (line.known.length ? `${Q.a} + ${10 - Q.a} = 10. Then 10 + ${Q.b - (10 - Q.a)}.` : `Make 10 first: ${Q.a} + ? = 10`) : walking() && walk < Q.a ? `Walk Mimi to ${Q.a}.` : `Mimi starts on ${line.start}.${line.known.length ? ` <small class="stops">Stops: ${line.known.map(k => k.v).join(", ")}</small>` : ""}`;
   const pill = isSmall(Q) ? `<span class="taps" id="runTaps">${Q.b} ${Q.b === 1 ? "hop" : "hops"}${sign < 0 ? " back" : ""}</span>` : "";
   lineW = box.clientWidth;
   const W = Math.max(240, Math.round((lineW || 660) - 20)), narrow = W < 480;
@@ -1489,12 +1468,12 @@ function renderLine() {
     s += kittyAt(kx) + lastLab;
   }
   if (isSmall(Q)) s += kittyAt(kx) + hopLabs;
-  const where = waiting ? "Hello Kitty stopped. Type the number where she is." : planDone() && taps ? "Hello Kitty finished her hops." : taps ? "Hello Kitty is hopping." : "";
-  const svg = `<svg viewBox="0 0 ${W} ${H}" role="group" aria-label="Number line. Hello Kitty started on ${line.start}. ${where}">${s}</svg>`;
+  const where = waiting ? "Mimi stopped. Type the number where she is." : planDone() && taps ? "Mimi finished her hops." : taps ? "Mimi is hopping." : "";
+  const svg = `<svg viewBox="0 0 ${W} ${H}" role="group" aria-label="Number line. Mimi started on ${line.start}. ${where}">${s}</svg>`;
   const sizes = jumpSizes(Q), glowHop = teachTargets().hop;
   // While a stop number waits, the stop box takes the place of the hop buttons (hops are blocked until she types it).
   const btns = waiting
-    ? `<span class="stopwrap">Stopped on <span class="stopbox glow" id="stopBox" role="textbox" aria-label="Type where Hello Kitty stopped">${stopTyped || "?"}</span></span>`
+    ? `<span class="stopwrap">Stopped on <span class="stopbox glow" id="stopBox" role="textbox" aria-label="Type where Mimi stopped">${stopTyped || "?"}</span></span>`
     : sizes.map(sz => `<button class="jbtn${glowHop === sz ? " glow" : ""}" type="button" data-j="${sign * sz}">${isSmall(Q) ? (sign > 0 ? "Hop +1" : `Hop ${MINUS}1`) : (sign > 0 ? "+" : MINUS) + sz}</button>`).join("");
   const many = !waiting && sizes.length > 1;
   box.innerHTML = `<div class="run"><span class="sentence" id="runSentence" aria-live="polite">${sentence}</span>${pill}</div>${svg}
@@ -1605,6 +1584,7 @@ function startAs(p, thenView) {
     connectCloud();
   }
   $("whoPic").innerHTML = PROFILES[p].pic; $("whoName").textContent = PROFILES[p].name;
+  kittyVoice = pickVoice();
   $("tabHome").lastChild.textContent = p === "kennedy" ? "Castle" : "Home";
   if (window.KnightWorld && p !== "kennedy") KnightWorld.hideBar();
   if ($("tabMaths")) { $("tabMaths").hidden = p !== "demo"; $("tabMaths").parentElement.style.gridTemplateColumns = `repeat(${p === "demo" ? 5 : 4}, minmax(0, 1fr))`; }

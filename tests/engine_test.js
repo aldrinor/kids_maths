@@ -4,7 +4,7 @@ const path = require("path");
 const E = require(path.join(__dirname, "../src/modules/engine.js"));
 global.window = global;
 global.document = { createElement: () => ({ style: {} }), querySelector: () => null, getElementById: () => null, addEventListener: () => {}, head: { appendChild() {} } };
-for (const f of ["numbers", "groups", "money", "fractions", "time_measure", "shapes_data", "times"]) {
+for (const f of ["numbers", "groups", "money", "fractions", "time_measure", "shapes_data", "times", "kinder"]) {
   try { require(path.join(__dirname, "../src/topics/" + f + ".js")); } catch (e) { console.log("NOTE topic file did not load in Node:", f, e.message); }
 }
 const M = E.buildSkillMap(window.MathTopics || []);

@@ -940,7 +940,7 @@
     tap: function (c, id) {
       if (id !== 'kitty') return;
       var d = c.Q.data, path = perimeterPath(d.cells), total = path.length - 1, g = this.geom(c);
-      if (c.s.k >= total) { c.say('Hello Kitty is back where she started.'); return; }
+      if (c.s.k >= total) { c.say('Mimi is back where she started.'); return; }
       if (c.s.pos) return;
       var a = path[c.s.k], b = path[c.s.k + 1];
       c.s.k++; c.tone([520 + (c.s.k % 8) * 40], 0.08);
@@ -951,11 +951,11 @@
     button: function (c, id) { if (id === 'walk') this.tap(c, 'kitty'); if (id === 'again') { c.s.k = 0; c.s.pos = null; c.render(); c.changed(); } },
     next: function (c) {
       var total = perimeterPath(c.Q.data.cells).length - 1;
-      if (c.s.pos) return { kind: 'wait', sel: '[data-tap="kitty"]', say: 'Tap Hello Kitty. She walks along one side of a square. Count each step.' };
-      return c.s.k < total ? { kind: 'tap', sel: '[data-tap="kitty"]', say: c.s.k === 0 ? 'Tap Hello Kitty. She walks along one side of a square. Count each step.' : 'Tap her again. Keep counting the steps.' } : null;
+      if (c.s.pos) return { kind: 'wait', sel: '[data-tap="kitty"]', say: 'Tap Mimi. She walks along one side of a square. Count each step.' };
+      return c.s.k < total ? { kind: 'tap', sel: '[data-tap="kitty"]', say: c.s.k === 0 ? 'Tap Mimi. She walks along one side of a square. Count each step.' : 'Tap her again. Keep counting the steps.' } : null;
     },
-    hint: function () { return 'Tap Hello Kitty to walk her round the edge, one square side at a time. Count every step until she is back at the start.'; },
-    outro: function () { return 'Hello Kitty is back at the start. How many steps did she walk all the way around?'; }
+    hint: function () { return 'Tap Mimi to walk her round the edge, one square side at a time. Count every step until she is back at the start.'; },
+    outro: function () { return 'Mimi is back at the start. How many steps did she walk all the way around?'; }
   };
 
   /* ================================================================
@@ -990,8 +990,8 @@
      later (AGAIN_GAP ms), so a quick double tap does not clear. Tapping any bead or card puts it back to "Again". */
   var AGAIN_GAP = 700;
   /* "Sure?" waits only a few seconds. If she does nothing, the card goes back to "Again" and her marks stay.
-     The wait is longer than Kitty's sentence (about 7 seconds at the host's slow speech), so it never goes back
-     while Kitty is still saying "tap again". A tap on any bead, card or slice also puts it back, so Kitty says that. */
+     The wait is longer than Mimi's sentence (about 7 seconds at the host's slow speech), so it never goes back
+     while Mimi is still saying "tap again". A tap on any bead, card or slice also puts it back, so Mimi says that. */
   var AGAIN_HOLD = 9000;
   var AGAIN_THING = { day: 'bead', week: 'card', year: 'card', hour: 'slice', minute: 'slice' };
   function againSay(f) { return 'Do you want to clear all your marks? Tap again to clear them. To keep them, tap a ' + AGAIN_THING[f] + '.'; }
@@ -1083,7 +1083,7 @@
     hour: { title: '1 hour', art: 'clock', say: 'One hour is about twenty songs, one after another.' },
     day: { title: '1 day', art: 'bed', say: 'One day is a whole day of play and a whole night of sleep.' },
     /* week and month say how they feel, not "seven days" or "four weeks": in "Which is longer, a day or a week?"
-       that sentence would be the answer. She must think it out herself, in play and in Kitty's lesson. */
+       that sentence would be the answer. She must think it out herself, in play and in Mimi's lesson. */
     week: { title: '1 week', svg: 'week', say: 'One week is from one Sunday to the next Sunday.' },
     month: { title: '1 month', svg: 'month', say: 'One month is one whole page of the calendar.' },
     year: { title: '1 year', art: 'birthday', say: 'One year is from one birthday to the next birthday.' }
@@ -1152,7 +1152,7 @@
     tap: function (c, id) {
       var i = parseInt(id.slice(1), 10), n = this.items(c).length, at = c.s.at;
       if (c.s.hop || i === at) return;
-      if (i !== (at + 1) % n && i !== (at + n - 1) % n) { c.say('Hop one at a time. Tap the card next to Hello Kitty.'); c.tone([330], 0.15, 'triangle'); return; }
+      if (i !== (at + 1) % n && i !== (at + n - 1) % n) { c.say('Hop one at a time. Tap the card next to Mimi.'); c.tone([330], 0.15, 'triangle'); return; }
       var a = this.pos(c, at), b = this.pos(c, i), self = this;
       c.s.at = i; c.tone([600], 0.08);
       c.tween(0, 1, 280, function (t) { c.s.hop = { x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t - Math.sin(t * Math.PI) * 26 }; c.render(); }, function () { c.s.hop = null; c.render(); c.changed(); });
@@ -1164,17 +1164,17 @@
       if (c.s.hop) return { kind: 'wait', sel: '[data-tap="r' + c.s.at + '"]', say: '' };
       if (c.s.at === d.target) return null;
       var fwd = d.dir === 'after', nx = fwd ? (c.s.at + 1) % n : (c.s.at + n - 1) % n;
-      return { kind: 'tap', sel: '[data-tap="r' + nx + '"]', say: fwd ? 'Hello Kitty is on ' + this.items(c)[d.start] + '. Hop one ' + word + ' forward, the way the arrow goes.' : 'Hello Kitty is on ' + this.items(c)[d.start] + '. Hop one ' + word + ' back, against the arrow.' };
+      return { kind: 'tap', sel: '[data-tap="r' + nx + '"]', say: fwd ? 'Mimi is on ' + this.items(c)[d.start] + '. Hop one ' + word + ' forward, the way the arrow goes.' : 'Mimi is on ' + this.items(c)[d.start] + '. Hop one ' + word + ' back, against the arrow.' };
     },
-    hint: function (Q) { var w = Q.data.list === 'days' ? 'day' : 'month'; return Q.data.dir === 'after' ? 'Find Hello Kitty. Hop one ' + w + ' forward, the way the arrow goes. Where does she land?' : 'Find Hello Kitty. Hop one ' + w + ' back, against the arrow. Where does she land?'; },
-    outro: function (Q) { return 'Where is Hello Kitty now? Read the card.'; }
+    hint: function (Q) { var w = Q.data.list === 'days' ? 'day' : 'month'; return Q.data.dir === 'after' ? 'Find Mimi. Hop one ' + w + ' forward, the way the arrow goes. Where does she land?' : 'Find Mimi. Hop one ' + w + ' back, against the arrow. Where does she land?'; },
+    outro: function (Q) { return 'Where is Mimi now? Read the card.'; }
   };
 
   function monthInfo(y, m) { var first = new Date(y, m, 1).getDay(), days = new Date(y, m + 1, 0).getDate(); return { first: first, days: days, rows: Math.ceil((first + days) / 7) }; }
   /* The month calendar shows only the weeks she needs: from the week of today to the week of the target, plus
      one more week when that still makes no more than 3 rows (and never just 1 row: then the week before is shown too). That keeps each row tall. Seven days across a small
      phone are only about 41 px wide, so the day squares are pictures; the one live tap target is the NEXT day
-     after Hello Kitty, and its tap area is 72 units (44 px or more on a small phone) square, laid over its neighbours. A tap anywhere else on the calendar says "hop one day at a time". */
+     after Mimi, and its tap area is 72 units (44 px or more on a small phone) square, laid over its neighbours. A tap anywhere else on the calendar says "hop one day at a time". */
   var CAL = { x0: 4, cw: 56, top: 46, rh: 58, kx: 16, ky: 42, ks: 26, hit: 72 };
   BUILD.month = {
     rows: function (Q) { var d = Q.data, mi = monthInfo(d.y, d.mo), r0 = Math.floor((mi.first + d.today - 1) / 7), rt = Math.floor((mi.first + d.target - 1) / 7), r1 = rt + 1 <= mi.rows - 1 && rt + 1 - r0 < 3 ? rt + 1 : rt;
@@ -1195,12 +1195,12 @@
         var fill = isT ? C.pinkT : passed ? C.sunT : (wk === 0 || wk === 6 ? '#fff6f9' : '#fff');
         o += '<rect data-day="' + day + '" x="' + (p.x + 2) + '" y="' + (p.y + 2) + '" width="' + (CAL.cw - 4) + '" height="' + (CAL.rh - 4) + '" rx="9" fill="' + fill + '" stroke="' + C.ink + '" stroke-width="2.2"/>';
         o += txt(p.x + 18, p.y + 24, String(day), 18, C.ink, 'middle', 'data-tm="date"');
-        /* a day Hello Kitty has hopped to gets a heart: a mark, not a number */
+        /* a day Mimi has hopped to gets a heart: a mark, not a number */
         if (passed) o += mark(p.x + CAL.cw - 15, p.y + CAL.rh - 16, 9);
         if (day === d.target) o += d.type === 'party' ? artImg(c.api, 'gift', p.x + CAL.cw - 26, p.y + 5, 22) : starAt(p.x + CAL.cw - 15, p.y + 16, 10);
       }
       o += '</g>';
-      /* the live tap target: the next day after Hello Kitty, big enough for her finger */
+      /* the live tap target: the next day after Mimi, big enough for her finger */
       var nx = c.s.at + 1;
       if (this.shown(c, nx)) {
         var q = this.cell(c, nx), hx = clamp(q.x + CAL.cw / 2 - CAL.hit / 2, 0, 400 - CAL.hit), hy = clamp(q.y + CAL.rh / 2 - CAL.hit / 2, 0, H - CAL.hit);
@@ -1218,7 +1218,7 @@
         var a = this.cell(c, c.s.at), b = this.cell(c, day);
         c.s.at = day; c.tone([520 + (day - d.today) * 30], 0.08);
         c.tween(0, 1, 240, function (t) { c.s.hop = { x: a.x + (b.x - a.x) * t + CAL.kx, y: a.y + (b.y - a.y) * t + CAL.ky - Math.sin(t * Math.PI) * 20 }; c.render(); }, function () { c.s.hop = null; c.render(); c.changed(); });
-      } else { c.say('Hop one day at a time. Tap the next day after Hello Kitty.'); c.tone([330], 0.15, 'triangle'); }
+      } else { c.say('Hop one day at a time. Tap the next day after Mimi.'); c.tone([330], 0.15, 'triangle'); }
     },
     bar: function () { var moved = function (c) { return c.s.at > c.Q.data.today; }; return [{ id: 'back', label: 'Back', aria: 'Back one day', on: moved }, { id: 'again', label: 'Start again', on: moved }]; },
     button: function (c, id) { var d = c.Q.data; if (id === 'back' && c.s.at > d.today) c.s.at--; if (id === 'again') c.s.at = d.today; c.s.hop = null; c.render(); c.changed(); },
@@ -1226,12 +1226,12 @@
       var d = c.Q.data;
       /* the lesson glow goes round the day square she should tap (not the bigger tap area) */
       if (c.s.hop) return { kind: 'wait', sel: '[data-day="' + c.s.at + '"]', say: '' };
-      if (c.s.at < d.target) return { kind: 'tap', sel: '[data-day="' + (c.s.at + 1) + '"]', say: c.s.at === d.today ? 'Hello Kitty is on today. Tap the next day to hop. Count each hop.' : (this.cell(c, c.s.at + 1).y > this.cell(c, c.s.at).y ? 'The week ends here. Go to the start of the next row. Keep counting.' : 'Hop to the next day. Keep counting.') };
+      if (c.s.at < d.target) return { kind: 'tap', sel: '[data-day="' + (c.s.at + 1) + '"]', say: c.s.at === d.today ? 'Mimi is on today. Tap the next day to hop. Count each hop.' : (this.cell(c, c.s.at + 1).y > this.cell(c, c.s.at).y ? 'The week ends here. Go to the start of the next row. Keep counting.' : 'Hop to the next day. Keep counting.') };
       if (c.s.at > d.target) return { kind: 'tap', sel: '[data-b="back"]', say: 'Too far. Go back one day.' };
       return null;
     },
     hint: function (Q) { return 'Start on today. Hop one day at a time to the ' + (Q.data.type === 'party' ? 'present' : 'star') + '. Count each hop. Do not count today.'; },
-    outro: function (Q) { return 'Hello Kitty got there. Count the hearts. How many hops did she make?'; }
+    outro: function (Q) { return 'Mimi got there. Count the hearts. How many hops did she make?'; }
   };
   function starAt(cx, cy, r) { var p = []; for (var i = 0; i < 10; i++) { var rr = i % 2 ? r * 0.48 : r, a = (i * 36 - 90) * Math.PI / 180; p.push((cx + rr * Math.cos(a)).toFixed(1) + ',' + (cy + rr * Math.sin(a)).toFixed(1)); } return '<polygon points="' + p.join(' ') + '" fill="' + C.sun + '" stroke="' + C.ink + '" stroke-width="2.2" stroke-linejoin="round"/>'; }
 
@@ -1313,7 +1313,7 @@
     },
     init: function (c) { c.s = { hour: false, num: 0, min: false, spots: 0 }; },
     /* She chooses the hour number herself. In play, ANY number she taps lights up the same way, with the same
-       sound, so the light never tells her she is right. Only in Kitty's lesson does a wrong number get
+       sound, so the light never tells her she is right. Only in Mimi's lesson does a wrong number get
        "look at the short hand again" (and the ring of numbers stays open until she finds it). */
     wantNum: function (c) { return c.s.hour && (!c.s.num || (c.teaching && c.s.num !== this.hourNum(c))); },
     hourNum: function (c) { var d = c.Q.data; return d.level === 2 && d.m === 45 ? d.h % 12 + 1 : d.h; },
@@ -1554,7 +1554,7 @@
   var genArea = [
     function () { var sh = pick(SHAPES_G1), cells = parseShape(sh); return { key: 'tile:' + sh.join('/'), say: 'Cover the shape with squares. How many squares?', show: 'How many squares cover it?', answer: String(cells.length), input: { type: 'number', unit: '' }, data: { kind: 'tile', cells: cells, rows: sh } }; },
     function () { var sh = pick(SHAPES_G3), cells = parseShape(sh); return { key: 'count:' + sh.join('/'), say: 'How many squares make this shape?', show: 'How many square units?', answer: String(cells.length), input: { type: 'number', unit: '' }, data: { kind: 'count', cells: cells, rows: sh } }; },
-    function () { var sh = pick(perimShapes()), cells = parseShape(sh); return { key: 'perim:' + sh.join('/'), say: 'Walk Hello Kitty all the way round. How many steps?', show: 'Steps all the way around?', answer: String(perimeterPath(cells).length - 1), input: { type: 'number', unit: '' }, data: { kind: 'perim', cells: cells, rows: sh } }; }
+    function () { var sh = pick(perimShapes()), cells = parseShape(sh); return { key: 'perim:' + sh.join('/'), say: 'Walk Mimi all the way round. How many steps?', show: 'Steps all the way around?', answer: String(perimeterPath(cells).length - 1), input: { type: 'number', unit: '' }, data: { kind: 'perim', cells: cells, rows: sh } }; }
   ];
 
   var UNIT_ORDER = ['second', 'minute', 'hour', 'day', 'week', 'month', 'year'];

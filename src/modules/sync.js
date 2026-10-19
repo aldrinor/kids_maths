@@ -59,6 +59,7 @@
       push(); return true;
     },
     disconnect() { cfg = null; try { localStorage.removeItem(CFG); } catch (e) {} },
+    _testConnect(c) { cfg = c; try { localStorage.setItem(CFG, JSON.stringify(cfg)); } catch (e) {} },   // tests only: a local pretend server
     soon() { if (!cfg) return; clearTimeout(timer); timer = setTimeout(push, 15000); },
     now() { clearTimeout(timer); return push(); },
     async restore(child) {
@@ -71,6 +72,11 @@
       return `Connected. Both parents get an email at about 9 pm on days a child plays.${lastOk ? ` Last saved to Google at ${lastOk}.` : ""}${lastErr ? ` The last save did not work: ${lastErr}. It will try again.` : ""}`;
     }
   };
+  // A one-time setup link (https://.../kids_maths/#setup=KM1:...) connects this device, then the code is wiped from the address bar.
+  try {
+    const h = decodeURIComponent(location.hash || "");
+    if (h.startsWith("#setup=")) { const okCode = KidsSync.setCode(h.slice(7)); history.replaceState(null, "", location.pathname + location.search); KidsSync.justConnected = okCode ? "yes" : "bad"; }
+  } catch (e) {}
   document.addEventListener("visibilitychange", () => { if (document.visibilityState === "hidden" && cfg) push(); });
   window.KidsSync = KidsSync;
 })();
