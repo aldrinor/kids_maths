@@ -40,24 +40,14 @@
   const TOPIC_NEEDS = {
     place_value: ["count_quick.2"], compare_numbers: ["count_quick.1"], skip_count: ["count_quick.1"], odd_even: ["skip_count.0"],
     estimate: ["compare_numbers.1"], equal_groups: ["skip_count.1", "sums.3"], arrays: ["equal_groups.0"],
-    share_equally: ["equal_groups.0"], balance: ["sums.1"], fact_family: ["sums.4"]
+    share_equally: ["equal_groups.0"], balance: ["sums.1"], fact_family: ["sums.4"],
+    times_facts: ["arrays.1", "skip_count.1", "fact_family.1"], times_chant: ["skip_count.1"]
   };
   const STRAND_GROUP = { Number: "count", Operations: "times", Money: "money_time", Fractions: "fractions" };
   const TOPIC_GROUP = { clock: "money_time", calendar: "money_time", time_units: "money_time", balance: "add", fact_family: "add" };
   // Grade 4 skills whose games come in a later phase (design 3.1). Order of tables: 2, 10, 5, 4, 3, 9, 6, 8, 7.
-  const LATER = [
-    ["x.2_10_5", "Times facts for 2, 10 and 5", 4, "times", ["arrays.1", "skip_count.1"]],
-    ["x.4_3", "Times facts for 4 and 3", 4, "times", ["x.2_10_5"]],
-    ["x.9", "Times facts for 9", 4, "times", ["x.4_3"]],
-    ["x.6_8_7", "Times facts for 6, 8 and 7", 4, "times", ["x.9"]],
-    ["div.facts", "Division facts", 4, "times", ["x.2_10_5", "share_equally.1"]],
-    ["x.chant", "Times-table chant", 4, "times", ["x.2_10_5"]],
-    ["x.2d1d", "2-digit times 1-digit", 4, "times", ["x.4_3", "sums.7"]],
-    ["x.3d1d", "3-digit times 1-digit", 4, "times", ["x.2d1d", "sums.9"]],
-    ["div.2d1d", "2-digit divided by 1-digit", 4, "times", ["div.facts"]],
-    ["div.remainder", "Division with a remainder", 4, "times", ["div.2d1d"]],
-    ["x.missing", "Missing number: 6 times what is 42", 4, "times", ["div.facts"]]
-  ];
+  // Skills whose games are not built yet go here as [id, name, grade, group, needs]; the engine skips them.
+  const LATER = [];
 
   function buildSkillMap(topics, extra) {
     const map = {}, order = [];

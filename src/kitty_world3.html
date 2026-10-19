@@ -373,6 +373,7 @@ input[type="checkbox"] { width: 24px; height: 24px; accent-color: var(--pink-dee
   </header>
   <nav class="tabs" role="tablist">
     <button class="tab" role="tab" id="tabSums" aria-selected="true" aria-controls="viewSums" type="button"><img src="art/sparkles.png" alt="">Maths</button>
+    <button class="tab" role="tab" id="tabThink" aria-selected="false" aria-controls="viewThink" type="button"><img src="art/palette.png" alt="">Think</button>
     <button class="tab" role="tab" id="tabHome" aria-selected="false" aria-controls="viewHome" type="button"><img src="art/dollhouse.png" alt="">Home</button>
     <button class="tab" role="tab" id="tabGrown" aria-selected="false" aria-controls="viewGrown" type="button"><img src="art/crown.png" alt="">Parent</button>
   </nav>
@@ -397,6 +398,8 @@ input[type="checkbox"] { width: 24px; height: 24px; accent-color: var(--pink-dee
     <div class="cover" id="cover" hidden></div>
     <div id="cook" class="cook-layer" hidden></div>
   </section>
+
+  <section class="view scroll" id="viewThink" role="tabpanel" aria-labelledby="tabThink" hidden></section>
 
   <section class="view" id="viewHome" role="tabpanel" aria-labelledby="tabHome" hidden></section>
 
@@ -1179,9 +1182,13 @@ function flyTo(fromEl, toEl, src) {
 
 /* ================= Rendering: sums ================= */
 function renderTop() {
-  $("score").querySelector("span").textContent = P.stars;
-  $("score").setAttribute("aria-label", `${P.stars} stars`);
+  // Kennedy saves coins for his castle; Marie and Demo save stars.
+  const knight = typeof who !== "undefined" && who === "kennedy", money = knight ? (P.coins || 0) : P.stars;
+  $("score").querySelector("img").src = ART(knight ? "coin" : "star");
+  $("score").querySelector("span").textContent = money;
+  $("score").setAttribute("aria-label", `${money} ${knight ? "coins" : "stars"}`);
   const done = Math.min(P.round.length, COOK_EVERY);
+  $("dots").hidden = knight;
   $("dots").innerHTML = Array.from({ length: COOK_EVERY }, (_, i) => `<img src="${ART("cupcake")}" alt="" class="${i < done ? "on" : ""}">`).join("");
   $("dots").setAttribute("aria-label", `${done} of ${COOK_EVERY} sums until the cooking break`);
 }
@@ -1499,7 +1506,11 @@ function renderGrown() { ParentArea.render($("grown")); }
 function showView(v) {
   view = v;
   for (const [n, t, p] of [["sums", "tabSums", "viewSums"], ["home", "tabHome", "viewHome"], ["grown", "tabGrown", "viewGrown"]]) { $(t).setAttribute("aria-selected", String(n === v)); $(p).hidden = n !== v; }
-  if (v === "home") HomeGame.mount($("viewHome"), { artBase: "art2/" }); else if (window.HomeGame) HomeGame.unmount();
+  // Home is Marie's house; for Kennedy the same tab is his castle.
+  if (window.KnightWorld) KnightWorld.unmount();
+  if (window.ThinkTab) { if (v === "think") ThinkTab.mount($("viewThink")); else ThinkTab.unmount(); }
+  if (v === "home" && who === "kennedy") { if (window.HomeGame) HomeGame.unmount(); KnightWorld.mount($("viewHome")); }
+  else if (v === "home") HomeGame.mount($("viewHome"), { artBase: "art2/" }); else if (window.HomeGame) HomeGame.unmount();
   if (v === "grown") renderGrown();
 }
 
@@ -1515,6 +1526,7 @@ $("line").addEventListener("click", e => {
 $("pad").addEventListener("click", e => { const k = e.target.closest("[data-k]"); if (k) press(k.dataset.k); });
 $("speakBtn").onclick = () => speak($("bubble").textContent);
 $("tabSums").onclick = () => showView("sums");
+$("tabThink").onclick = () => showView("think");
 $("tabHome").onclick = () => showView("home");
 $("tabGrown").onclick = () => parentGate(() => showView("grown"));
 document.addEventListener("keydown", e => {
@@ -1560,7 +1572,9 @@ function startAs(p, thenView) {
     connectCloud();
   }
   $("whoPic").innerHTML = PROFILES[p].pic; $("whoName").textContent = PROFILES[p].name;
-  if ($("tabMaths")) { $("tabMaths").hidden = p !== "demo"; $("tabMaths").parentElement.style.gridTemplateColumns = `repeat(${p === "demo" ? 4 : 3}, minmax(0, 1fr))`; }
+  $("tabHome").lastChild.textContent = p === "kennedy" ? "Castle" : "Home";
+  if (window.KnightWorld && p !== "kennedy") KnightWorld.hideBar();
+  if ($("tabMaths")) { $("tabMaths").hidden = p !== "demo"; $("tabMaths").parentElement.style.gridTemplateColumns = `repeat(${p === "demo" ? 5 : 4}, minmax(0, 1fr))`; }
   $("profiles").hidden = true; $("profiles").innerHTML = "";
   showStart();
   showView(thenView || "sums");

@@ -4,7 +4,7 @@ const path = require("path");
 const E = require(path.join(__dirname, "../src/modules/engine.js"));
 global.window = global;
 global.document = { createElement: () => ({ style: {} }), querySelector: () => null, getElementById: () => null, addEventListener: () => {}, head: { appendChild() {} } };
-for (const f of ["numbers", "groups", "money", "fractions", "time_measure", "shapes_data"]) {
+for (const f of ["numbers", "groups", "money", "fractions", "time_measure", "shapes_data", "times"]) {
   try { require(path.join(__dirname, "../src/topics/" + f + ".js")); } catch (e) { console.log("NOTE topic file did not load in Node:", f, e.message); }
 }
 const M = E.buildSkillMap(window.MathTopics || []);
@@ -40,7 +40,7 @@ function runDays(c, days, setsPerDay, start = Date.UTC(2026, 9, 20, 16)) {
 
 // 1. The map
 const ready = M.order.filter(id => M.map[id].ready);
-ok("map has sums, games and later skills", M.map["sums.1"] && ready.length > 60 && M.order.some(id => !M.map[id].ready), { ready: ready.length, all: M.order.length });
+ok("map has sums, games and times skills", M.map["sums.1"] && ready.length > 60 && M.map["times_facts.9"] && M.map["times_chant.0"], { ready: ready.length, all: M.order.length });
 ok("every need points to a real skill", M.order.every(id => M.map[id].needs.every(n => M.map[n])));
 const cyc = (() => { const seen = {}, on = {}; const dfs = id => { if (on[id]) return true; if (seen[id]) return false; seen[id] = on[id] = true; const r = M.map[id].needs.some(dfs); on[id] = false; return r; }; return M.order.some(dfs); })();
 ok("no circular needs", !cyc);

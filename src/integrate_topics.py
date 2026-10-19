@@ -4,7 +4,7 @@ from pathlib import Path
 
 HERE = Path(__file__).parent
 s = (HERE / "kitty_world3.html").read_text(encoding="utf-8")
-TOPIC_FILES = ["numbers", "groups", "money", "fractions", "time_measure", "shapes_data"]
+TOPIC_FILES = ["numbers", "groups", "money", "fractions", "time_measure", "shapes_data", "times"]
 
 
 def rep(old, new, count=1):
@@ -31,7 +31,7 @@ rep('.tab { font-size: 16px; gap: 4px; } .tab img { width: 24px; height: 24px; }
 # 2. Load the topic modules and the host after the cooking module.
 rep('<script src="modules/cook.js"></script>\n',
     '<script src="modules/cook.js"></script>\n' + "".join(f'<script src="topics/{t}.js"></script>\n' for t in TOPIC_FILES) +
-    '<script src="modules/topic_host.js"></script>\n<script src="modules/engine.js"></script>\n<script src="modules/mission.js"></script>\n<script src="modules/parent.js"></script>\n<script src="modules/sync.js"></script>\n')
+    '<script src="modules/topic_host.js"></script>\n<script src="modules/engine.js"></script>\n<script src="modules/mission.js"></script>\n<script src="modules/parent.js"></script>\n<script src="modules/sync.js"></script>\n<script src="modules/knight.js"></script>\n<script src="modules/brain_games.js"></script>\n<script src="modules/chess_coach.js"></script>\n<script src="modules/think.js"></script>\n')
 
 # 3. Saved progress: per-topic levels and counts. Cloud copy wins when it holds more answered questions in all.
 rep('home: [{ uid: 1, id: "kitty", x: 40, y: 90 }, { uid: 2, id: "plant", x: 84, y: 72 }], homeSeq: 2 };',
@@ -57,7 +57,7 @@ function showView(v) {
   if (view === "sums" && v !== "sums" && phase === "done") { clearTimers(); resumeSums = true; }
   if (v !== view) { try { speechSynthesis.cancel(); } catch (e) {} }
   view = v;
-  for (const [n, t, p] of [["sums", "tabSums", "viewSums"], ["maths", "tabMaths", "viewMaths"], ["home", "tabHome", "viewHome"], ["grown", "tabGrown", "viewGrown"]]) { $(t).setAttribute("aria-selected", String(n === v)); $(p).hidden = n !== v; }
+  for (const [n, t, p] of [["sums", "tabSums", "viewSums"], ["maths", "tabMaths", "viewMaths"], ["think", "tabThink", "viewThink"], ["home", "tabHome", "viewHome"], ["grown", "tabGrown", "viewGrown"]]) { $(t).setAttribute("aria-selected", String(n === v)); $(p).hidden = n !== v; }
   if (v === "maths") TopicHost.mount($("viewMaths"));
   if (v === "sums" && resumeSums) { resumeSums = false; nextQuestion(); }''')
 rep('$("tabHome").onclick = () => showView("home");', '$("tabMaths").onclick = () => showView("maths");\n$("tabHome").onclick = () => showView("home");')
