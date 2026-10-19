@@ -9,7 +9,7 @@ for (const f of ["numbers", "groups", "money", "fractions", "time_measure", "sha
 }
 const M = E.buildSkillMap(window.MathTopics || []);
 const DAY = E.DAY;
-let pass = 0, fail = 0;
+let pass = 0, fail = 0, ok_k;
 const ok = (name, cond, extra) => { cond ? pass++ : fail++; console.log((cond ? "PASS " : "FAIL ") + name + (!cond && extra !== undefined ? " | " + JSON.stringify(extra) : "")); };
 function seeded(seed) { let s = seed >>> 0; return () => ((s = (s * 1664525 + 1013904223) >>> 0) / 4294967296); }
 
@@ -138,6 +138,24 @@ ok("no circular needs", !cyc);
     if (["new", "learn", "weak", "focus"].includes(s.kind) && s.items.some(x => x !== s.target) && (c.st.dayCounts[s.target] || 0) < 7) mixed++;
     s.items.forEach(id => E.record(c.st, M, { skill: id, correct: c.answer(id) }, Date.UTC(2026, 9, 20) + d * DAY + k * 1e5 + 1)); }
   ok("a learning set stays on one game (no jumping)", mixed === 0, mixed);
+}
+// 11. Times-fact speed: quick answers on 2 days make a fact "quick"; slow ones keep practising; never for Kennedy
+{ const mk = prof => { const st = E.createState(prof); st.place.done = true;
+    M.order.forEach(id => { if (M.map[id].grade < 4 || /^times_facts\.[0-4]$/.test(id)) { const s = st.skills[id] = { lvl: 4, streak: 0, n: 5, right: 5, recent: [1,1,1,1,1], due: Date.UTC(2027, 0, 1), gap: 3, stuckN: 0, stuckRight: 0, repairs: 0, parkedUntil: 0, first2: [1,1] }; } });
+    st.sets = ["learn:add:c", "learn:add:c", "learn:add:c"]; return st; };
+  const fast = mk("marie"), slow = mk("marie"), ken = mk("kennedy"); let speedSets = 0, total = 0;
+  for (let d = 0; d < 3; d++) for (let k = 0; k < 6; k++) {
+    const now = Date.UTC(2026, 9, 20) + d * DAY + k * 6e5;
+    for (const [st, ms] of [[fast, 2500], [slow, 15000]]) {
+      const set = E.nextSet(st, M, now, Math.random); if (st === fast) { total++; if (set.kind === "speed") speedSets++; }
+      set.items.forEach(id => E.record(st, M, { skill: id, correct: true, ms, digits: 2 }, now + 1)); }
+    const kset = E.nextSet(ken, M, now, Math.random); ok_k = (typeof ok_k === "undefined" ? true : ok_k) && kset.kind !== "speed";
+    kset.items.forEach(id => E.record(ken, M, { skill: id, correct: true, ms: 2000, digits: 1 }, now + 1));
+  }
+  ok("fast answers on 2 days make the first facts 'quick at it'", fast.skills["times_facts.0"].lvl === 5, fast.skills["times_facts.0"]);
+  ok("slow answers keep the fact at 'known for sure' (more practice)", slow.skills["times_facts.0"].lvl === 4, slow.skills["times_facts.0"].lvl);
+  ok("speed practice takes at most 2 sets in 10", speedSets <= Math.ceil(total * 0.2) + 1 && speedSets >= 1, [speedSets, total]);
+  ok("Kennedy never gets speed sets", ok_k);
 }
 console.log(`RESULT ${pass}/${pass + fail} passed`);
 process.exit(fail ? 1 : 0);

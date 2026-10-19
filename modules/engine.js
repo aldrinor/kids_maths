@@ -23,6 +23,13 @@
     { id: "shapes", name: "Shapes, measuring, graphs and patterns", max: 3 }
   ];
   const PLACE_MAX = 35;
+  // Times-fact speed (design 3.8): facts only, never for Kennedy unless a parent turns it on. Timing is silent.
+  // The timer starts at the first key press. Goal: 8 s at first, then 5, then 3 (the parent can change it);
+  // each extra digit in the answer adds 1 s. "Quick at it": 8 of the last 10 within the goal, on 2 different days.
+  const FACT = /^times_facts\.[0-4]$/;
+  const isFact = id => FACT.test(id);
+  const factGoal = (st, digits) => (st.factGoalMs || 8000) + Math.max(0, (digits || 1) - 1) * 1000;
+  const speedOn = st => st.profile !== "kennedy" || !!st.kennedySpeed;
   // The main road: adding and taking away first (Kennedy: first numbers, then adding). Other topics come in
   // as 1 set in 4, and only once the first steps of the main road are solid (Aldrin, 19 Oct 2026).
   const PLACE_ORDER = { kennedy: ["count", "add", "shapes"], other: ["add", "count", "times", "fractions", "money_time", "shapes"] };
@@ -162,6 +169,12 @@
     const left = id => rules(st).dailyCap - (st.dayCounts[id] || 0);
     const make = (kind, target, n) => { n = Math.max(1, Math.min(n, left(target))); const items = Array(n).fill(target).concat(filler([target], 5 - n)); while (items.length < 5 && items.filter(x => x === target).length < left(target)) items.push(target); return finish(st, kind, target, shuffleKeepFirst(items, rng)); };
 
+    // Speed practice: at most 2 sets in 10, on facts known for sure but not quick yet.
+    const speedLately = recent.filter(k => k === "speed").length;
+    if (speedOn(st) && speedLately < 2 && recent.length >= 3) {
+      const slow = M.order.filter(id => isFact(id) && usable(id) && st.skills[id] && st.skills[id].lvl === LV.SURE);
+      if (slow.length && recent.slice(-3).every(k => k !== "speed")) return make("speed", slow[0], 5);
+    }
     // 2. Re-checks and reviews: never more than 4 sets in 10, oldest first.
     const due = M.order.filter(id => usable(id) && strong(st, id) && st.skills[id].due && st.skills[id].due <= now).sort((a, b) => st.skills[a].due - st.skills[b].due);
     if (due.length && reviewsLately < rules(st).reviewMax) {
@@ -245,6 +258,13 @@
       if (fast || s.streak >= R.streakNeed) { s.lvl = LV.KNOWS; s.learntAt = now; s.streak = 0; s.gap = 0; s.due = now + (fast ? 3 : 1) * DAY; s.stuckN = 0; s.stuckRight = 0; s.repairs = 0; }
       return s;
     }
+    // Speed practice on facts known for sure.
+    if (isFact(r.skill) && s.lvl >= LV.SURE && r.ms && speedOn(st)) {
+      s.fast = (s.fast || []).concat({ ok: clean && r.ms <= factGoal(st, r.digits) ? 1 : 0, d: dayKey(now) }).slice(-10);
+      const okN = s.fast.filter(x => x.ok).length, days = new Set(s.fast.filter(x => x.ok).map(x => x.d)).size;
+      if (s.lvl === LV.SURE && s.fast.length >= 10 && okN >= 8 && days >= 2) { s.lvl = LV.QUICK; s.quickAt = now; }
+      if (s.lvl === LV.QUICK && s.fast.length >= 10 && okN < 6) s.lvl = LV.SURE;   // got slow again: back to practice
+    }
     // Known skill: only answers given when it is due count as a review or a re-check.
     if (!(s.due && s.due <= now)) return s;
     if (s.quick) {                                      // placement guess: 2 right keeps it, a miss means a full re-check
@@ -279,7 +299,7 @@
     return { rows, parked, known, total: M.order.filter(id => M.map[id].ready).length, coming, placementDone: st.place.done };
   }
 
-  const api = { LV, GROUPS, GAPS, DAY, buildSkillMap, createState, placementNext, placementRecord, finishPlacement, nextSet, record, report, dayKey };
+  const api = { LV, GROUPS, GAPS, DAY, isFact, factGoal, buildSkillMap, createState, placementNext, placementRecord, finishPlacement, nextSet, record, report, dayKey };
   // nextSet labels sets by group; give it the map so finish() can read groups.
   const wrap = fn => (st, M, ...a) => { Object.defineProperty(st, "_M", { value: M, enumerable: false, configurable: true, writable: true }); return fn(st, M, ...a); };
   api.nextSet = wrap(nextSet);

@@ -60,6 +60,9 @@ body.who-kennedy .tp-kitty, body.who-kennedy .say .kitty { visibility: hidden; }
 .dots[hidden] { display: flex !important; visibility: hidden; }
 body.who-kennedy .tp-score { visibility: hidden; }
 .tp-choice { font-size: 26px !important; min-height: 72px !important; }
+.mw-tabs button, .mw-acts button, .mw-shop button, .kn-item, .bg-btn { border: 1px solid var(--line) !important; box-shadow: 0 2px 0 var(--line) !important; background: var(--surface) !important; }
+.mw-tabs button[aria-pressed="true"] { background: var(--accent) !important; color: #fff !important; border-color: var(--accent) !important; }
+.set input, .set select, textarea { border: 1px solid var(--line); border-radius: 10px; padding: 8px 10px; font: inherit; background: var(--surface); }
 `;
   const st = document.createElement("style"); st.id = "theme-css"; st.textContent = CSS; document.head.appendChild(st);
 

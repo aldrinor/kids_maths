@@ -46,7 +46,7 @@
       <section><h3>Needs your attention</h3>${att.length ? `<ul>${att.map(a => `<li>${esc(a)}</li>`).join("")}</ul>` : "<p>Nothing needs attention.</p>"}</section>
       <section><h3>Today</h3><p>${pl(t.n, "answer")}, ${t.clean} right first time (${pct(t.clean, t.n)} percent). ${mins(t.ms)} of ${P.limitMin || 25} minutes used. ${pl(t.sets, "set")} of 5 done. ${reward}</p>${todaySkills ? `<ul>${todaySkills}</ul>` : ""}</section>
       <section><h3>Last 14 days</h3>${week.length ? `<ul>${week.join("")}</ul>` : "<p>No play yet.</p>"}</section>
-      <section><h3>Progress</h3><p>${rep.known} of ${rep.total} skills learnt. ${sure.length} known for sure (checked again on a later day). ${knows.length} known, waiting for their check. ${practising.length} being practised.</p>
+      <section><h3>Progress</h3><p>${rep.known} of ${rep.total} skills learnt. ${sure.length} known for sure (checked again on a later day). ${knows.length} known, waiting for their check. ${practising.length} being practised. ${ready.filter(id => lv(id) === 5).length} times-fact groups are quick (answered within the time on 2 days).</p>
         <h3>Coming next</h3>${next.length ? `<ul>${next.map(id => `<li>${esc(M.map[id].name)}, grade ${M.map[id].grade}</li>`).join("")}</ul>` : "<p>Nothing open right now.</p>"}
         <details><summary>Known for sure (${sure.length})</summary>${listBy(sure)}</details>
         <details><summary>Known, waiting for a check (${knows.length})</summary>${listBy(knows)}</details>
@@ -54,6 +54,8 @@
         <details><summary>Games still being built (${rep.coming.length})</summary><ul>${rep.coming.map(n => `<li>${esc(n)}</li>`).join("")}</ul></details></section>
       <section><h3>Controls</h3>
         <div class="set"><input id="pPause" type="checkbox"${st.paused ? " checked" : ""}><label for="pPause">Pause maths for ${esc(name)}</label></div>
+        <div class="set"><label for="pSpeed">Times facts: answer within</label><select id="pSpeed">${[8, 5, 3].map(sec => `<option value="${sec}"${(st.factGoalMs || 8000) === sec * 1000 ? " selected" : ""}>${sec} seconds</option>`).join("")}</select></div>
+        ${who === "kennedy" ? `<div class="set"><input id="pKSpeed" type="checkbox"${st.kennedySpeed ? " checked" : ""}><label for="pKSpeed">Speed practice for Kennedy (off until he is ready)</label></div>` : ""}
         <div class="set"><label for="pLimit">Minutes of maths a day</label><input id="pLimit" type="number" min="5" max="90" value="${P.limitMin || 25}"></div>
         <div class="set"><label for="pFocus">Focus on a skill</label><select id="pFocus"><option value="">Choose a skill</option>${focusOpts}</select><button class="mini" id="pFocusAdd" type="button">Add focus</button></div>
         ${st.focus.length ? `<ul>${st.focus.map((id, i) => `<li>Focus: ${esc(M.map[id] ? M.map[id].name : id)} <button class="mini" type="button" data-unfocus="${i}">Remove</button></li>`).join("")}</ul>` : "<p>No focus skills. The game chooses by itself.</p>"}
@@ -79,6 +81,8 @@
     const $e = s => el.querySelector(s), redo = () => render(el);
     el.querySelectorAll("[data-child]").forEach(b => b.onclick = () => startAs(b.dataset.child, "grown"));
     $e("#pPause").onchange = e => { st.paused = e.target.checked; save(); redo(); };
+    $e("#pSpeed").onchange = e => { st.factGoalMs = +e.target.value * 1000; save(); redo(); };
+    if ($e("#pKSpeed")) $e("#pKSpeed").onchange = e => { st.kennedySpeed = e.target.checked; save(); redo(); };
     $e("#pLimit").onchange = e => { const v = Math.max(5, Math.min(90, parseInt(e.target.value, 10) || 25)); P.limitMin = v; save(); redo(); };
     $e("#pFocusAdd").onclick = () => { const v = $e("#pFocus").value; if (v && !st.focus.includes(v)) { st.focus.push(v); save(); } redo(); };
     el.querySelectorAll("[data-unfocus]").forEach(b => b.onclick = () => { st.focus.splice(+b.dataset.unfocus, 1); save(); redo(); });

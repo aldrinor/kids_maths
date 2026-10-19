@@ -116,7 +116,7 @@
       const clean = !!(r.correct && !r.helped && !r.rush);
       if (set.kind === "place") KidsEngine.placementRecord(st, map(), id, clean);
       else if (set.kind === "parent") { P.parentLog = (P.parentLog || []).concat({ q: id.q, a: id.a, firstTry: !!r.firstTry, day: today() }).slice(-100); }
-      else KidsEngine.record(st, map(), { skill: id, correct: r.correct, helped: r.helped, taught: r.taught, rush: r.rush }, now());
+      else KidsEngine.record(st, map(), { skill: id, correct: r.correct, helped: r.helped, taught: r.taught, rush: r.rush, ms: r.ms, digits: r.digits }, now());
       d.n++; if (clean) d.clean++;
       if (typeof id === "string") { const k = d.skills[id] || (d.skills[id] = [0, 0]); k[0]++; if (clean) k[1]++; }
       P.round.push(clean ? 1 : 0); inSet++; i++;

@@ -134,7 +134,7 @@
   let lastMissAt = 0;
   let topic = null, level = 0, Q = null, prevQ = null, inst = null, tries = 0, afterTries = 0, phase = "idle", typed = "", lastSaid = "";
   let timers = [], hlEl = null, token = 0;
-  let fixed = null, askedAt = 0, rushed = false;   // fixed: the engine chose this level; hooks report each answer back
+  let fixed = null, askedAt = 0, rushed = false, firstKeyAt = 0;   // firstKeyAt: silent speed timer for times facts   // fixed: the engine chose this level; hooks report each answer back
 
   const $q = s => layer.querySelector(s);
   const P = () => window.P;
@@ -240,7 +240,7 @@
   function next() {
     token++; clearTimers(); destroyInst(); api.highlight(null); ctx.clearFx();
     if (!fixed && P().round.length >= ctx.COOK_EVERY) return startCook();
-    tries = 0; afterTries = 0; typed = ""; phase = "ask"; rushed = false; askedAt = performance.now();
+    tries = 0; afterTries = 0; typed = ""; phase = "ask"; rushed = false; askedAt = performance.now(); firstKeyAt = 0;
     els.pic.innerHTML = "";
     try {
       Q = topic.make(level, prevQ); prevQ = Q;
@@ -326,7 +326,7 @@
     if (phase !== "ask" && phase !== "afterTeach") return;
     if (k === "del") typed = typed.slice(0, -1);
     else if (k === "go") { if (!typed) { say("Type your answer with the number buttons.", "warn"); return; } return check(String(parseInt(typed, 10)), null); }
-    else if (typed.length < 4) typed = (typed === "0" ? "" : typed) + k;
+    else if (typed.length < 4) { if (!firstKeyAt) firstKeyAt = performance.now(); typed = (typed === "0" ? "" : typed) + k; }
     ctx.tone([500], .05); renderAsk();
   }
 
@@ -399,7 +399,7 @@
     ctx.tone(big ? [523, 659, 784, 1047] : [659, 880]);
     ctx.burst(big ? 16 : 3);
     bumpScore(); renderTopBar(); renderAsk(); setPad(false);
-    if (fixed) { const f = fixed, r = { correct: true, firstTry: first, helped: !first, taught: wasTaught, rush: rushed && !first };
+    if (fixed) { const f = fixed, r = { correct: true, firstTry: first, helped: !first, taught: wasTaught, rush: rushed && !first, ms: firstKeyAt ? Math.round(performance.now() - firstKeyAt) : 0, digits: String(Q.answer).length };
       timers.push(setTimeout(() => { if (fixed === f) f.onAnswer(r); }, 1500)); return; }
     timers.push(setTimeout(next, big ? 3200 : notes.length ? 2600 : 1500));
   }
