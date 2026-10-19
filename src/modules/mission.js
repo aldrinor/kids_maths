@@ -5,6 +5,9 @@
 (function () {
   "use strict";
   const SET = 5, IDLE_CAP = 60000;
+  // Aldrin prefers the earlier sums screen (blocks, number line, keypad) for adding and taking away (19 Oct 2026).
+  // River Crossing and Cafe Orders stay in the code but are switched off.
+  const USE_NEW_SUMS_GAMES = false;
   let M = null, set = null, i = 0, inSet = 0, lastTouch = 0;
   const map = () => M || (M = KidsEngine.buildSkillMap(window.MathTopics || []));
   const now = () => Date.now();
@@ -45,14 +48,14 @@
     const s = map().map[id];
     if (!s || !s.ready) { i++; return i < set.items.length ? play() : nextSet(); }
     // Kennedy's adding and taking away to 20 is played as River Crossing: the number line is the river.
-    if (s.play.src === "sums" && who === "kennedy" && s.play.level <= 4 && window.River) {
+    if (USE_NEW_SUMS_GAMES && s.play.src === "sums" && who === "kennedy" && s.play.level <= 4 && window.River) {
       if (window.TopicHost && TopicHost.isOpen()) TopicHost.close();
       const known = (eng().skills[id]?.lvl || 0) >= 3;
       River.play({ level: s.play.level, head: known && Math.random() < .6, done: inSet, onAnswer: r => Mission.answered(r), onQuit: () => Mission.pause() });
       return;
     }
     // Marie's adding and taking away to 20 is played as Cafe Orders: she bakes and gives treats on ten-frame trays.
-    if (s.play.src === "sums" && who !== "kennedy" && s.play.level <= 4 && window.CafeOrders) {
+    if (USE_NEW_SUMS_GAMES && s.play.src === "sums" && who !== "kennedy" && s.play.level <= 4 && window.CafeOrders) {
       closeTopic();
       const known = (eng().skills[id]?.lvl || 0) >= 3;
       CafeOrders.play({ level: s.play.level, head: known && Math.random() < .6, onAnswer: r => Mission.answered(r), onQuit: () => Mission.pause() });
