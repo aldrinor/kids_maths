@@ -14,9 +14,9 @@ def rep(old, new, count=1):
 
 
 # 1. A fourth tab, "Maths", and its view.
-rep('<img src="art/sparkles.png" alt="">Sums</button>\n',
-    '<img src="art/sparkles.png" alt="">Sums</button>\n'
-    '    <button class="tab" role="tab" id="tabMaths" aria-selected="false" aria-controls="viewMaths" type="button"><img src="art/pie.png" alt="">Maths</button>\n')
+rep('<img src="art/sparkles.png" alt="">Maths</button>\n',
+    '<img src="art/sparkles.png" alt="">Maths</button>\n'
+    '    <button class="tab" role="tab" id="tabMaths" aria-selected="false" aria-controls="viewMaths" type="button" hidden><img src="art/pie.png" alt="">All games</button>\n')
 rep('  <section class="view" id="viewHome"',
     '  <section class="view scroll" id="viewMaths" role="tabpanel" aria-labelledby="tabMaths" hidden></section>\n\n  <section class="view" id="viewHome"')
 rep('.tabs { flex: none; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }',
@@ -31,7 +31,7 @@ rep('.tab { font-size: 16px; gap: 4px; } .tab img { width: 24px; height: 24px; }
 # 2. Load the topic modules and the host after the cooking module.
 rep('<script src="modules/cook.js"></script>\n',
     '<script src="modules/cook.js"></script>\n' + "".join(f'<script src="topics/{t}.js"></script>\n' for t in TOPIC_FILES) +
-    '<script src="modules/topic_host.js"></script>\n')
+    '<script src="modules/topic_host.js"></script>\n<script src="modules/engine.js"></script>\n<script src="modules/mission.js"></script>\n')
 
 # 3. Saved progress: per-topic levels and counts. Cloud copy wins when it holds more answered questions in all.
 rep('home: [{ uid: 1, id: "kitty", x: 40, y: 90 }, { uid: 2, id: "plant", x: 84, y: 72 }], homeSeq: 2 };',

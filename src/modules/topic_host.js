@@ -134,6 +134,7 @@
   let lastMissAt = 0;
   let topic = null, level = 0, Q = null, prevQ = null, inst = null, tries = 0, afterTries = 0, phase = "idle", typed = "", lastSaid = "";
   let timers = [], hlEl = null, token = 0;
+  let fixed = null, askedAt = 0, rushed = false;   // fixed: the engine chose this level; hooks report each answer back
 
   const $q = s => layer.querySelector(s);
   const P = () => window.P;
@@ -226,7 +227,7 @@
     next();
   }
   function close() {
-    token++; clearTimers();
+    token++; clearTimers(); fixed = null;
     if (phase === "cook") stopCook();
     destroyInst(); api.highlight(null);
     phase = "idle"; Q = null; topic = null;
@@ -238,8 +239,8 @@
 
   function next() {
     token++; clearTimers(); destroyInst(); api.highlight(null); ctx.clearFx();
-    if (P().round.length >= ctx.COOK_EVERY) return startCook();
-    tries = 0; afterTries = 0; typed = ""; phase = "ask";
+    if (!fixed && P().round.length >= ctx.COOK_EVERY) return startCook();
+    tries = 0; afterTries = 0; typed = ""; phase = "ask"; rushed = false; askedAt = performance.now();
     els.pic.innerHTML = "";
     try {
       Q = topic.make(level, prevQ); prevQ = Q;
@@ -292,9 +293,9 @@
     const a = e.target.closest("[data-act]");
     if (a) {
       const act = a.dataset.act;
-      if (act === "back") return close();
+      if (act === "back") { const f = fixed; close(); if (f && f.onQuit) f.onQuit(); return; }
       if (act === "again") return ctx.speak(lastSaid, true);
-      if (act === "levels") return openLevels();
+      if (act === "levels") return fixed ? null : openLevels();
     }
     if (!els.sheet.hidden) {
       const b = e.target.closest("[data-lv]");
@@ -347,8 +348,9 @@
       } else { say("Not quite. Look at your picture. Try again.", "warn"); renderAsk(); }
       return;
     }
+    if (tries === 0 && performance.now() - askedAt < 1500) rushed = true;   // a wrong answer in under 1.5 s is a rush
     tries++;
-    if (tries === 1) { say("Not quite. Try again.", "warn"); renderAsk(); }
+    if (tries === 1) { say(rushed ? "Let's look slowly. Look at the picture again." : "Not quite. Try again.", "warn"); renderAsk(); }
     else if (tries < ctx.TEACH_AFTER_MISTAKES) { let h = ""; try { h = topic.hint(Q, tries); } catch (e) { console.error(e); } say(h || "Look at the picture again, one step at a time.", "warn"); renderAsk(); }
     else runTeach();
   }
@@ -375,18 +377,18 @@
     ctx.addStars(earn);
     p.tq = (p.tq || 0) + 1; d.t = (d.t || 0) + 1; s.n++;
     if (first) { p.tqFirst = (p.tqFirst || 0) + 1; s.first++; }
-    p.round.push(first ? 1 : 0);
+    if (!fixed) p.round.push(first ? 1 : 0);
     const notes = []; let big = false;
-    if (level === s.level) {
+    if (!fixed && level === s.level) {
       s.stats = s.stats.concat(first ? 1 : 0).slice(-10);
       if (s.stats.length >= 10 && s.stats.reduce((x, y) => x + y, 0) >= ctx.LEVEL_UP_NEED && s.level < topic.levels.length - 1) {
         s.level++; s.stats = []; ctx.addStars(10); big = true; notes.push(`Level up! 10 bonus stars!`);
       }
     }
     s.teachRun = wasTaught ? (s.teachRun || 0) + 1 : first ? 0 : (s.teachRun || 0);
-    if (s.teachRun >= 3 && s.level > 0) { s.level--; s.teachRun = 0; s.stats = []; notes.push("Let's practise some easier ones for a bit."); }
+    if (!fixed && s.teachRun >= 3 && s.level > 0) { s.level--; s.teachRun = 0; s.stats = []; notes.push("Let's practise some easier ones for a bit."); }
     if (!goalBefore && d.n + d.t >= p.goal) { p.crowns = (p.crowns || 0) + 1; ctx.addStars(10); big = true; notes.push(`${p.goal} questions today! You win a crown.`); }
-    level = Math.min(s.level, topic.levels.length - 1);
+    if (!fixed) level = Math.min(s.level, topic.levels.length - 1);
     ctx.save();
     phase = "done"; typed = ""; api.highlight(null);
     const praise = wasTaught ? "You worked it out!" : ctx.pick(ctx.PRAISE);
@@ -397,6 +399,8 @@
     ctx.tone(big ? [523, 659, 784, 1047] : [659, 880]);
     ctx.burst(big ? 16 : 3);
     bumpScore(); renderTopBar(); renderAsk(); setPad(false);
+    if (fixed) { const f = fixed, r = { correct: true, firstTry: first, helped: !first, taught: wasTaught, rush: rushed && !first };
+      timers.push(setTimeout(() => { if (fixed === f) f.onAnswer(r); }, 1500)); return; }
     timers.push(setTimeout(next, big ? 3200 : notes.length ? 2600 : 1500));
   }
 
@@ -430,6 +434,15 @@
     refresh() { renderMap(); if (layer && !layer.hidden) renderTopBar(); },
     isOpen() { return !!layer && !layer.hidden; },
     open, close, report,
+    play(id, lv, hooks) {
+      const t = topics().find(x => x.id === id); if (!t) return false;
+      buildLayer();
+      topic = t; level = Math.max(0, Math.min(lv, t.levels.length - 1)); prevQ = null; fixed = hooks;
+      layer.hidden = false; els.sheet.hidden = true;
+      renderTopBar(); next(); return true;
+    },
+    // The engine asks one more question at the same level, without closing the screen.
+    again(lv) { if (!fixed || !topic) return; level = Math.max(0, Math.min(lv, topic.levels.length - 1)); next(); },
     get state() { return { topic: topic && topic.id, level, Q, phase, tries, afterTries, typed }; }
   };
 })();

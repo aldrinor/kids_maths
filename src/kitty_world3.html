@@ -372,7 +372,7 @@ input[type="checkbox"] { width: 24px; height: 24px; accent-color: var(--pink-dee
     <span class="score" id="score"><img src="art/star.png" alt=""><span></span></span>
   </header>
   <nav class="tabs" role="tablist">
-    <button class="tab" role="tab" id="tabSums" aria-selected="true" aria-controls="viewSums" type="button"><img src="art/sparkles.png" alt="">Sums</button>
+    <button class="tab" role="tab" id="tabSums" aria-selected="true" aria-controls="viewSums" type="button"><img src="art/sparkles.png" alt="">Maths</button>
     <button class="tab" role="tab" id="tabHome" aria-selected="false" aria-controls="viewHome" type="button"><img src="art/dollhouse.png" alt="">Home</button>
     <button class="tab" role="tab" id="tabGrown" aria-selected="false" aria-controls="viewGrown" type="button"><img src="art/crown.png" alt="">Parent</button>
   </nav>
@@ -710,6 +710,7 @@ function stopPending() { return !!Q && (!isSmall(Q) || makeTen(Q)) && !col && !r
 function lastStopBefore(n) { for (let m = n - 1; m > 0; m--) if (isStop(m)) return m; return 0; }
 
 /* ================= Game flow ================= */
+let rushed = false;
 let view = "sums", phase = "idle", Q = null, tries = 0, typed = "", helped = false, qStart = 0, teach = null, afterMiss = 0, timers = [];
 function clearTimers() { timers.forEach(clearTimeout); timers = []; }
 function say(text, tone, voice = true) { const b = $("bubble"); b.textContent = text; b.className = "bubble" + (tone ? " " + tone : ""); if (voice) speak(text); }
@@ -720,18 +721,23 @@ const guiding = () => phase === "teach" || !!stopTeach;
 function showStart() {
   phase = "idle"; setKitty("");
   const c = $("cover"); c.hidden = false;
-  c.innerHTML = `<div class="cover-card"><div class="hello">${PROFILES[who].pic}</div><h2>${PROFILES[who].name}'s Maths</h2><p>${P.total ? `Welcome back! You have ${P.stars} stars. Level ${P.level}: ${LEVELS[P.level].name}.` : "Count the blocks, hop on the number line, and type the answer. Every 5 sums, cook something yummy!"}</p><button class="main-btn" id="goBtn" type="button">Let's play</button></div>`;
+  c.innerHTML = `<div class="cover-card"><div class="hello">${PROFILES[who].pic}</div><h2>${PROFILES[who].name}'s Maths</h2><p>${who === "kennedy" ? `Help the knight! Every 5 right answers send a bad guy home.${P.coins ? ` You have ${P.coins} coins.` : ""}` : `Every 5 answers, a cooking treat.${P.stars ? ` You have ${P.stars} stars.` : ""}`}</p><button class="main-btn" id="goBtn" type="button">Let's play</button></div>`;
   say("Tap Let's play to start.", "", false);
-  $("goBtn").onclick = () => { tone([523, 659]); c.hidden = true; nextQuestion(); };
+  if (window.Mission) Mission.on = false;
+  $("goBtn").onclick = () => { tone([523, 659]); c.hidden = true; if (window.Mission) Mission.start(); else nextQuestion(); };
   renderTop();
 }
 
 function nextQuestion() {
   clearTimers();
-  if (P.round.length >= COOK_EVERY) return startCooking();
-  const due = P.review.findIndex(r => r.due <= P.total);
-  if (due >= 0) { const r = P.review.splice(due, 1)[0]; Q = { ...r.q, review: r.rounds }; }
-  else Q = gen(P.level);
+  rushed = false;
+  if (window.Mission && Mission.on) Q = gen(Mission.sumsLevel || P.level);   // the engine chose this level
+  else {
+    if (P.round.length >= COOK_EVERY) return startCooking();
+    const due = P.review.findIndex(r => r.due <= P.total);
+    if (due >= 0) { const r = P.review.splice(due, 1)[0]; Q = { ...r.q, review: r.rounds }; }
+    else Q = gen(P.level);
+  }
   lastKey = Q.key;
   friend = pick(FRIENDS);
   tries = 0; typed = ""; helped = false; teach = null; afterMiss = 0; phase = "ask"; kittyTold = false; revealLanding = false; hopAnim = null; kittyX = null;
@@ -1041,8 +1047,9 @@ function submit() {
     say(`Not quite. ${lastHopTip()} Count that last hop, then type where she landed.`, "warn");
     return;
   }
+  if (tries === 0 && performance.now() - qStart < 1500) rushed = true;   // a wrong answer in under 1.5 s is a rush
   tries++; helped = true; P.missed[Q.key] = (P.missed[Q.key] || 0) + 1; save();
-  if (tries === 1) say("Not quite. Try again. Count carefully.", "warn");
+  if (tries === 1) say(rushed ? "Let's look slowly. Count the blocks again." : "Not quite. Try again. Count carefully.", "warn");
   else if (tries < TEACH_AFTER_MISTAKES) say(hint(), "warn");
   else startTeach();
 }
@@ -1105,20 +1112,22 @@ function correct() {
   const goalBefore = d.n >= P.goal;
   addStars(earn); P.total++; d.n++;
   if (first) { P.firstTry++; d.first++; }
-  P.round.push(first ? 1 : 0);
+  const inMission = !!(window.Mission && Mission.on);
+  if (!inMission) P.round.push(first ? 1 : 0);
   const qq = { a: Q.a, b: Q.b, op: Q.op, level: Q.level, ans: Q.ans, key: Q.key };
-  if (!first) P.review.push({ q: qq, due: P.total + 3, rounds: 2 });
+  if (inMission) {}
+  else if (!first) P.review.push({ q: qq, due: P.total + 3, rounds: 2 });
   else if (Q.review && Q.review > 1) P.review.push({ q: qq, due: P.total + 8, rounds: Q.review - 1 });
   if (P.review.length > 40) P.review = P.review.slice(-40);
   const wasTaught = phase === "afterTeach";
   { const k = makeTen(Q) ? "ten" : colMode(Q) ? "col" : ""; if (k) { P.head = P.head || {}; P.head[k] = first && !headShown ? (P.head[k] || 0) + 1 : first ? (P.head[k] || 0) : 0; } }
   P.teachRun = wasTaught ? (P.teachRun || 0) + 1 : first ? 0 : P.teachRun;
   const notes = []; let big = false;
-  if (!Q.review && Q.level === P.level) {
+  if (!inMission && !Q.review && Q.level === P.level) {
     const arr = P.levelStats[P.level] = (P.levelStats[P.level] || []).concat(first ? 1 : 0).slice(-10);
     if (arr.length >= 10 && arr.reduce((x, y) => x + y, 0) >= LEVEL_UP_NEED && P.level < MAX_LEVEL) { P.level++; P.levelStats[P.level] = []; addStars(10); big = true; notes.push(`Level up! Now: ${LEVELS[P.level].name}. 10 bonus stars!`); }
   }
-  if (P.teachRun >= 3 && P.level > 1) { P.level--; P.teachRun = 0; P.levelStats[P.level] = []; notes.push("Let's practise some easier ones for a bit."); }
+  if (!inMission && P.teachRun >= 3 && P.level > 1) { P.level--; P.teachRun = 0; P.levelStats[P.level] = []; notes.push("Let's practise some easier ones for a bit."); }
   if (!goalBefore && d.n >= P.goal) { P.crowns++; addStars(10); big = true; notes.push(`${P.goal} sums today! You win a crown.`); }
   save();
   phase = "done"; col = null;
@@ -1128,6 +1137,7 @@ function correct() {
   setKitty("happy"); tone(big ? [523, 659, 784, 1047] : [659, 880]);
   burst(big ? 16 : quick ? 6 : 3);
   renderAll();
+  if (inMission) { const r = { correct: true, firstTry: first, helped: !first, taught: wasTaught, rush: rushed && !first }; timers.push(setTimeout(() => Mission.answered(r), big ? 2600 : 1500)); return; }
   timers.push(setTimeout(nextQuestion, big ? 3200 : notes.length ? 2600 : 1300));
 }
 function burst(n, art) {
@@ -1148,7 +1158,8 @@ function startCooking() {
     CookGame.stop();
     layer.hidden = true; layer.innerHTML = "";
     P.round = []; save(); renderTop();
-    phase = "ask"; nextQuestion();
+    phase = "ask";
+    if (window.Mission && Mission.on) Mission.afterReward(); else nextQuestion();
   };
   CookGame.start(layer, {
     recipe: P.cooks % 3,
@@ -1156,7 +1167,7 @@ function startCooking() {
     onSkip() { finish(); }
   });
 }
-function endCooking() { if (phase === "cook") { CookGame.stop(); $("cook").hidden = true; $("cook").innerHTML = ""; P.round = []; save(); phase = "ask"; nextQuestion(); } }
+function endCooking() { if (phase === "cook") { CookGame.stop(); $("cook").hidden = true; $("cook").innerHTML = ""; P.round = []; save(); phase = "ask"; if (window.Mission && Mission.on) Mission.afterReward(); else nextQuestion(); } }
 function flyTo(fromEl, toEl, src) {
   if (reduceMotion() || !fromEl || !toEl) return;
   const a = fromEl.getBoundingClientRect(), b = toEl.getBoundingClientRect();
@@ -1563,6 +1574,10 @@ function showProfiles() {
 }
 function startAs(p, thenView) {
   if (window.speechSynthesis) speechSynthesis.cancel();
+  if (window.Mission) Mission.on = false;
+  if (window.TopicHost && TopicHost.isOpen()) TopicHost.close();
+  clearTimers();
+  if (phase === "cook") { try { CookGame.stop(); } catch (e) {} $("cook").hidden = true; $("cook").innerHTML = ""; }
   if (who !== p) {
     who = p; LS_KEY = PROFILES[p].key;
     clearTimeout(cloud.timer); cloud.ref = null; cloud.on = false;
@@ -1571,6 +1586,7 @@ function startAs(p, thenView) {
     connectCloud();
   }
   $("whoPic").innerHTML = PROFILES[p].pic; $("whoName").textContent = PROFILES[p].name;
+  if ($("tabMaths")) { $("tabMaths").hidden = p !== "demo"; $("tabMaths").parentElement.style.gridTemplateColumns = `repeat(${p === "demo" ? 4 : 3}, minmax(0, 1fr))`; }
   $("profiles").hidden = true; $("profiles").innerHTML = "";
   showStart();
   showView(thenView || "sums");
