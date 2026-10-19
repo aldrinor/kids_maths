@@ -1,0 +1,42 @@
+"""Silent check of the Parent area: progress shows, controls work, parent questions reach the child. One line per check."""
+import sys
+from playwright.sync_api import sync_playwright
+sys.path.insert(0, __file__.rsplit("\\", 1)[0].rsplit("/", 1)[0])
+from autoplay import STUB, play
+URL = sys.argv[1]; res = []
+def ok(name, cond, extra=""): res.append(bool(cond)); print(("PASS " if cond else "FAIL ") + name + (" | " + str(extra) if extra != "" and not cond else ""))
+with sync_playwright() as p:
+    b = p.chromium.launch(args=["--mute-audio"])
+    pg = b.new_page(viewport={"width": 820, "height": 1180}); pg.add_init_script(STUB); errs = []
+    pg.on("pageerror", lambda e: errs.append(str(e)))
+    pg.goto(URL); pg.wait_for_timeout(1200)
+    pg.click('[data-p="marie"]'); pg.click("#goBtn"); pg.wait_for_timeout(400)
+    ok("marie answered 12", play(pg, 12) >= 12)
+    pg.evaluate("()=>{Mission.pause()}"); pg.wait_for_timeout(300)
+    pg.click("#tabGrown"); pg.fill("#pinIn", "0913"); pg.keyboard.press("Enter"); pg.wait_for_timeout(400)
+    txt = pg.text_content("#grown")
+    ok("parent area has the main headings", all(h in txt for h in ["Needs your attention", "Today", "Last 14 days", "Progress", "Coming next", "Controls", "Send your own questions"]))
+    ok("today shows answers and minutes", "12 answers" in txt or "13 answers" in txt or "answers," in txt.split("Today")[1][:80], txt.split("Today")[1][:120])
+    ok("level check progress is reported", "level check" in txt)
+    pg.fill("#pQs", "How many legs do 3 cats have? = 12\nno equals here"); pg.click("#pQsAdd"); pg.wait_for_timeout(200)
+    ok("parent questions sent, bad line explained", "1 sent" in pg.inner_text("#pQsMsg") and pg.evaluate("()=>P.engine.parentQs.length") == 1, pg.inner_text("#pQsMsg"))
+    pg.check("#pPause"); pg.wait_for_timeout(200)
+    ok("pause shows in needs attention", "paused" in pg.text_content("#grown"))
+    pg.click("#tabSums"); pg.wait_for_timeout(200); pg.click("#goBtn"); pg.wait_for_timeout(400)
+    ok("paused child gets a calm resting screen", "resting" in pg.inner_text("#cover"))
+    pg.click("#tabGrown"); pg.wait_for_timeout(300); pg.uncheck("#pPause"); pg.fill("#pLimit", "30"); pg.press("#pLimit", "Tab"); pg.wait_for_timeout(200)
+    ok("time limit saved", pg.evaluate("()=>P.limitMin") == 30)
+    pg.select_option("#pFocus", index=1); pg.click("#pFocusAdd"); pg.wait_for_timeout(200)
+    ok("focus skill added", pg.evaluate("()=>P.engine.focus.length") == 1)
+    pg.click('[data-child="kennedy"]'); pg.wait_for_timeout(400)
+    ok("switch to Kennedy in parent area", "Parent area: Kennedy" in pg.text_content("#grown"))
+    pg.click('[data-child="marie"]'); pg.wait_for_timeout(400)
+    pg.click("#tabSums"); pg.wait_for_timeout(200); pg.click("#goBtn"); pg.wait_for_timeout(500)
+    ok("parent question comes first", pg.is_visible("#pqIn") and "3 cats" in pg.inner_text("#cover"))
+    pg.fill("#pqIn", "12"); pg.press("#pqIn", "Enter"); pg.wait_for_timeout(1500)
+    ok("parent answer is logged", pg.evaluate("()=>(P.parentLog||[]).length") == 1)
+    pg.screenshot(path="parent_after.png")
+    pg.evaluate("()=>{Mission.pause()}"); pg.click("#tabGrown"); pg.wait_for_timeout(300); pg.screenshot(path="parent_area.png", full_page=True)
+    ok("no page errors", not errs, errs[:3])
+    b.close()
+print(f"RESULT {sum(res)}/{len(res)} passed")

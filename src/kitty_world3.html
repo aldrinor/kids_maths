@@ -495,6 +495,7 @@ function adopt(o) {
 function loadLocal() { try { const r = localStorage.getItem(LS_KEY); if (r) adopt(JSON.parse(r)); } catch (e) {} }
 function save() {
   try { localStorage.setItem(LS_KEY, JSON.stringify(P)); } catch (e) {}
+  if (window.KidsSync) KidsSync.soon();
   if (!cloud.ref) return;
   clearTimeout(cloud.timer); cloud.timer = setTimeout(pushCloud, 2500);
 }
@@ -1493,39 +1494,8 @@ function renderAll() { renderTop(); renderEq(); renderBlocks(); renderLine(); }
 
 /* ================= Grown-ups ================= */
 let resetAsk = false;
-function renderGrown() {
-  const d = P.log[dayKey()] || { n: 0, first: 0 }, pct = (a, b) => b ? Math.round(a / b * 100) : 0;
-  const missed = Object.entries(P.missed).sort((a, b) => b[1] - a[1]).slice(0, 12).map(([k, n]) => `<li>${k.replace("+", " + ").replace("-", " " + MINUS + " ")}: missed ${n} ${n === 1 ? "time" : "times"}</li>`).join("") || "<li>None yet.</li>";
-  const week = []; for (let i = 6; i >= 0; i--) { const x = new Date(); x.setDate(x.getDate() - i); const dd = P.log[dayKey(x)]; week.push(`<li>${x.toLocaleDateString("en-CA", { weekday: "long", month: "short", day: "numeric" })}: ${dd ? `${dd.n} sums, ${dd.first} right first time` : "no play"}</li>`); }
-  let opts = ""; for (let i = 1; i <= MAX_LEVEL; i++) opts += `<option value="${i}"${i === P.level ? " selected" : ""}>Level ${i}: ${LEVELS[i].name} (${LEVELS[i].group})</option>`;
-  $("grown").innerHTML = `<h2>For grown-ups</h2>
-    <section><h3>Today</h3><p>${d.n} sums. ${d.first} right first time (${pct(d.first, d.n)} percent). Daily goal: ${P.goal}.</p></section>
-    <section><h3>All time</h3><p>${P.total} sums. ${P.firstTry} right first time (${pct(P.firstTry, P.total)} percent). ${P.stars} stars to spend. ${P.cooks} cooking breaks. ${P.home.length} things in her home. ${P.dayStreak} days in a row.</p></section>
-    <section><h3>Level now</h3><p>Level ${P.level}: ${LEVELS[P.level].name}. She moves up after ${LEVEL_UP_NEED} of 10 right first time, and gently down after 3 lessons in a row.</p></section>
-    <section><h3>How it works</h3><p>Each sum shows Hello Kitty's blocks for the first number and a friend's blocks for the second. Ones sit in rows of 5 (two rows make a ten), and towers of 10 and plates of 100 sit in groups of 5, so she can count them. The question number stays in sight when the blocks scroll. When she taps a block it gets a small heart. The heart has no number: the game never counts for her, and it never says a running total. Hello Kitty starts on the first number on the number line. Each friend block she taps makes Hello Kitty hop: a single block hops 1, a tower hops 10, a plate hops 100. The hop buttons do the same and put a heart on the next friend block. Undo takes back the last hop and its heart. Start again clears them all. Tapping Hello Kitty's own blocks does not move her, because she is already on that number. For taking away, each block she taps is crossed out and Hello Kitty hops back. A big block opens into ten smaller ones when she needs it; opening does not hop. On small sums the ruler shows only 0, 5, 10, 15, 20 and the start number. A dot marks each tick she hopped onto, so she counts the ticks herself. On a phone the ruler shows only the part she needs (for example 5 to 15), so the ticks are big enough to count. On big sums Hello Kitty stops when the hop size changes, for example after the last hop of 10. A box with a question mark glows and she types where Hello Kitty stopped. A wrong stop number only brings a tip, for example count by tens from 37; it does not count as a mistake. After 3 wrong stop numbers, Hello Kitty takes those hops back and counts them again with her. Each hop still waits for her tap. On the last hop Kitty does not say the stop number: she says where the last hop started, and Marie works out the stop herself. That sum then earns the smaller star reward, so guessing does not pay. On big sums the line is not drawn to scale: each hop has room, so she can count the hops of 1 too. The answer never shows anywhere until she types it. Every 5 sums there is a short cooking break with no maths. Stars buy friends and things for her home, which she arranges by dragging.</p></section>
-    <section><h3>Mistakes</h3><p>First mistake: try again. Second: a hint on how to work it out, for example start at 7 and count on 3 hops. Third: Hello Kitty's lesson. A glow shows what to tap. Hello Kitty waits for each tap and counts each hop with her, and the number line shows the number they have reached. The last hop is different: it lands on the answer, so Kitty does not say it and the line shows a question mark. Kitty says where the last hop started, and Marie works out where she landed and types it. If she is still wrong, Kitty tells her again how to count that last hop. Kitty never says or shows the answer. Stars are never taken away. Sums she needed help with come back 3 sums later and again 8 sums later.</p></section>
-    <section><h3>Sums she finds hard</h3><ul>${missed}</ul></section>
-    <section><h3>Last 7 days</h3><ul>${week.join("")}</ul></section>
-    <section><h3>Settings</h3>
-      <div class="set"><label for="levelSel">Level</label><select id="levelSel">${opts}</select></div>
-      <div class="set"><label for="goalIn">Daily goal (sums)</label><input id="goalIn" type="number" min="5" max="500" value="${P.goal}"></div>
-      <div class="set"><input id="voiceChk" type="checkbox"${P.voice ? " checked" : ""}><label for="voiceChk">Read sums and numbers out loud</label></div>
-      <div class="set"><label for="voiceSel">Kitty's voice</label><select id="voiceSel">${englishVoices().map(v => `<option value="${v.name.replace(/"/g, "&quot;")}"${kittyVoice && v.name === kittyVoice.name ? " selected" : ""}>${v.name} (${v.lang})</option>`).join("") || "<option>No voices on this device</option>"}</select><button class="mini" id="voiceTry" type="button">Try the voice</button></div>
-      <div class="set"><input id="soundChk" type="checkbox"${P.sound ? " checked" : ""}><label for="soundChk">Sounds</label></div></section>
-    <section><h3>Where progress is saved</h3><p>${cloud.on ? "In your Claude account, so it follows her on iPhone, iPad and computer when the same account is signed in. Also on this device." : "On this device only right now. Open it while signed in to Claude to keep progress in your account."}</p></section>
-    <section><h3>Start again</h3><div class="set">${resetAsk ? `<span>Erase all stars, home and history?</span><button class="mini" id="resetYes" type="button">Yes, erase everything</button><button class="mini" id="resetNo" type="button">Keep it</button>` : `<button class="mini" id="resetBtn" type="button">Reset all progress</button>`}</div></section>
-    <section><h3>Pictures</h3><p>Hello Kitty, My Melody, Kuromi, Pompompurin and Cinnamoroll are Sanrio characters; the drawings here are our own, for private family use only. Pictures: Microsoft Fluent Emoji, copyright Microsoft Corporation, MIT License. Home pictures: Tiny Treats by Isa Lousberg (CC0) and Microsoft Fluent Emoji (MIT). Room, furniture drawings and characters: our own.</p></section>`;
-  $("levelSel").onchange = e => { P.level = +e.target.value; P.levelStats[P.level] = []; P.teachRun = 0; save(); if (Q && (phase === "ask" || phase === "teach" || phase === "afterTeach")) nextQuestion(); };
-  $("goalIn").onchange = e => { const v = Math.max(5, Math.min(500, parseInt(e.target.value, 10) || 50)); P.goal = v; e.target.value = v; save(); };
-  $("voiceChk").onchange = e => { P.voice = e.target.checked; if (!P.voice) try { speechSynthesis.cancel(); } catch (x) {} save(); };
-  $("soundChk").onchange = e => { P.sound = e.target.checked; save(); };
-  $("voiceSel").onchange = e => { P.voiceName = e.target.value; kittyVoice = pickVoice(); save(); speak("Hello! I'm Kitty. Let's do sums together!", true); };
-  $("voiceTry").onclick = () => speak("Hello! I'm Kitty. Let's do sums together!", true);
-  if (resetAsk) {
-    $("resetYes").onclick = () => { adopt({ goal: P.goal, voice: P.voice, sound: P.sound, voiceName: P.voiceName }); resetAsk = false; save(); renderGrown(); if (window.HomeGame) HomeGame.refresh(); showStart(); };
-    $("resetNo").onclick = () => { resetAsk = false; renderGrown(); };
-  } else $("resetBtn").onclick = () => { resetAsk = true; renderGrown(); };
-}
+// The Parent area lives in modules/parent.js.
+function renderGrown() { ParentArea.render($("grown")); }
 function showView(v) {
   view = v;
   for (const [n, t, p] of [["sums", "tabSums", "viewSums"], ["home", "tabHome", "viewHome"], ["grown", "tabGrown", "viewGrown"]]) { $(t).setAttribute("aria-selected", String(n === v)); $(p).hidden = n !== v; }
@@ -1581,7 +1551,11 @@ function startAs(p, thenView) {
   if (who !== p) {
     who = p; LS_KEY = PROFILES[p].key;
     clearTimeout(cloud.timer); cloud.ref = null; cloud.on = false;
-    adopt(null); loadLocal();
+    adopt(null);
+    let had = false; try { had = !!localStorage.getItem(LS_KEY); } catch (e) {}
+    loadLocal();
+    // A cleared iPad: bring the progress back from the family's Google backup.
+    if (!had && window.KidsSync && KidsSync.connected() && p !== "demo") KidsSync.restore(p).then(st => { if (st && who === p && !(P.days && Object.keys(P.days).length)) { adopt(st); try { localStorage.setItem(LS_KEY, JSON.stringify(P)); } catch (e) {} if (window.HomeGame) HomeGame.refresh(); showStart(); } });
     if (window.HomeGame) HomeGame.refresh();
     connectCloud();
   }

@@ -133,6 +133,7 @@
   function nextSet(st, M, now, rng) {
     rng = rng || Math.random;
     if (st.paused) return { kind: "paused", items: [] };
+    if (st.parentQs.length) return { kind: "parent", items: st.parentQs.slice(0, 5) };   // the parents' own questions come first
     if (!st.place.done) { const q = placementNext(st, M); if (q) return { kind: "place", target: q.skill, items: [q.skill] }; }
     if (st.day !== dayKey(now)) { st.day = dayKey(now); st.dayCounts = {}; }
     const recent = st.sets.slice(-10).map(k => k.split(":")[0]), reviewsLately = recent.filter(k => k === "review" || k === "recheck").length;
@@ -141,9 +142,6 @@
     const filler = (exclude, n) => pickSome(learnt.filter(id => !exclude.includes(id)), n, rng);
     const left = id => rules(st).dailyCap - (st.dayCounts[id] || 0);
     const make = (kind, target, n) => { n = Math.max(1, Math.min(n, left(target))); const items = Array(n).fill(target).concat(filler([target], 5 - n)); while (items.length < 5 && items.filter(x => x === target).length < left(target)) items.push(target); return finish(st, kind, target, shuffleKeepFirst(items, rng)); };
-
-    // 1. Questions the parent sent (one set per session at most; the caller clears them once used).
-    if (st.parentQs.length && !recent.slice(-1).includes("parent")) return { kind: "parent", items: st.parentQs.slice(0, 5) };
 
     // 2. Re-checks and reviews: never more than 4 sets in 10, oldest first.
     const due = M.order.filter(id => usable(id) && strong(st, id) && st.skills[id].due && st.skills[id].due <= now).sort((a, b) => st.skills[a].due - st.skills[b].due);
@@ -217,7 +215,7 @@
       if (s.first2.length < 2) s.first2.push(clean ? 1 : 0);
       s.streak = clean ? s.streak + 1 : 0;
       const fast = s.first2.length === 2 && s.first2[0] && s.first2[1] && s.n === 2;
-      if (fast || s.streak >= R.streakNeed) { s.lvl = LV.KNOWS; s.streak = 0; s.gap = 0; s.due = now + (fast ? 3 : 1) * DAY; s.stuckN = 0; s.stuckRight = 0; s.repairs = 0; }
+      if (fast || s.streak >= R.streakNeed) { s.lvl = LV.KNOWS; s.learntAt = now; s.streak = 0; s.gap = 0; s.due = now + (fast ? 3 : 1) * DAY; s.stuckN = 0; s.stuckRight = 0; s.repairs = 0; }
       return s;
     }
     // Known skill: only answers given when it is due count as a review or a re-check.
@@ -231,7 +229,7 @@
     if (s.lvl === LV.KNOWS) {                           // re-check for "knows it for sure": 4 right of 5
       s.recheck = (s.recheck || []).concat(clean ? 1 : 0);
       const rightN = s.recheck.reduce((a, b) => a + b, 0), wrongN = s.recheck.length - rightN;
-      if (rightN >= 4) { s.lvl = LV.SURE; s.recheck = null; s.gap = 1; s.due = now + GAPS[1] * DAY; }
+      if (rightN >= 4) { s.lvl = LV.SURE; s.sureAt = now; s.recheck = null; s.gap = 1; s.due = now + GAPS[1] * DAY; }
       else if (wrongN >= 2) { s.lvl = LV.PRACTISING; s.recheck = null; s.streak = 0; s.recent = []; s.due = 0; }
       return s;
     }
