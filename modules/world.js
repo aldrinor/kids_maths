@@ -24,6 +24,7 @@
 .sc-stars i.gone { background: rgba(0,0,0,.12); }
 .sc-tray { position: absolute; bottom: 10px; left: -70px; width: 64px; display: flex; flex-wrap: wrap; gap: 2px; justify-content: center; padding: 3px; border-radius: 10px; background: #fff; border: 1px solid rgba(0,0,0,.12); }
 .sc-tray img { width: 18px; height: 18px; }
+.sc-tray:empty { display: none; }
 .scene-knight { background: linear-gradient(#dcebfb 0 62%, #cfe8c4 62% 100%) !important; }
 .scene-knight::before { content: ""; position: absolute; left: 30%; right: 30%; bottom: 38%; height: 34%; background:
   linear-gradient(#e9dcc9, #e2d3bd); border: 1px solid rgba(0,0,0,.12); border-bottom: 0; clip-path: polygon(0 18%, 8% 18%, 8% 0, 16% 0, 16% 18%, 24% 18%, 24% 0, 32% 0, 32% 18%, 68% 18%, 68% 0, 76% 0, 76% 18%, 84% 18%, 84% 0, 92% 0, 92% 18%, 100% 18%, 100% 100%, 0 100%); opacity: .7; }

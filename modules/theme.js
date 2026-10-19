@@ -63,6 +63,21 @@ body.who-kennedy .tp-score { visibility: hidden; }
 .mw-tabs button, .mw-acts button, .mw-shop button, .kn-item, .bg-btn { border: 1px solid var(--line) !important; box-shadow: 0 2px 0 var(--line) !important; background: var(--surface) !important; }
 .mw-tabs button[aria-pressed="true"] { background: var(--accent) !important; color: #fff !important; border-color: var(--accent) !important; }
 .set input, .set select, textarea { border: 1px solid var(--line); border-radius: 10px; padding: 8px 10px; font: inherit; background: var(--surface); }
+
+/* Equal widths: every row of buttons shares the width evenly (Aldrin: no wider and narrower buttons in one row). */
+.jbtns, .jbtns.many { display: grid !important; grid-auto-flow: column !important; grid-template-columns: none !important; grid-auto-columns: minmax(0, 1fr) !important; }
+.jbtn, .jbtn.icon { width: auto !important; min-width: 0 !important; border-radius: 14px !important; }
+.mw-tabs { display: grid !important; grid-template-columns: repeat(3, minmax(0, 1fr)); width: min(420px, 100%); margin: 0 auto; }
+.mw-acts { display: grid !important; grid-template-columns: repeat(3, minmax(0, 1fr)); width: min(480px, 100%); margin: 0 auto; }
+.mw-acts button, .mw-tabs button { width: 100%; }
+.welcome .plan { display: grid !important; grid-template-columns: repeat(3, minmax(0, 1fr)); width: 100%; }
+.welcome .plan li { display: grid; place-items: center; text-align: center; min-height: 48px; }
+.kn-shop, .mw-shop { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)) !important; }
+.prof-list { grid-template-columns: repeat(auto-fit, minmax(0, 1fr)) !important; }
+.set .mini + .mini { margin-left: 0; }
+.kd-keys { grid-template-columns: repeat(6, minmax(0, 1fr)) !important; min-width: min(380px, 100%); }
+.ch-row, .bg-row { display: grid !important; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); gap: 8px; }
+.ch-row > *, .bg-row > * { width: 100%; min-width: 0; }
 `;
   const st = document.createElement("style"); st.id = "theme-css"; st.textContent = CSS; document.head.appendChild(st);
 
