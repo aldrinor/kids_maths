@@ -45,15 +45,15 @@ def run(browser, who, vw, vh, shot):
     ok(tag + "board shown immediately (no lesson list)", pg.locator(".ch-board").count() == 1 and pg.locator('[data-act="start"]').count() == 0)
     ok(tag + "64 square buttons with labels", pg.locator("button.ch-sq[aria-label]").count() == 64)
     ok(tag + "32 piece tokens", pg.locator(".ch-tok").count() == 32)
-    ok(tag + "all 32 tokens have character art", pg.locator(".ch-tok .ch-face svg").count() == 32, pg.locator(".ch-tok .ch-face svg").count())
-    ok(tag + "32 piece badges", pg.locator(".ch-badge").count() == 32)
+    ok(tag + "16 white pieces show a character, 16 goblin pieces show a goblin face", pg.locator(".ch-tok .ch-face svg").count() == 16 and pg.locator(".ch-gface svg").count() == 16, (pg.locator(".ch-tok .ch-face svg").count(), pg.locator(".ch-gface svg").count()))
+    ok(tag + "16 white badges and 16 big goblin piece shapes", pg.locator(".ch-badge").count() == 16 and pg.locator(".ch-tok .ch-glyph.ch-big").count() == 16)
     if who == "marie":
-        ok(tag + "Kitty family faces used", pg.locator(".ch-tok svg.kc").count() == 16 and pg.locator(".ch-tok svg.ka-badguy").count() == 16,
-           (pg.locator(".ch-tok svg.kc").count(), pg.locator(".ch-tok svg.ka-badguy").count()))
+        ok(tag + "Kitty family faces used", pg.locator(".ch-tok svg.kc").count() == 16 and pg.locator(".ch-gface svg.ka-badguy").count() == 16,
+           (pg.locator(".ch-tok svg.kc").count(), pg.locator(".ch-gface svg.ka-badguy").count()))
     else:
-        ok(tag + "knight art and goblins used", pg.locator(".ch-tok svg.ka-badguy").count() == 16 and pg.locator(".ch-tok svg.ka-horse").count() == 2
+        ok(tag + "knight art and goblins used", pg.locator(".ch-gface svg.ka-badguy").count() == 16 and pg.locator(".ch-tok svg.ka-horse").count() == 2
            and pg.locator(".ch-tok svg.ka-knight").count() >= 9 and pg.locator(".ch-tok svg.ka-buddy").count() == 3 and pg.locator(".ch-tok svg.ch-tower").count() == 2,
-           (pg.locator(".ch-tok svg.ka-badguy").count(), pg.locator(".ch-tok svg.ka-horse").count()))
+           (pg.locator(".ch-gface svg.ka-badguy").count(), pg.locator(".ch-tok svg.ka-horse").count()))
     ok(tag + "aria labels name characters", "e 2, your pawn" in pg.get_attribute('[data-sq="52"]', "aria-label") and "goblin" in pg.get_attribute('[data-sq="4"]', "aria-label"),
        pg.get_attribute('[data-sq="52"]', "aria-label"))
     ok(tag + "no horizontal scroll", pg.evaluate("()=>document.documentElement.scrollWidth<=document.documentElement.clientWidth"))

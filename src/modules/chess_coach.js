@@ -788,6 +788,10 @@
     ".ch-crown{position:absolute;left:50%;top:-14%;width:46%;transform:translateX(-50%);height:auto;z-index:1}",
     ".ch-glyph{position:absolute;left:0;top:0;width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:calc(var(--ch-sq)*.6);line-height:1}",
     ".ch-tw .ch-glyph{color:#3b2a33}.ch-tb .ch-glyph{color:#2f2547}",
+    ".ch-glyph.ch-big{color:#fffaf3!important;font-size:calc(var(--ch-sq)*.62);text-shadow:0 1px 0 #2f2547;font-family:'Segoe UI Symbol','Apple Symbols','Noto Sans Symbols 2',serif}",
+    ".ch-tp .ch-glyph.ch-big{font-size:calc(var(--ch-sq)*.42)}",
+    ".ch-gface{position:absolute;right:0;bottom:0;width:calc(var(--ch-sq)*.4);height:calc(var(--ch-sq)*.4);border-radius:50%;background:#efe9fb;border:2px solid #5b4a8a;overflow:hidden;pointer-events:none;z-index:2}",
+    ".ch-gface svg{width:100%;height:100%;display:block}",
     ".ch-badge{position:absolute;right:1%;bottom:1%;width:calc(var(--ch-sq)*.38);height:calc(var(--ch-sq)*.38);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:calc(var(--ch-sq)*.28);line-height:1;font-family:'Segoe UI Symbol','Apple Symbols','Noto Sans Symbols 2','DejaVu Sans',serif;font-weight:700;pointer-events:none;z-index:2;border:2px solid}",
     ".ch-bw{background:#fff;color:#3b2a33;border-color:#e2b94f}.ch-bb{background:#2f2547;color:#fff;border-color:#2f2547}",
     ".ch-star{position:absolute;right:6%;top:2%;font-size:calc(var(--ch-sq)*.3);color:var(--star);pointer-events:none;z-index:4}",
@@ -851,8 +855,13 @@
     return h;
   }
 
+  // Black (the goblins): every goblin looked the same, so a black piece now shows its chess shape in big,
+  // with a small goblin face in the corner. Each black piece is easy to tell apart (Aldrin, 19 Oct 2026).
+  var SOLID = { k: "♚", q: "♛", r: "♜", b: "♝", n: "♞", p: "♟" };
   function tokenHtml(piece) {
     var ch = pieceChar(S.who, piece), art = faceHtml(ch), c = ch.color;
+    if (c === "b") return '<span class="ch-tok ch-tb' + (ch.kind === "p" ? " ch-tp" : "") + '" aria-hidden="true"><span class="ch-glyph ch-big">' + SOLID[ch.kind] + "</span></span>" +
+      (art ? '<span class="ch-gface" aria-hidden="true">' + art + "</span>" : "");
     return '<span class="ch-tok ch-t' + c + (ch.kind === "p" ? " ch-tp" : "") + '" aria-hidden="true">' +
       (art ? '<span class="ch-face">' + art + "</span>" : '<span class="ch-glyph">' + GLYPH[ch.kind] + "</span>") +
       (ch.crown ? CROWN_SVG : "") + '</span><span class="ch-badge ch-b' + (c === "w" ? "w" : "b") + '" aria-hidden="true">' + GLYPH[ch.kind] + "</span>";
