@@ -40,6 +40,7 @@ function runDays(c, days, setsPerDay, start = Date.UTC(2026, 9, 20, 16)) {
 
 // 1. The map
 const ready = M.order.filter(id => M.map[id].ready);
+ok("no counting games left", !["kinder.0", "kinder.1", "count_quick.0", "count_quick.1", "estimate.0"].some(id => M.map[id]) && M.map["count_quick.3"]);
 ok("map has sums, games and times skills", M.map["sums.1"] && ready.length > 60 && M.map["times_facts.9"] && M.map["times_chant.0"], { ready: ready.length, all: M.order.length });
 ok("every need points to a real skill", M.order.every(id => M.map[id].needs.every(n => M.map[n])));
 const cyc = (() => { const seen = {}, on = {}; const dfs = id => { if (on[id]) return true; if (seen[id]) return false; seen[id] = on[id] = true; const r = M.map[id].needs.some(dfs); on[id] = false; return r; }; return M.order.some(dfs); })();
@@ -88,15 +89,15 @@ ok("no circular needs", !cyc);
 { const c = child("marie", { grade: 3, guess: .9, slip: .02, seed: 8 });
   const log = runDays(c, 20, 6).filter(l => l.kind === "new" || l.kind === "sweep");
   const g1 = log.filter(l => M.map[l.target].grade <= 1).length;
-  ok("strong child spends few sets on easy new work (at most 8 of 120)", g1 <= 8, g1);
+  ok("strong child spends few sets on easy new work (at most 10 of 120)", g1 <= 10, g1);
   const g3 = M.order.filter(id => M.map[id].grade >= 3 && (c.st.skills[id]?.lvl || 0) >= 3).length;
   ok("strong child reaches many Grade 3 skills in 20 days", g3 >= 15, g3);
 }
 
 // 7. Daily limit per skill
-{ const c = child("kennedy", { grade: 0, weak: { "count_quick.0": 99 }, seed: 9 });
+{ const c = child("kennedy", { grade: 0, weak: { "kinder.2": 99 }, seed: 9 });
   runDays(c, 3, 10);
-  const today = c.st.dayCounts["count_quick.0"] || 0;
+  const today = c.st.dayCounts["kinder.2"] || 0;
   ok("one skill is asked at most 8 times a day for Kennedy", today <= 8, today);
 }
 
@@ -115,5 +116,28 @@ ok("no circular needs", !cyc);
   ok("parent questions come first", E.nextSet(st, M, Date.now()).kind === "parent");
 }
 
+// 10. Main road first: Marie starts with sums; Kennedy with first numbers; a learning set is one game
+{ const c = child("marie", { grade: 1, seed: 11 });
+  const first = E.nextSet(c.st, M, Date.UTC(2026, 9, 20), c.rng);
+  ok("Marie's very first question is a sum", /^sums\./.test(first.items[0]), first.items[0]);
+  const log = runDays(c, 6, 6).filter(l => l.kind !== "place");
+  const road = l => /^sums\.|^count_quick\.3$|^place_value\.[0-2]$/.test(l.target);   // sums, make 10, and tens and ones that sums need
+  const firstTen = log.slice(0, 10).filter(road).length;
+  ok("at least 7 of Marie's first 10 sets are sums or what sums need (make 10, tens and ones)", firstTen >= 7, log.slice(0, 10).map(l => l.target));
+  const sumsSets = log.slice(0, 10).filter(l => /^sums\./.test(l.target)).length;
+  ok("at least 5 of Marie's first 10 sets are real sums", sumsSets >= 5, sumsSets);
+}
+{ const c = child("kennedy", { grade: 0, seed: 12 });
+  const first = E.nextSet(c.st, M, Date.UTC(2026, 9, 20), c.rng);
+  ok("Kennedy's very first question is a first-numbers game", /^kinder\./.test(first.items[0]), first.items[0]);
+}
+{ const c = child("marie", { grade: 2, seed: 13 }); let mixed = 0;
+  for (let d = 0; d < 10; d++) for (let k = 0; k < 6; k++) { const s = E.nextSet(c.st, M, Date.UTC(2026, 9, 20) + d * DAY + k * 1e5, c.rng);
+    if (s.kind === "place") { E.placementRecord(c.st, M, s.items[0], c.answer(s.items[0])); continue; }
+    if (["new", "learn", "weak", "focus"].includes(s.kind) && new Set(s.items).size > 1 && s.items.filter(x => x === s.target).length === 5 - 0) mixed++;
+    if (["new", "learn", "weak", "focus"].includes(s.kind) && s.items.some(x => x !== s.target) && (c.st.dayCounts[s.target] || 0) < 7) mixed++;
+    s.items.forEach(id => E.record(c.st, M, { skill: id, correct: c.answer(id) }, Date.UTC(2026, 9, 20) + d * DAY + k * 1e5 + 1)); }
+  ok("a learning set stays on one game (no jumping)", mixed === 0, mixed);
+}
 console.log(`RESULT ${pass}/${pass + fail} passed`);
 process.exit(fail ? 1 : 0);

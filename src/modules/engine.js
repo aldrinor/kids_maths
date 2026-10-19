@@ -23,6 +23,23 @@
     { id: "shapes", name: "Shapes, measuring, graphs and patterns", max: 3 }
   ];
   const PLACE_MAX = 35;
+  // The main road: adding and taking away first (Kennedy: first numbers, then adding). Other topics come in
+  // as 1 set in 4, and only once the first steps of the main road are solid (Aldrin, 19 Oct 2026).
+  const PLACE_ORDER = { kennedy: ["count", "add", "shapes"], other: ["add", "count", "times", "fractions", "money_time", "shapes"] };
+  const CORE = { kennedy: id => /^kinder\./.test(id) || id === "sums.1" || id === "sums.2", other: id => /^sums\./.test(id) };
+  const CORE_FIRST = { kennedy: ["kinder.1"], other: ["sums.1", "sums.2"] };
+  const prof = st => st.profile === "kennedy" ? "kennedy" : "other";
+  // The main road also holds every skill a main-road skill needs first (for example make 10 before adding to 20).
+  const roads = new WeakMap();
+  function road(st) {
+    const M = st._M; if (!M) return null;
+    let r = roads.get(M); if (!r) roads.set(M, r = {});
+    const k = prof(st); if (r[k]) return r[k];
+    const set = new Set(), add = id => { if (set.has(id) || !M.map[id]) return; set.add(id); M.map[id].needs.forEach(add); };
+    M.order.filter(id => CORE[k](id)).forEach(add);
+    return (r[k] = set);
+  }
+  const isCore = (st, id) => { const r = road(st); return r ? r.has(id) : CORE[prof(st)](id); };
 
   /* ---------- The skill map ----------
      Each playable level of each game is one skill. Skills from the Sums screen and the new Grade 4 games are added.
@@ -49,9 +66,11 @@
   // Skills whose games are not built yet go here as [id, name, grade, group, needs]; the engine skips them.
   const LATER = [];
 
+  // Counting games are taken out: both children already count well (Aldrin, 19 Oct 2026). Make 10 stays (it is adding).
+  const RETIRED = new Set(["kinder.0", "kinder.1", "kinder.3", "kinder.4", "count_quick.0", "count_quick.1", "count_quick.2", "count_quick.4", "count_quick.5", "estimate.0", "estimate.1"]);
   function buildSkillMap(topics, extra) {
     const map = {}, order = [];
-    const add = s => { map[s.id] = s; order.push(s.id); };
+    const add = s => { if (RETIRED.has(s.id)) return; map[s.id] = s; order.push(s.id); };
     SUMS.forEach(([id, name, grade], i) => add({ id, name, grade, group: "add", needs: SUMS_NEEDS[id] || [], play: { src: "sums", level: i + 1 }, ready: true }));
     (topics || []).forEach(t => {
       if (!t || !t.id || !Array.isArray(t.levels)) return;
@@ -80,21 +99,29 @@
 
   /* ---------- Placement (design 3.4) ---------- */
   function groupList(M, gid) { return M.order.filter(id => M.map[id].ready && M.map[id].group === gid).sort((a, b) => M.map[a].grade - M.map[b].grade || M.order.indexOf(a) - M.order.indexOf(b)); }
+  // In placement the adding group uses only the Sums game, and Kennedy's counting group starts with his first numbers.
+  function placeList(st, M, gid) {
+    const list = groupList(M, gid);
+    if (gid === "add") return list.filter(id => /^sums\./.test(id) && (prof(st) !== "kennedy" || +id.split(".")[1] <= 4));   // Kennedy: sums to 20 at most
+    if (gid === "count" && prof(st) === "kennedy") return list.filter(id => /^kinder\.|^count_quick\./.test(id));
+    return list;
+  }
   function placementNext(st, M) {
     const P = st.place;
     while (!P.done) {
-      if (P.asked >= PLACE_MAX || P.group >= GROUPS.length) { finishPlacement(st, M); return null; }
-      const g = GROUPS[P.group], list = groupList(M, g.id);
-      const skipGroup = !list.length || (st.profile === "kennedy" && g.id !== "count" && g.id !== "add" && g.id !== "shapes");
+      const order = PLACE_ORDER[prof(st)];
+      if (P.asked >= PLACE_MAX || P.group >= order.length) { finishPlacement(st, M); return null; }
+      const g = GROUPS.find(x => x.id === order[P.group]), list = placeList(st, M, g.id);
+      const skipGroup = !list.length;
       if (skipGroup || P.inGroup >= g.max || P.missRow >= 2) { P.group++; P.pos = -1; P.inGroup = 0; P.missRow = 0; continue; }
-      if (P.pos < 0) { const start = list.findIndex(id => M.map[id].grade >= rules(st).startGrade); P.pos = start < 0 ? list.length - 1 : start; }
+      if (P.pos < 0) { const start = g.id === "add" || g.id === "count" ? 0 : list.findIndex(id => M.map[id].grade >= rules(st).startGrade); P.pos = start < 0 ? list.length - 1 : start; }
       P.pos = Math.max(0, Math.min(list.length - 1, P.pos));
       return { skill: list[P.pos], mode: "place", group: g.id };
     }
     return null;
   }
   function placementRecord(st, M, skillId, correct) {
-    const P = st.place, g = GROUPS[P.group], list = groupList(M, g.id);
+    const P = st.place, g = GROUPS.find(x => x.id === PLACE_ORDER[prof(st)][P.group]), list = placeList(st, M, g.id);
     P.asked++; P.inGroup++;
     if (correct) { P.missRow = 0; P.best[g.id] = Math.max(P.best[g.id] ?? -1, list.indexOf(skillId)); P.pos = Math.min(list.length - 1, P.pos + 2); }
     else { P.missRow++; P.pos = Math.max(0, P.pos - 1); }
@@ -104,7 +131,7 @@
     const P = st.place; P.done = true;
     const t = now || Date.now();
     GROUPS.forEach(g => {
-      const list = groupList(M, g.id), best = P.best[g.id] ?? -1;
+      const list = placeList(st, M, g.id), best = P.best[g.id] ?? -1;
       // Every skill below the highest right answer is a first guess at "knows it", checked soon with 2 quick questions.
       for (let i = 0; i < best; i++) { const s = sk(st, list[i]); if (s.lvl < LV.KNOWS) { s.lvl = LV.KNOWS; s.quick = true; s.due = t + DAY * (1 + (i % 3)); s.gap = 0; } }
     });
@@ -123,6 +150,7 @@
 
   function nextSet(st, M, now, rng) {
     rng = rng || Math.random;
+    const coreOpen = () => M.order.some(id => isCore(st, id) && M.map[id].ready && (st.skills[id]?.lvl || 0) < LV.KNOWS && !(st.skills[id]?.parkedUntil > now));
     if (st.paused) return { kind: "paused", items: [] };
     if (st.parentQs.length) return { kind: "parent", items: st.parentQs.slice(0, 5) };   // the parents' own questions come first
     if (!st.place.done) { const q = placementNext(st, M); if (q) return { kind: "place", target: q.skill, items: [q.skill] }; }
@@ -154,15 +182,23 @@
 
     // 4. Parent focus skills, then weak skills, then a skill already being learnt.
     const focus = st.focus.find(id => usable(id) && (st.skills[id]?.lvl || 0) < LV.KNOWS && M.map[id].needs.every(n => strong(st, n)));
-    if (focus) return make("focus", focus, (st.skills[focus]?.lvl || 0) < LV.PRACTISING ? 5 : 3);
-    const learning = M.order.filter(id => usable(id) && st.skills[id] && st.skills[id].lvl >= LV.SHOWN && st.skills[id].lvl < LV.KNOWS);
+    if (focus) return make("focus", focus, 5);
+    const learning = M.order.filter(id => usable(id) && st.skills[id] && st.skills[id].lvl >= LV.SHOWN && st.skills[id].lvl < LV.KNOWS)
+      .sort((a, b) => (isCore(st, b) ? 1 : 0) - (isCore(st, a) ? 1 : 0));
     const weak = learning.find(id => st.skills[id].recent.length >= 5 && acc(st.skills[id]) < .7);
-    if (weak) return make("weak", weak, 3);
-    if (learning.length) { const id = learning[0]; return make("learn", id, st.skills[id].lvl < LV.PRACTISING ? 5 : 3); }
+    if (weak) return make("weak", weak, 5);
+    if (learning.length && (isCore(st, learning[0]) || !coreOpen())) return make("learn", learning[0], 5);
 
     // 5. A new skill, from the group that is furthest behind; one group never fills more than 2 sets in a row.
     const lastGroups = st.sets.slice(-2).map(k => k.split(":")[1]);
-    const ready = M.order.filter(id => usable(id) && isReady(st, M, id, now));
+    const ready0 = M.order.filter(id => usable(id) && isReady(st, M, id, now));
+    const coreReady = ready0.filter(id => isCore(st, id));
+    const basics = CORE_FIRST[prof(st)].every(id => !M.map[id] || strong(st, id));
+    const coreRun = st.sets.slice(-3).filter(k => k.endsWith(":c")).length;
+    const otherTurn = basics && coreRun >= 3;
+    if (coreReady.length && !otherTurn) return make("new", coreReady[0], 5);
+    if (learning.length && !isCore(st, learning[0]) && basics) return make("learn", learning[0], 5);
+    const ready = basics ? ready0.filter(id => !isCore(st, id)).concat(coreReady) : coreReady.length ? coreReady : ready0;
     if (ready.length) {
       const behind = gid => { const ids = M.order.filter(id => M.map[id].group === gid && M.map[id].ready); return ids.reduce((a, id) => a + (st.skills[id]?.lvl || 0), 0) / Math.max(1, ids.length); };
       const blocked = lastGroups.length === 2 && lastGroups[0] === lastGroups[1] ? lastGroups[0] : null;
@@ -179,7 +215,7 @@
     return { kind: "empty", items: [] };
   }
   function finish(st, kind, target, items) {
-    st.sets.push(kind + ":" + ((st._M && st._M.map[target]) ? st._M.map[target].group : ""));
+    st.sets.push(kind + ":" + ((st._M && st._M.map[target]) ? st._M.map[target].group : "") + (isCore(st, target) ? ":c" : ":o"));
     if (st.sets.length > 40) st.sets = st.sets.slice(-40);
     return { kind, target, items };
   }
