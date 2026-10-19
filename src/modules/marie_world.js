@@ -20,21 +20,29 @@
   const CSS = `.mw { height: 100%; box-sizing: border-box; padding: 8px; display: flex; flex-direction: column; gap: 8px; }
 .mw-page { max-width: 820px; margin: 0 auto; display: grid; gap: 10px; }
 .mw-tabs { display: flex; gap: 8px; justify-content: center; }
-.mw-tabs button { padding: 8px 16px; border: 3px solid #3b2a33; border-radius: 14px; background: #fffaf3; font: 800 16px/1 inherit; }
+.mw-tabs button { padding: 8px 16px; border: 3px solid #3b2a33; border-radius: 14px; background: #fffaf3; font-size: 16px; font-weight: 800; line-height: 1; }
 .mw-tabs button[aria-pressed="true"] { background: #c9ecd9; }
 .mw-tabs { flex: none; }
 .mw-body { flex: 1; min-height: 0; position: relative; overflow: auto; }
 .mw-plots { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
-.mw-plot { display: grid; justify-items: center; gap: 4px; padding: 8px; border: 3px solid #3b2a33; border-radius: 16px; background: #f2e6d4; font: 800 14px/1.2 inherit; }
+.mw-plot { display: grid; justify-items: center; gap: 4px; padding: 8px; border: 3px solid #3b2a33; border-radius: 16px; background: #f2e6d4; font-size: 14px; font-weight: 800; line-height: 1.2; }
 .mw-plot img, .mw-plot svg { width: 64px; height: 64px; }
 .mw-shop { display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 8px; }
-.mw-shop button { display: grid; justify-items: center; gap: 2px; padding: 8px; border: 3px solid #3b2a33; border-radius: 14px; background: #fffaf3; font: 800 14px/1.2 inherit; }
+.mw-shop button { display: grid; justify-items: center; gap: 2px; padding: 8px; border: 3px solid #3b2a33; border-radius: 14px; background: #fffaf3; font-size: 14px; font-weight: 800; line-height: 1.2; }
 .mw-shop button[disabled] { opacity: .5; } .mw-shop img { width: 40px; height: 40px; }
 .mw-pet { display: grid; justify-items: center; gap: 8px; text-align: center; }
 .mw-pet .me { position: relative; width: 150px; height: 150px; } .mw-pet .me img.p { width: 150px; height: 150px; }
 .mw-pet .me img.t { position: absolute; width: 50px; height: 50px; }
 .mw-acts { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; }
-.mw-acts button { padding: 10px 16px; border: 3px solid #3b2a33; border-radius: 14px; background: #cfe6fb; font: 800 16px/1 inherit; }`;
+.mw-cafe { position: relative; width: min(520px, 86vw); border-radius: 22px; overflow: hidden; background: #fdf1f4; border: 1px solid rgba(0,0,0,.12); }
+.mw-cafe-wall { position: absolute; inset: 0 0 34% 0; background-image: radial-gradient(#f7d6e0 2px, transparent 2.5px); background-size: 22px 22px; }
+.mw-cafe-row { position: relative; display: flex; align-items: flex-end; justify-content: space-between; padding: 10px 10px 0; gap: 6px; }
+.mw-cafe-row svg { flex: none; }
+.mw-cafe-order { align-self: center; background: #fff; border-radius: 16px; padding: 8px 10px; font-weight: 700; border: 1px solid rgba(0,0,0,.1); text-align: center; }
+.mw-cafe-tray { display: flex; gap: 4px; justify-content: center; margin-top: 6px; } .mw-cafe-tray img { width: 28px; height: 28px; }
+.mw-cafe-counter { position: relative; height: 26px; background: linear-gradient(#e8c9a8, #d9b48c); border-top: 2px solid #c79a64; }
+@media (max-width: 420px) { .mw-cafe-row svg { width: 80px; height: 104px; } .mw-cafe-tray img { width: 20px; height: 20px; } }
+.mw-acts button { padding: 10px 16px; border: 3px solid #3b2a33; border-radius: 14px; background: #cfe6fb; font-size: 16px; font-weight: 800; line-height: 1; }`;
   function css() { if (document.getElementById("mw-css")) return; const s = document.createElement("style"); s.id = "mw-css"; s.textContent = CSS; document.head.appendChild(s); }
 
   function mount(el) {
@@ -100,13 +108,25 @@
   }
 
   /* ---------- Cafe: every 5 answers a customer comes; Marie cooks and decorates their order ---------- */
+  // The cafe moment after 5 answers: Mimi behind the counter, a friend ordering, and the treats her answers earned.
+  const FRIENDS_IN = ["melody", "kuromi", "purin", "cinna"];
+  const ORDER = ["cupcake", "donut", "cookie", "strawberry", "icecream", "pancakes", "croissant", "shortcake"];
   function customer(cardHtml, go) {
-    const c = CUSTOMERS[(P.cafe && P.cafe.served || 0) % CUSTOMERS.length];
-    const html = `<div class="hello"><img src="${ART(c)}" alt="" style="width:90px;height:90px"></div><h2>A customer at Marie's Cafe!</h2>
-      <p>Your 5 answers bought the ingredients. Let's cook their order.</p><button class="main-btn" type="button" id="cafeGo">Cook it</button>`;
+    css();
+    const k = (P.cafe && P.cafe.served) || 0, friend = FRIENDS_IN[k % FRIENDS_IN.length];
+    const name = window.KittyChars ? KittyChars.names[friend] : "A friend";
+    const treats = Array.from({ length: 5 }, (_, i) => ORDER[(k + i) % ORDER.length]);
+    const art = (id, pose) => window.KittyChars ? KittyChars.full(id, pose).replace("<svg", '<svg width="120" height="156"') : "";
+    const html = `<div class="mw-cafe" role="img" aria-label="${esc(name)} is at the counter of Marie's Cafe.">
+        <div class="mw-cafe-wall"></div>
+        <div class="mw-cafe-row">${art("kitty", "wave")}<div class="mw-cafe-order"><b>${esc(name)}:</b> "Five treats, please!"
+          <div class="mw-cafe-tray">${treats.map(t => `<img src="${ART(t)}" alt="">`).join("")}</div></div>${art(friend, "happy")}</div>
+        <div class="mw-cafe-counter"></div></div>
+      <h2>Marie's Cafe</h2><p>Your 5 answers made the treats. Now decorate them for ${esc(name)}.</p>
+      <button class="main-btn" type="button" id="cafeGo">Decorate</button>`;
     cardHtml(html);
     document.getElementById("cafeGo").onclick = () => { P.cafe = P.cafe || { served: 0 }; P.cafe.served++; save(); go(); };
-    speak("A customer came to your cafe! Let's cook their order.");
+    speak(`${name} came to your cafe and wants five treats. Let's decorate them.`);
   }
   window.MarieWorld = { mount, unmount, customer };
 })();

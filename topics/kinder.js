@@ -64,7 +64,7 @@
 .kg-side .kg-thing { width: 40px; height: 40px; padding: 3px; }
 .kg-frame { display: grid; grid-template-columns: repeat(5, 54px); gap: 6px; } .kg-cell { height: 54px; border: 3px solid #3b2a33; border-radius: 10px; background: #fffaf3; display: grid; place-items: center; }
 .kg-cell.on::before { content: ""; width: 30px; height: 30px; border-radius: 50%; background: #ff8fb1; border: 2px solid #3b2a33; }
-.kg-big { font: 800 22px/1.3 inherit; text-align: center; }`;
+.kg-big { font-size: 22px; font-weight: 800; line-height: 1.3; text-align: center; }`;
   function css() { if (document.getElementById("kg-css")) return; const s = document.createElement("style"); s.id = "kg-css"; s.textContent = CSS; document.head.appendChild(s); }
   const thing = (api, item, i, on) => `<button type="button" class="kg-thing${on ? " on" : ""}" data-t="${i}" aria-label="${on ? "Counted" : "Not counted yet"}"><img src="${api.ART(item)}" alt=""></button>`;
 

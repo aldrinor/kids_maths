@@ -36,7 +36,7 @@
 .sc-l.step svg { animation: scStep .6s ease-out; transform-origin: 30% 90%; }
 .sc-r.flinch svg { animation: scFlinch .6s ease-out; }
 .sc-r.leave svg { animation: scLeave 1.4s ease-in forwards; }
-@media (max-width: 560px) { .say.scene, .tp-talk.scene { --scene-h: 112px; } .say.scene .bubble, .tp-talk.scene .tp-bubble { font-size: 14px; } .sc-tray { left: -40px; width: 44px; } }
+@media (max-width: 560px) { .say.scene, .tp-talk.scene { --scene-h: 92px; gap: 4px; padding: 4px 6px 0; } .sc-l svg, .sc-r svg { max-width: 60px; } .say.scene .bubble, .tp-talk.scene .tp-bubble { font-size: 14px; margin-bottom: 8px; } .say.scene > button, .tp-talk.scene > button { width: 36px; height: 36px; min-width: 36px; margin-bottom: 8px; } .sc-tray { left: -34px; width: 38px; bottom: 4px; } .sc-tray img { width: 14px; height: 14px; } .sc-stars i { width: 11px; height: 11px; } }
 @media (prefers-reduced-motion: reduce) { .sc-l.step svg, .sc-r.flinch svg { animation: none; } .sc-r.leave svg { animation: none; opacity: 0; } }`;
   function css() { if (document.getElementById("world-css")) return; const s = document.createElement("style"); s.id = "world-css"; s.textContent = CSS; document.head.appendChild(s); }
 

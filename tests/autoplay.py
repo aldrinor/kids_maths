@@ -6,7 +6,7 @@ STEP = """() => {
   if (!cov.hidden && document.getElementById("winNext")) { document.getElementById("winNext").click(); return "win"; }
   if (!cov.hidden && document.getElementById("cafeGo")) { document.getElementById("cafeGo").click(); return "cafe"; }
   if (!cov.hidden && document.getElementById("knDefDone")) { document.getElementById("knDefDone").click(); return "defended"; }
-  if (!cov.hidden && cov.querySelector(".kn-keys")) { for (const ch of String(KnightWorld._q.ans)) cov.querySelector(`[data-k="${ch}"]`).click(); cov.querySelector('[data-k="go"]').click(); return "ladder"; }
+  if (!cov.hidden && cov.querySelector(".kn-keys, .kd-keys")) { for (const ch of String(KnightWorld._q.ans)) cov.querySelector(`[data-k="${ch}"]`).click(); cov.querySelector('[data-k="go"]').click(); return "ladder"; }
   if (!cov.hidden && document.getElementById("pqIn")) return "parentq";
   if (TopicHost.isOpen()) { const s = TopicHost.state; if (s.phase !== "ask" || !s.Q) return "wait";
     const lay = document.getElementById("topicPlay");
