@@ -15,7 +15,7 @@ subprocess.run([sys.executable, str(ROOT / "tests" / "wrap_like_publish.py"), st
 page = (ROOT / "index.html").read_text(encoding="utf-8")
 page = page.replace('<meta charset="utf-8">', HEAD, 1)
 # The calm look (modules/theme.js) loads last on every page.
-page = page.replace("</body>", '<script src="modules/world.js"></script><script src="modules/theme.js"></script></body>', 1)
+page = page.replace("</body>", '<script src="modules/river.js"></script><script src="modules/cafe_orders.js"></script><script src="modules/world.js"></script><script src="modules/theme.js"></script></body>', 1)
 (ROOT / "index.html").write_text(page, encoding="utf-8")
 for folder in ["modules", "topics"]:
     (ROOT / folder).mkdir(exist_ok=True)

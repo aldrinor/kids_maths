@@ -8,6 +8,15 @@ STEP = """() => {
   if (!cov.hidden && document.getElementById("knDefDone")) { document.getElementById("knDefDone").click(); return "defended"; }
   if (!cov.hidden && cov.querySelector(".kn-keys, .kd-keys")) { for (const ch of String(KnightWorld._q.ans)) cov.querySelector(`[data-k="${ch}"]`).click(); cov.querySelector('[data-k="go"]').click(); return "ladder"; }
   if (!cov.hidden && document.getElementById("pqIn")) return "parentq";
+  if (window.River && River.isOpen()) { const s = River.state(); if (!s || s.busy || s.phase === "done") return "wait";
+    const L = document.getElementById("riverPlay");
+    if (s.phase === "hop") { L.querySelector(".rv-hops button.next").click(); return "wait"; }
+    L.querySelector(`[data-pick="${s.ans}"]`).click(); return "river"; }
+  if (window.CafeOrders && CafeOrders.isOpen()) { const s = CafeOrders.state(); if (!s || s.phase === "done") return "wait";
+    const L = document.getElementById("cafePlay");
+    if (s.phase === "bake") { L.querySelector("[data-bake]").click(); return "wait"; }
+    if (s.phase === "give") { const g = [...L.querySelectorAll(".co-cell.give")].pop(); if (g) g.dispatchEvent(new MouseEvent("click", { bubbles: true })); return "wait"; }
+    L.querySelector(`[data-pick="${s.ans}"]`).click(); return "river"; }
   if (TopicHost.isOpen()) { const s = TopicHost.state; if (s.phase !== "ask" || !s.Q) return "wait";
     const lay = document.getElementById("topicPlay");
     if (s.Q.input.type === "number") { for (const ch of String(s.Q.answer)) lay.querySelector(`.tp-key[data-k="${ch}"]`).click(); lay.querySelector('.tp-key[data-k="go"]').click(); }
@@ -26,7 +35,7 @@ def play(pg, n):
     for _ in range(n * 12):
         r = pg.evaluate(STEP)
         if r == "col": pg.evaluate(COL)
-        if r.startswith(("topic", "sums", "col")): done += 1
-        pg.wait_for_timeout(1700 if r.startswith(("topic", "sums", "col")) else 400)
+        if r.startswith(("topic", "sums", "col", "river")): done += 1
+        pg.wait_for_timeout(1700 if r.startswith(("topic", "sums", "col", "river")) else 400)
         if done >= n or r == "off": break
     return done

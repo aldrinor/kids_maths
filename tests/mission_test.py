@@ -24,8 +24,8 @@ with sync_playwright() as p:
             if r == "col":   # column sums: type each column through the game's own checks
                 pg.evaluate("()=>{ const a=Q.a,b=Q.b; const d=(n,i)=>Math.floor(n/10**i)%10; let c=0; for(let i=0;col && i<col.n;i++){ const s=d(a,i)+d(b,i)+c; col.typed=String(s); colCheck(); if(s>=10){ blocks.filter(x=>x.size===10**i&&!x.gone).slice(0,10).forEach(x=>tapBlock(x.id)); } c=s>=10?1:0; } }")
                 r = "col"
-            if r.startswith(("topic", "sums", "col")): answered += 1; seen[r.split(":")[0]] = seen.get(r.split(":")[0], 0) + 1
-            pg.wait_for_timeout(1700 if r.startswith(("topic", "sums", "col")) else 400)
+            if r.startswith(("topic", "sums", "col", "river")): answered += 1; seen[r.split(":")[0]] = seen.get(r.split(":")[0], 0) + 1
+            pg.wait_for_timeout(1700 if r.startswith(("topic", "sums", "col", "river")) else 400)
             if answered >= 22 or r == "off": break
         st = pg.evaluate("()=>({place:P.engine.place.done, asked:P.engine.place.asked, known:Object.values(P.engine.skills).filter(s=>s.lvl>=3).length, days:Object.values(P.days||{})[0], coins:P.coins||0, defeated:P.defeated||0, cooks:P.cooks||0})")
         ok(f"{who}: answered 22 questions picked by the engine", answered >= 22, (answered, seen, r))

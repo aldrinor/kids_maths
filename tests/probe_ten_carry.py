@@ -24,7 +24,7 @@ with sync_playwright() as p:
         pg.on("pageerror", lambda e: errs.append(str(e)))
         pg.goto("file:///" + page_path.replace("\\", "/"))
         pg.wait_for_timeout(1200)
-        pg.click('[data-p="marie"]'); pg.wait_for_timeout(300); pg.click("#goBtn"); pg.evaluate("()=>{Mission.on=false; if (TopicHost.isOpen()) TopicHost.close(); document.getElementById('cover').hidden=true;}")
+        pg.click('[data-p="marie"]'); pg.wait_for_timeout(300); pg.click("#goBtn"); pg.evaluate("()=>{Mission.on=false; if (TopicHost.isOpen()) TopicHost.close(); if (window.CafeOrders && CafeOrders.isOpen()) CafeOrders.close(); if (window.River && River.isOpen()) River.close(); document.getElementById('cover').hidden=true;}")
         pg.wait_for_timeout(500)
         # ---- make 10 ----
         pg.evaluate("()=>{P.level=3;for(let i=0;i<300&&!(makeTen(Q)&&Q.a>=6&&Q.b>=5);i++){P.round=[];nextQuestion();}}")

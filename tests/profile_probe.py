@@ -6,7 +6,7 @@ STUB="window.speechSynthesis={speak(){},cancel(){},getVoices(){return[]},pause()
 res=[]
 def ok(name, cond, extra=""): res.append(cond); print(("PASS " if cond else "FAIL ")+name+(" | "+str(extra) if extra and not cond else ""))
 def solve(pg):
-    pg.evaluate("()=>{Mission.on=false; if (TopicHost.isOpen()) TopicHost.close(); document.getElementById('cover').hidden=true; nextQuestion();}")
+    pg.evaluate("()=>{Mission.on=false; if (TopicHost.isOpen()) TopicHost.close(); if (window.CafeOrders && CafeOrders.isOpen()) CafeOrders.close(); if (window.River && River.isOpen()) River.close(); document.getElementById('cover').hidden=true; nextQuestion();}")
     for i in pg.evaluate("()=>blocks.filter(b=>b.who!==friend).map(b=>b.id)")+pg.evaluate("()=>blocks.filter(b=>b.who===friend).map(b=>b.id)"):
         pg.evaluate(f"()=>tapBlock({i})")
         if pg.evaluate("()=>stopPending()"):

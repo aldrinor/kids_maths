@@ -19,8 +19,8 @@ with sync_playwright() as p:
         r = pg.evaluate(STEP)
         if r == "col": pg.evaluate(COL)
         kinds[r.split(":")[0]] = kinds.get(r.split(":")[0], 0) + 1
-        if r.startswith(("topic", "sums", "col")): answered += 1
-        pg.wait_for_timeout(1700 if r.startswith(("topic", "sums", "col")) else 450)
+        if r.startswith(("topic", "sums", "col", "river")): answered += 1
+        pg.wait_for_timeout(1700 if r.startswith(("topic", "sums", "col", "river")) else 450)
         if kinds.get("defended") or r == "off": break
     st = pg.evaluate("()=>({coins:P.coins||0, defeated:P.defeated||0, defended:Object.values(P.days)[0].defended||false})")
     ok("sent bad guys home", st["defeated"] >= 4, st)

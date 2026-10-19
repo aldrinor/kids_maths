@@ -29,7 +29,7 @@
     card(`<div class="hello">${PROFILES[who].pic}</div><h2>${text}</h2><p>Your maths is done for today. You did great work.</p>`);
     say(text, "good", false); speak(text);
   }
-  function closeTopic() { if (window.TopicHost && TopicHost.isOpen()) TopicHost.close(); }
+  function closeTopic() { if (window.TopicHost && TopicHost.isOpen()) TopicHost.close(); if (window.River && River.isOpen()) River.close(); if (window.CafeOrders && CafeOrders.isOpen()) CafeOrders.close(); }
 
   function nextSet() {
     set = KidsEngine.nextSet(eng(), map(), now()); i = 0;
@@ -44,6 +44,20 @@
     if (set.kind === "parent") return askParent(id);
     const s = map().map[id];
     if (!s || !s.ready) { i++; return i < set.items.length ? play() : nextSet(); }
+    // Kennedy's adding and taking away to 20 is played as River Crossing: the number line is the river.
+    if (s.play.src === "sums" && who === "kennedy" && s.play.level <= 4 && window.River) {
+      if (window.TopicHost && TopicHost.isOpen()) TopicHost.close();
+      const known = (eng().skills[id]?.lvl || 0) >= 3;
+      River.play({ level: s.play.level, head: known && Math.random() < .6, done: inSet, onAnswer: r => Mission.answered(r), onQuit: () => Mission.pause() });
+      return;
+    }
+    // Marie's adding and taking away to 20 is played as Cafe Orders: she bakes and gives treats on ten-frame trays.
+    if (s.play.src === "sums" && who !== "kennedy" && s.play.level <= 4 && window.CafeOrders) {
+      closeTopic();
+      const known = (eng().skills[id]?.lvl || 0) >= 3;
+      CafeOrders.play({ level: s.play.level, head: known && Math.random() < .6, onAnswer: r => Mission.answered(r), onQuit: () => Mission.pause() });
+      return;
+    }
     if (s.play.src === "sums") {
       closeTopic();
       Mission.sumsLevel = s.play.level; showView("sums"); $("cover").hidden = true; nextQuestion();

@@ -1,4 +1,5 @@
 /* chess_coach.js - a calm chess coach for Kids Maths (Marie, 8, and Kennedy, 5).
+ * Opens straight into a game. Pieces are the children's own characters; tapping shows legal moves; hints, tips and danger help.
  *
  * window.BrainGames.chess = { id, title, open(container, opts), close() }
  *   opts = { who: "marie"|"kennedy"|"demo", speak(text), store: { get(), set(obj) }, onExit() }
@@ -8,10 +9,11 @@
  *   2. Search, hints and the coach opponent (levels 0-3)
  *   3. Lessons and puzzle goal checkers
  *   4. Progress saved through opts.store
+ *   4b. Characters (piece to character mapping), tips, danger check
  *   5. The screen (only runs when open() is called in a browser)
  *
  * The coach is gentle on purpose. No sound, no timers on the child, no flashing.
- * Store layout: { kennedyAll: bool, kids: { marie: { done:{}, level, winRun, lossRun, wins, losses }, ... } }
+ * Store layout: { kennedyAll: bool, tips: { who: { p: n, ... } }, kids: { marie: { done:{}, level, winRun, lossRun, wins, losses }, ... } }
  */
 (function () {
   "use strict";
@@ -659,44 +661,146 @@
     return n;
   }
 
+  /* ================= 4b. CHARACTERS, TIPS, DANGER ================= */
+  // Each piece is a round token with a character head. art: "kc" = KittyChars face, "ka" = KnightArt face,
+  // "tower" = drawn castle tower. Black is always the goblin so the two sides are easy to tell apart.
+  var GOBLIN = { art: "ka", id: "badguy", name: "goblin" };
+  var TEAMS = {
+    marie: {
+      w: { k: { art: "kc", id: "kitty", name: "Mimi", crown: true }, q: { art: "kc", id: "melody", name: "Bella" },
+           r: { art: "kc", id: "cinna", name: "Puff" }, b: { art: "kc", id: "kuromi", name: "Lulu" },
+           n: { art: "kc", id: "purin", name: "Momo" }, p: { art: "kc", id: "kitty", name: "Mimi" } },
+      b: { k: GOBLIN, q: GOBLIN, r: GOBLIN, b: GOBLIN, n: GOBLIN, p: GOBLIN }
+    },
+    kennedy: {
+      w: { k: { art: "ka", id: "knight", name: "the knight", crown: true }, q: { art: "ka", id: "buddy", name: "Buddy" },
+           r: { art: "tower", id: "tower", name: "the tower" }, b: { art: "ka", id: "buddy", name: "Buddy" },
+           n: { art: "ka", id: "horse", name: "the pony" }, p: { art: "ka", id: "knight", name: "the knight" } },
+      b: { k: GOBLIN, q: GOBLIN, r: GOBLIN, b: GOBLIN, n: GOBLIN, p: GOBLIN }
+    }
+  };
+  function teamKey(who) { return who === "kennedy" ? "kennedy" : "marie"; }
+
+  // The character that draws this piece (a letter such as "N" or "q") for this child.
+  function pieceChar(who, piece) {
+    var c = colorOf(piece), k = kindOf(piece), d = TEAMS[teamKey(who)][c][k];
+    return { kind: k, color: c, art: d.art, id: d.id, name: d.name, crown: !!d.crown };
+  }
+  // Spoken label of a piece, e.g. "your queen, Bella" or "goblin rook".
+  function pieceLabel(who, piece) {
+    var ch = pieceChar(who, piece);
+    if (ch.color === "b") return "goblin " + NAMES[ch.kind];
+    return "your " + NAMES[ch.kind] + ", " + ch.name;
+  }
+  // The child's own word for a piece type (Kennedy's knight is the pony).
+  function pieceWord(who, kind) { return teamKey(who) === "kennedy" && kind === "n" ? "pony" : NAMES[kind]; }
+
+  var TIPS = {
+    marie: {
+      p: "Pawns walk one step forward. They take one step sideways.",
+      n: "Momo the knight jumps in an L: two steps, then one to the side.",
+      b: "Lulu the bishop slides along diagonals, as far as she likes.",
+      r: "Puff the rook slides in straight lines: up, down, left or right.",
+      q: "Bella the queen slides any way: straight or diagonal.",
+      k: "Mimi the king takes one step in any direction. Keep her safe."
+    },
+    kennedy: {
+      p: "Pawns step forward. They take sideways.",
+      n: "The pony jumps in an L: two steps, then one to the side.",
+      b: "Buddy slides along a diagonal.",
+      r: "The tower slides in a straight line.",
+      q: "Buddy the queen goes any way.",
+      k: "The knight king steps one square. Keep him safe."
+    }
+  };
+  var MAX_TIP_SHOWS = 3;
+
+  // Your pieces that could be lost, most valuable first, with the cheapest enemy piece that attacks each.
+  function dangerInfo(st, color) {
+    var list = hangingPieces(st, color).map(function (h) {
+      var att = attackersOf(st.b, h.sq, other(color)), low = null, lowV = 999;
+      att.forEach(function (a) {
+        var k = kindOf(st.b[a]), v = VALUES[k] === 0 ? 100 : VALUES[k];
+        if (v < lowV) { lowV = v; low = k; }
+      });
+      return { sq: h.sq, piece: h.piece, value: h.value, by: low };
+    });
+    list.sort(function (a, c) { return c.value - a.value; });
+    return list;
+  }
+
+  // Squares a piece can go to: quiet moves (dots) and captures (rings).
+  function moveMarks(st, from) {
+    var dots = {}, caps = {};
+    legalMoves(st).forEach(function (m) {
+      if (m.from !== from) return;
+      if (isCapture(st, m)) caps[m.to] = true; else dots[m.to] = true;
+    });
+    return { dots: dots, caps: caps };
+  }
+
   /* ================= 5. THE SCREEN ================= */
   var GLYPH = { p: "♟︎", n: "♞︎", b: "♝︎", r: "♜︎", q: "♛︎", k: "♚︎" };
 
+  var CROWN_SVG = '<svg class="ch-crown" viewBox="0 0 40 26" aria-hidden="true" xmlns="http://www.w3.org/2000/svg"><path d="M4 23 L6 7 L14 15 L20 3 L26 15 L34 7 L36 23 Z" fill="#f4cf5a" stroke="#b8871b" stroke-width="2" stroke-linejoin="round"/><circle cx="6" cy="6" r="2.4" fill="#f4cf5a" stroke="#b8871b" stroke-width="1.4"/><circle cx="20" cy="3" r="2.4" fill="#f4cf5a" stroke="#b8871b" stroke-width="1.4"/><circle cx="34" cy="6" r="2.4" fill="#f4cf5a" stroke="#b8871b" stroke-width="1.4"/></svg>';
+  var TOWER_SVG = '<svg class="ch-tower" viewBox="0 0 100 100" aria-hidden="true" xmlns="http://www.w3.org/2000/svg"><path d="M50 4 V16" stroke="#8a6d3b" stroke-width="3" stroke-linecap="round"/><path d="M50 5 L66 10 L50 15 Z" fill="#e58aa8"/><path d="M22 28 H30 V20 H40 V28 H46 V20 H54 V28 H60 V20 H70 V28 H78 V40 H22 Z" fill="#c9d3e6" stroke="#7a89a8" stroke-width="2.5" stroke-linejoin="round"/><path d="M27 40 H73 L77 90 H23 Z" fill="#dbe3f1" stroke="#7a89a8" stroke-width="2.5" stroke-linejoin="round"/><path d="M40 90 V70 A10 10 0 0 1 60 70 V90 Z" fill="#8a6d3b" stroke="#5e4824" stroke-width="2"/><rect x="45" y="48" width="10" height="13" rx="5" fill="#7a89a8"/><circle cx="50" cy="78" r="1.8" fill="#f4cf5a"/></svg>';
+
   var CSS = [
-    ".ch-wrap{--ink:#3b2a33;--cream:#fffaf3;--light:#f6e7d3;--dark:#d9b99b;--soft:#bde3c9;--hint:#ffe9a8;--dots:rgba(123,85,230,.5);--star:#c99a2e;",
-    "--ch-sq:min(calc((100vw - 40px)/8),64px);box-sizing:border-box;width:100%;max-width:640px;margin:0 auto;padding:12px;background:var(--cream);color:var(--ink);font:inherit;border-radius:18px;container-type:inline-size}",
-    "@supports (width:1cqw){.ch-board-box{--ch-sq:min(12.5cqw,64px)}}",
+    ".ch-wrap{--ink:#3b2a33;--cream:#fffaf3;--light:#f6e7d3;--dark:#e4c9a8;--edge:#d3b08c;--soft:#bde3c9;--sel:#ffe9a8;--dots:rgba(123,85,230,.45);--last:#d9f0e3;--danger:#f4b183;--star:#c99a2e;--btn:#f6e7d3;--btn-edge:#d9b99b;",
+    "--ch-sq:min(calc((100vw - 48px)/8),calc((100vh - 300px)/8),88px);box-sizing:border-box;width:100%;max-width:780px;margin:0 auto;padding:10px;background:var(--cream);color:var(--ink);font:inherit;border-radius:18px;container-type:inline-size}",
+    ".ch-wrap.ch-kennedy{--light:#e8eef7;--dark:#c6d4ea;--edge:#a9bbd8;--cream:#f5f8fd;--btn:#e8eef7;--btn-edge:#b3c3de;--soft:#cfe6dc}",
+    "@supports (width:1cqw){.ch-board-box{--ch-sq:min(calc((100cqw - 8px)/8),calc((100vh - 300px)/8),88px)}}",
+    "@supports (height:100svh){.ch-wrap{--ch-sq:min(calc((100vw - 48px)/8),calc((100svh - 300px)/8),88px)}@supports (width:1cqw){.ch-board-box{--ch-sq:min(calc((100cqw - 8px)/8),calc((100svh - 300px)/8),88px)}}}",
     ".ch-wrap *{box-sizing:border-box}",
+    ".ch-sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}",
     ".ch-top{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:8px}",
     ".ch-title{margin:0;font-size:1.25rem;font-weight:700}",
-    ".ch-btn{min-height:44px;padding:8px 14px;border:2px solid var(--dark);border-radius:14px;background:var(--light);color:var(--ink);font:inherit;font-size:1rem;cursor:pointer}",
+    ".ch-btn{min-height:44px;padding:8px 14px;border:2px solid var(--btn-edge);border-radius:14px;background:var(--btn);color:var(--ink);font:inherit;font-size:1rem;cursor:pointer}",
     ".ch-btn:hover{background:var(--soft)}",
-    ".ch-btn[aria-pressed=true]{background:var(--soft)}",
     ".ch-btn[disabled]{opacity:.5;cursor:default}",
     ".ch-btn:focus-visible,.ch-sq:focus-visible{outline:3px solid var(--ink);outline-offset:-3px}",
     ".ch-list{list-style:none;margin:0;padding:0;display:grid;gap:8px}",
     ".ch-item{width:100%;text-align:left;display:flex;justify-content:space-between;align-items:center;gap:8px}",
     ".ch-note{margin:10px 2px;font-size:.95rem;opacity:.85}",
     ".ch-row{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin:8px 0}",
+    ".ch-actions{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:6px;margin:8px 0 2px}",
+    ".ch-actions .ch-btn{min-height:54px;padding:6px 3px;font-size:clamp(.74rem,2.5vw,1rem);line-height:1.15;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;min-width:0;width:100%}",
+    ".ch-actions .ch-btn small{font-size:.8em;opacity:.8}",
+    ".ch-actions .ch-hintbtn{background:var(--sel);border-color:#e2b94f;font-weight:700}",
     ".ch-board-box{display:flex;justify-content:center}",
-    ".ch-board{display:grid;grid-template-columns:repeat(8,var(--ch-sq));grid-auto-rows:var(--ch-sq);width:max-content;border:2px solid var(--dark);border-radius:6px;overflow:hidden}",
-    ".ch-sq{position:relative;display:flex;align-items:center;justify-content:center;width:var(--ch-sq);height:var(--ch-sq);margin:0;padding:0;border:0;border-radius:0;font:inherit;font-size:calc(var(--ch-sq)*.74);line-height:1;color:var(--ink);cursor:pointer}",
+    ".ch-board{position:relative;display:grid;grid-template-columns:repeat(8,var(--ch-sq));grid-auto-rows:var(--ch-sq);width:max-content;border:3px solid var(--edge);border-radius:10px;overflow:hidden}",
+    ".ch-sq{position:relative;display:block;width:var(--ch-sq);height:var(--ch-sq);margin:0;padding:0;border:0;border-radius:0;font:inherit;color:var(--ink);cursor:pointer;-webkit-tap-highlight-color:transparent}",
     ".ch-l{background:var(--light)}.ch-d{background:var(--dark)}",
-    ".ch-ls{box-shadow:inset 0 0 0 2px rgba(123,85,230,.25)}",
-    ".ch-tg{background:var(--soft)}",
-    ".ch-sl{background:var(--soft);box-shadow:inset 0 0 0 3px rgba(59,42,51,.35)}",
-    ".ch-hn{background:var(--hint)}",
-    ".ch-dt::after{content:'';position:absolute;top:10%;left:10%;width:24%;height:24%;border-radius:50%;background:var(--dots)}",
-    ".ch-pc{pointer-events:none}",
-    ".ch-pw{color:var(--cream);-webkit-text-stroke:.8px var(--ink);paint-order:stroke fill}",
-    ".ch-pb{color:var(--ink)}",
-    ".ch-star{position:absolute;right:6%;top:2%;font-size:.42em;color:var(--star);pointer-events:none}",
-    ".ch-star.ch-big{right:auto;top:auto;font-size:.6em}",
-    ".ch-status{min-height:3.2em;margin:8px 2px;padding:8px 12px;background:var(--light);border-radius:12px;font-size:1.1rem;line-height:1.4}",
+    ".ch-ls{background:var(--last)}",
+    ".ch-hn{background:var(--sel)}",
+    ".ch-sl{background:var(--sel)}",
+    ".ch-mv::after{content:'';position:absolute;left:35%;top:35%;width:30%;height:30%;border-radius:50%;background:var(--dots);pointer-events:none;z-index:3}",
+    ".ch-cp::after{content:'';position:absolute;left:4%;top:4%;width:92%;height:92%;border-radius:50%;border:calc(var(--ch-sq)*.07) solid var(--dots);pointer-events:none;z-index:3}",
+    ".ch-dg::before{content:'';position:absolute;left:2%;top:2%;width:96%;height:96%;border-radius:50%;border:calc(var(--ch-sq)*.07) solid var(--danger);pointer-events:none;z-index:3}",
+    ".ch-sq:focus-visible{z-index:5}",
+    ".ch-tok{position:absolute;left:6%;top:6%;width:88%;height:88%;border-radius:50%;pointer-events:none;box-shadow:0 2px 0 rgba(59,42,51,.2)}",
+    ".ch-tok.ch-tp{left:19%;top:19%;width:62%;height:62%}",
+    ".ch-tw{background:radial-gradient(circle at 35% 28%,#fffefa,#fbefd6 72%);border:calc(var(--ch-sq)*.04) solid #e2b94f}",
+    ".ch-tb{background:radial-gradient(circle at 35% 28%,#d6cdee,#a597cf 78%);border:calc(var(--ch-sq)*.04) solid #5b4a8a}",
+    ".ch-face{position:absolute;left:8%;top:12%;width:84%;height:76%;display:block}",
+    ".ch-face svg{display:block;width:100%;height:100%}",
+    ".ch-tok svg,.ch-tok svg *{animation:none!important;transition:none!important}",
+    ".ch-crown{position:absolute;left:50%;top:-14%;width:46%;transform:translateX(-50%);height:auto;z-index:1}",
+    ".ch-glyph{position:absolute;left:0;top:0;width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:calc(var(--ch-sq)*.6);line-height:1}",
+    ".ch-tw .ch-glyph{color:#3b2a33}.ch-tb .ch-glyph{color:#2f2547}",
+    ".ch-badge{position:absolute;right:1%;bottom:1%;width:calc(var(--ch-sq)*.38);height:calc(var(--ch-sq)*.38);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:calc(var(--ch-sq)*.28);line-height:1;font-family:'Segoe UI Symbol','Apple Symbols','Noto Sans Symbols 2','DejaVu Sans',serif;font-weight:700;pointer-events:none;z-index:2;border:2px solid}",
+    ".ch-bw{background:#fff;color:#3b2a33;border-color:#e2b94f}.ch-bb{background:#2f2547;color:#fff;border-color:#2f2547}",
+    ".ch-star{position:absolute;right:6%;top:2%;font-size:calc(var(--ch-sq)*.3);color:var(--star);pointer-events:none;z-index:4}",
+    ".ch-star.ch-big{right:auto;top:auto;left:32%;top:24%;font-size:calc(var(--ch-sq)*.45)}",
+    ".ch-arrow{position:absolute;left:0;top:0;width:100%;height:100%;pointer-events:none;z-index:6}",
+    ".ch-status{min-height:2.8em;margin:8px 2px;padding:8px 12px;background:var(--light);border-radius:12px;font-size:1.1rem;line-height:1.4}",
     ".ch-win{color:var(--star);margin-left:6px;font-size:1.1em}",
-    ".ch-ask{margin:8px 0;padding:10px;background:var(--hint);border-radius:12px;text-align:center}",
+    ".ch-ask{margin:8px 0;padding:10px;background:var(--sel);border-radius:12px;text-align:center}",
     ".ch-ask p{margin:0 0 8px;font-size:1.05rem}",
-    ".ch-dotsrow{text-align:center;margin:4px 0;font-size:.95rem}"
+    ".ch-ask .ch-row{display:grid;grid-template-columns:1fr 1fr;margin:0}",
+    ".ch-ask .ch-btn{width:100%;min-width:0}",
+    ".ch-dotsrow{text-align:center;margin:4px 0;font-size:.95rem}",
+    "@media (max-width:480px){.ch-wrap{padding:6px;border-radius:12px}.ch-status{font-size:1rem;padding:6px 10px}}"
   ].join("\n");
 
   function injectCss() {
@@ -705,6 +809,8 @@
     s.id = "chess-css";
     s.textContent = CSS;
     document.head.appendChild(s);
+    try { if (window.KittyChars && window.KittyChars.injectCss) window.KittyChars.injectCss(); } catch (e) { /* art css is optional */ }
+    try { if (window.KnightArt && window.KnightArt.injectCss) window.KnightArt.injectCss(); } catch (e) { /* art css is optional */ }
   }
 
   var S = null; // the one open session
@@ -719,27 +825,78 @@
   }
   function setStatus(text, star) { S.status = text; S.star = !!star; }
 
+  // A tip for this piece type: shown once per game and at most MAX_TIP_SHOWS times per child overall (kept in the store).
+  function tipFor(kind) {
+    if (S.g.tipped[kind]) return "";
+    S.g.tipped[kind] = true;
+    var d = loadData(), who = S.who;
+    d.tips = d.tips || {}; d.tips[who] = d.tips[who] || {};
+    if ((d.tips[who][kind] | 0) >= MAX_TIP_SHOWS) return "";
+    d.tips[who][kind] = (d.tips[who][kind] | 0) + 1;
+    saveData(d);
+    return TIPS[teamKey(who)][kind];
+  }
+
   // ----- board drawing -----
-  function squareLabel(sq, p, isStar) {
-    var base = FILES[sq & 7] + " " + (8 - (sq >> 3)) + ", " + (p ? (colorOf(p) === "w" ? "white " : "black ") + NAMES[kindOf(p)] : "empty");
-    return isStar ? base + ", star" : base;
+  function faceHtml(d) {
+    var key = d.art + ":" + d.id;
+    if (S && S.art[key] !== undefined) return S.art[key];
+    var h = "";
+    try {
+      if (d.art === "tower") h = TOWER_SVG;
+      else if (d.art === "kc" && typeof window !== "undefined" && window.KittyChars && window.KittyChars.face) h = window.KittyChars.face(d.id);
+      else if (d.art === "ka" && typeof window !== "undefined" && window.KnightArt && window.KnightArt.face) h = window.KnightArt.face(d.id);
+    } catch (e) { h = ""; }
+    if (S) S.art[key] = h;
+    return h;
+  }
+
+  function tokenHtml(piece) {
+    var ch = pieceChar(S.who, piece), art = faceHtml(ch), c = ch.color;
+    return '<span class="ch-tok ch-t' + c + (ch.kind === "p" ? " ch-tp" : "") + '" aria-hidden="true">' +
+      (art ? '<span class="ch-face">' + art + "</span>" : '<span class="ch-glyph">' + GLYPH[ch.kind] + "</span>") +
+      (ch.crown ? CROWN_SVG : "") + '</span><span class="ch-badge ch-b' + (c === "w" ? "w" : "b") + '" aria-hidden="true">' + GLYPH[ch.kind] + "</span>";
+  }
+
+  function squareLabel(sq, p, o) {
+    var base = FILES[sq & 7] + " " + (8 - (sq >> 3)) + ", " + (p ? pieceLabel(S.who, p) : "empty");
+    if (o.sel === sq) base += ", selected";
+    if (o.caps[sq]) base += ", you can take here";
+    else if (o.dots[sq]) base += ", you can move here";
+    if (o.danger[sq]) base += ", in danger";
+    if (o.hint[sq]) base += ", hint";
+    return o.stars[sq] ? base + ", star" : base;
+  }
+
+  // A soft arrow over the board from one square to another (board drawn as 8 x 8 units).
+  function arrowHtml(from, to) {
+    var x1 = (from & 7) + 0.5, y1 = (from >> 3) + 0.5, x2 = (to & 7) + 0.5, y2 = (to >> 3) + 0.5;
+    var dx = x2 - x1, dy = y2 - y1, len = Math.sqrt(dx * dx + dy * dy) || 1, ux = dx / len, uy = dy / len;
+    var tipx = x2 - ux * 0.18, tipy = y2 - uy * 0.18, headLen = 0.5, hw = 0.3;
+    var bx = tipx - ux * headLen, by = tipy - uy * headLen, sx = x1 + ux * 0.25, sy = y1 + uy * 0.25;
+    var px = -uy, py = ux;
+    return '<svg class="ch-arrow" viewBox="0 0 8 8" preserveAspectRatio="none" aria-hidden="true" xmlns="http://www.w3.org/2000/svg">' +
+      '<g fill="rgba(123,85,230,.55)" stroke="none"><line x1="' + sx + '" y1="' + sy + '" x2="' + bx + '" y2="' + by + '" stroke="rgba(123,85,230,.55)" stroke-width="0.2" stroke-linecap="round"/>' +
+      '<polygon points="' + tipx + "," + tipy + " " + (bx + px * hw) + "," + (by + py * hw) + " " + (bx - px * hw) + "," + (by - py * hw) + '"/></g></svg>';
   }
 
   function boardHtml(o) {
+    o.dots = o.dots || {}; o.caps = o.caps || {}; o.danger = o.danger || {}; o.stars = o.stars || {}; o.hint = o.hint || {}; o.last = o.last || {};
     var h = '<div class="ch-board-box"><div class="ch-board" role="group" aria-label="Chess board">', sq, p, cls, r, c;
     for (sq = 0; sq < 64; sq++) {
       p = o.st.b[sq]; r = sq >> 3; c = sq & 7;
       cls = "ch-sq " + (((r + c) & 1) ? "ch-d" : "ch-l");
       if (o.last[sq]) cls += " ch-ls";
-      if (o.targets[sq]) cls += " ch-tg";
-      if (o.sel === sq) cls += " ch-sl";
       if (o.hint[sq]) cls += " ch-hn";
-      if (o.dots[sq]) cls += " ch-dt";
-      h += '<button type="button" class="' + cls + '" data-sq="' + sq + '" aria-label="' + squareLabel(sq, p, !!o.stars[sq]) + '"' + (o.sel === sq ? ' aria-pressed="true"' : "") + ">";
-      if (p) h += '<span class="ch-pc ' + (colorOf(p) === "w" ? "ch-pw" : "ch-pb") + '" aria-hidden="true">' + GLYPH[kindOf(p)] + "</span>";
+      if (o.sel === sq) cls += " ch-sl";
+      if (o.caps[sq]) cls += " ch-cp"; else if (o.dots[sq]) cls += " ch-mv";
+      if (o.danger[sq]) cls += " ch-dg";
+      h += '<button type="button" class="' + cls + '" data-sq="' + sq + '" aria-label="' + squareLabel(sq, p, o) + '"' + (o.sel === sq ? ' aria-pressed="true"' : "") + ">";
+      if (p) h += tokenHtml(p);
       if (o.stars[sq]) h += '<span class="ch-star' + (p ? "" : " ch-big") + '" aria-hidden="true">★</span>';
       h += "</button>";
     }
+    h += o.arrow ? arrowHtml(o.arrow[0], o.arrow[1]) : "";
     return h + "</div></div>";
   }
 
@@ -753,7 +910,8 @@
       else if (active.getAttribute("data-act")) focusSel = '[data-act="' + active.getAttribute("data-act") + '"]' + (active.getAttribute("data-id") ? '[data-id="' + active.getAttribute("data-id") + '"]' : "");
     }
     var body = S.view === "menu" ? menuHtml() : S.view === "lesson" ? lessonHtml() : gameHtml();
-    var top = '<div class="ch-top"><h2 class="ch-title">' + (S.view === "menu" ? "Chess coach" : S.entry.title) + '</h2><button type="button" class="ch-btn" data-act="exit">Exit</button></div>';
+    var top = S.view === "game" ? '<h2 class="ch-sr">Chess</h2>' :
+      '<div class="ch-top"><h2 class="ch-title">' + (S.view === "menu" ? "Piece lessons" : S.entry.title) + '</h2><button type="button" class="ch-btn" data-act="exit">Exit</button></div>';
     S.root.innerHTML = top + body + '<div class="ch-status" role="status" aria-live="polite" data-slot="1"></div>';
     // Keep one status element alive so screen readers announce each change.
     var slot = S.root.querySelector('[data-slot="1"]');
@@ -776,7 +934,8 @@
 
   function menuHtml() {
     var data = loadData(), rec = readRecord(data, S.who), entries = visibleEntries(S.who, !!data.kennedyAll);
-    var h = '<p class="ch-note">Pick a lesson. Each one is short and kind.</p><ol class="ch-list">';
+    var h = '<div class="ch-row"><button type="button" class="ch-btn" data-act="game">Back to the game</button></div>' +
+      '<p class="ch-note">Pick a lesson. Each one is short and kind.</p><ol class="ch-list">';
     entries.forEach(function (e, i) {
       var open = isUnlocked(entries, i, rec, S.who), done = !!rec.done[e.id];
       h += '<li><button type="button" class="ch-btn ch-item" data-act="start" data-id="' + e.id + '"' + (open ? "" : ' disabled aria-disabled="true"') + ">" +
@@ -788,13 +947,10 @@
   function entryById(id) { for (var i = 0; i < LESSONS.length; i++) if (LESSONS[i].id === id) return LESSONS[i]; return null; }
 
   function lessonHtml() {
-    var L = S.L, o = {
-      st: L.st, sel: L.sel, last: {}, hint: setOf(L.clue ? [L.clue.from, L.clue.to] : []), dots: {}, targets: {},
-      stars: setOf(L.starSquares.filter(function (s) { return L.collected.indexOf(s) < 0; }))
+    var L = S.L, marks = (S.entry.showTargets && L.sel >= 0) ? moveMarks(L.st, L.sel) : { dots: {}, caps: {} }, o = {
+      st: L.st, sel: L.sel, last: {}, hint: setOf(L.clue ? [L.clue.from, L.clue.to] : []), dots: marks.dots, caps: marks.caps,
+      stars: setOf(L.starSquares.filter(function (s) { return L.collected.indexOf(s) < 0; })), arrow: L.clue ? [L.clue.from, L.clue.to] : null
     };
-    if (S.entry.showTargets && L.sel >= 0) {
-      o.targets = setOf(legalMoves(L.st).filter(function (m) { return m.from === L.sel; }).map(function (m) { return m.to; }));
-    }
     var h = '<div class="ch-dotsrow">Puzzle ' + (L.pi + 1) + " of " + S.entry.puzzles.length + "</div>" + boardHtml(o) + '<div class="ch-row">';
     if (L.solved) h += L.pi + 1 < S.entry.puzzles.length ? '<button type="button" class="ch-btn" data-act="next">Next puzzle</button>' : '<button type="button" class="ch-btn" data-act="finish">Finish lesson</button>';
     else h += '<button type="button" class="ch-btn" data-act="clue">Show a clue</button>';
@@ -802,26 +958,25 @@
   }
 
   function gameHtml() {
-    var G = S.g, targets = {}, dots = {};
-    if (G.sel >= 0 && (G.mode === "pawnwar" || S.think) && !G.over) {
-      legalMoves(G.st).filter(function (m) { return m.from === G.sel; }).forEach(function (m) {
-        targets[m.to] = true;
-        if (S.think && landingSquareAttacked(G.st, m)) dots[m.to] = true;
-      });
+    var G = S.g, marks = (G.sel >= 0 && !G.over && !G.busy) ? moveMarks(G.st, G.sel) : { dots: {}, caps: {} }, danger = {};
+    if (!G.over && !G.busy && G.mode === "standard") {
+      dangerInfo(G.st, "w").forEach(function (d) { danger[d.sq] = true; });
+      if (inCheck(G.st, "w")) danger[findKing(G.st.b, "w")] = true;
     }
     var hintSq = G.hint ? [G.hint.from, G.hint.to] : (G.ask ? [G.ask.hangSq] : []);
-    var h = boardHtml({ st: G.st, sel: G.sel, last: setOf(G.last), hint: setOf(hintSq), dots: dots, targets: targets, stars: {} });
+    var h = boardHtml({ st: G.st, sel: G.sel, last: setOf(G.last), hint: setOf(hintSq), dots: marks.dots, caps: marks.caps, danger: danger, stars: {},
+      arrow: G.hint ? [G.hint.from, G.hint.to] : null });
     if (G.ask) {
-      h += '<div class="ch-ask" role="group" aria-label="Safety question"><p>Is that piece safe there?</p><div class="ch-row">' +
+      h += '<div class="ch-ask" role="group" aria-label="Safety question"><p>' + G.ask.text + '</p><div class="ch-row">' +
         '<button type="button" class="ch-btn" data-act="anyway">Move anyway</button><button type="button" class="ch-btn" data-act="again">Choose again</button></div></div>';
     }
-    var left = S.who === "kennedy" ? "" : " (" + Math.max(0, 3 - G.undos) + " left)";
-    return h + '<div class="ch-row">' +
-      '<button type="button" class="ch-btn" data-act="hint"' + (G.over || G.busy ? " disabled" : "") + ">Hint</button>" +
-      '<button type="button" class="ch-btn" data-act="think" aria-pressed="' + (S.think ? "true" : "false") + '">Think ahead</button>' +
-      '<button type="button" class="ch-btn" data-act="undo"' + (G.hist.length && !G.over && !G.busy ? "" : " disabled") + ">Undo" + left + "</button>" +
-      (G.over ? '<button type="button" class="ch-btn" data-act="again_game">Play again</button>' : "") +
-      '<button type="button" class="ch-btn" data-act="menu">Lessons</button></div>';
+    var left = S.who === "kennedy" ? "" : "<small>" + Math.max(0, 3 - G.undos) + " left</small>";
+    return h + '<div class="ch-row ch-actions">' +
+      '<button type="button" class="ch-btn ch-hintbtn" data-act="hint"' + (G.over || G.busy ? " disabled" : "") + ">Hint</button>" +
+      '<button type="button" class="ch-btn" data-act="undo"' + (G.hist.length && !G.over && !G.busy && (S.who === "kennedy" || G.undos < 3) ? "" : " disabled") + ">Undo" + left + "</button>" +
+      '<button type="button" class="ch-btn" data-act="newgame">' + (G.over ? "Again" : "New") + "</button>" +
+      '<button type="button" class="ch-btn" data-act="menu">Lessons</button>' +
+      '<button type="button" class="ch-btn" data-act="exit">Exit</button></div>';
   }
 
   // ----- lessons -----
@@ -912,10 +1067,10 @@
   function startGame(entry) {
     clearTimeout(S.timer);
     S.view = "game"; S.entry = entry;
-    S.g = { mode: entry.mode, st: startState(entry.mode), hist: [], undos: 0, over: false, sel: -1, ask: null, hint: null, last: [], busy: false };
-    setStatus("Your move. You are the light pieces.", false);
+    S.g = { mode: entry.mode, st: startState(entry.mode), hist: [], undos: 0, over: false, sel: -1, ask: null, hint: null, last: [], busy: false, tipped: {} };
+    setStatus("Your move. Tap one of your pieces to see where it can go.", false);
     render();
-    say(entry.intro);
+    say(S.who === "kennedy" ? "Your move. Tap a piece." : entry.intro + " Tap one of your pieces to see where it can go.");
   }
 
   function onGameSquare(sq) {
@@ -926,16 +1081,36 @@
       if (sq === G.sel) { G.sel = -1; return render(); }
       mv = findMove(st, G.sel, sq);
       if (mv) return childMove(mv, false);
-      if (mine) { G.sel = sq; return render(); }
+      if (mine) return selectPiece(sq);
       var pseudoOk = pseudoMoves(st).some(function (m) { return m.from === G.sel && m.to === sq; });
-      setStatus(pseudoOk ? "That move would leave your king in danger." : "That piece cannot go there.", false);
+      setStatus(pseudoOk ? "That move would leave your king in danger." : "That piece cannot go there. Tap a dot.", false);
       return render();
     }
-    if (mine) {
-      G.sel = sq;
-      setStatus(legalMoves(st).some(function (m) { return m.from === sq; }) ? "Tap a square to move your " + NAMES[kindOf(p)] + "." : "That piece cannot move right now.", false);
-    } else setStatus("Tap one of your light pieces first.", false);
+    if (mine) return selectPiece(sq);
+    setStatus("Tap one of your pieces first.", false);
     render();
+  }
+
+  function selectPiece(sq) {
+    var G = S.g, p = G.st.b[sq], kind = kindOf(p), tip = tipFor(kind), word = pieceWord(S.who, kind);
+    G.sel = sq;
+    var canMove = legalMoves(G.st).some(function (m) { return m.from === sq; });
+    setStatus(canMove ? (tip || "Tap a dot or a ring to move your " + word + ".") : (tip ? tip + " It cannot move right now." : "Your " + word + " cannot move right now."), false);
+    if (tip) say(tip);
+    render();
+  }
+
+  // After the coach moves: plain words for its move.
+  function describeCoachMove(st, m) {
+    var k = kindOf(st.b[m.from]);
+    if (m.castle) return "The goblin castled.";
+    if (isCapture(st, m)) return "The goblin took your " + pieceWord(S.who, kindOf(capturedPiece(st, m))) + " with its " + NAMES[k] + ".";
+    return "The goblin moved its " + NAMES[k] + " to " + spoken(m.to) + ".";
+  }
+  function dangerSentence(st) {
+    var list = dangerInfo(st, "w");
+    if (!list.length) return "";
+    return "Watch out! A goblin can take your " + pieceWord(S.who, kindOf(list[0].piece)) + ".";
   }
 
   function childMove(mv, confirmed) {
@@ -943,9 +1118,10 @@
     if (!confirmed) {
       var hang = hangingAfterMove(G.st, mv);
       if (hang >= 0) {
-        G.ask = { mv: mv, hangSq: hang };
+        var after = makeMove(G.st, mv), hp = after.b[hang];
+        G.ask = { mv: mv, hangSq: hang, text: "Is your " + pieceWord(S.who, kindOf(hp)) + " safe there?" };
         setStatus("Is that piece safe there?", false);
-        say(S.status);
+        say(G.ask.text);
         return render();
       }
     }
@@ -953,7 +1129,9 @@
     G.st = makeMove(G.st, mv); G.last = [mv.from, mv.to]; G.sel = -1; G.ask = null; G.hint = null;
     var res = gameResult(G.st, G.mode);
     if (res.over) return finishGame(res);
-    setStatus("The coach is thinking.", false);
+    var checkText = (G.mode === "standard" && inCheck(G.st, "b")) ? "Check! The goblin king is in danger. " : "";
+    setStatus(checkText + "The goblins are thinking.", false);
+    if (checkText) say(checkText.trim());
     G.busy = true;
     render();
     var mySession = S;
@@ -962,12 +1140,18 @@
       G.busy = false;
       var cm = coachMove(G.st, record().level, Math.random, G.mode);
       if (!cm) return finishGame(gameResult(G.st, G.mode));
-      var text = describeMove(G.st, cm);
+      var text = describeCoachMove(G.st, cm);
       G.st = makeMove(G.st, cm); G.last = [cm.from, cm.to];
       var r2 = gameResult(G.st, G.mode);
       if (r2.over) return finishGame(r2, text);
-      setStatus(text + " Your move." + (inCheck(G.st, "w") ? " Your king is in check." : ""), false);
-      render();
+      var extra = "";
+      if (G.mode === "standard") {
+        if (inCheck(G.st, "w")) extra += " Check! Your king is in danger.";
+        var warn = dangerSentence(G.st);
+        if (warn) extra += " " + warn;
+      }
+      setStatus(text + (extra || " Your move."), false);
+      if (S.view === "game") { render(); say(S.status); }
     }, 600);
   }
 
@@ -975,9 +1159,13 @@
     var G = S.g, rec = record(), kind = res.winner === "w" ? "win" : res.winner === "b" ? "loss" : "draw";
     G.over = true; G.busy = false; G.sel = -1; G.ask = null; G.hint = null;
     var n = updateStrength(rec, kind), text, why = "";
-    if (res.reason === "blocked") why = res.winner === "w" ? " The coach cannot move." : " You cannot move.";
-    if (kind === "win") { n.done[S.entry.id] = true; text = "You won. Well done." + why; }
-    else if (kind === "loss") text = (prefix ? prefix + " " : "") + "The coach won this time." + why + " You are learning a lot.";
+    if (res.reason === "blocked") why = res.winner === "w" ? " The goblins cannot move." : " You cannot move.";
+    if (kind === "win") {
+      n.done[S.entry.id] = true;
+      text = (res.reason === "checkmate" ? "Checkmate! You trapped the goblin king. " : res.reason === "far side" ? "Your pawn reached the far side first. " : "") + "Well done." + why;
+    } else if (kind === "loss") {
+      text = (prefix ? prefix + " " : "") + (res.reason === "checkmate" ? "Checkmate. " : "") + "The goblins won this time." + why + " You are learning a lot. Tap Play again.";
+    } else if (res.reason === "stalemate") text = "Stalemate. Nobody can move, so it is a draw. Good game.";
     else text = "It is a draw. Good game.";
     if (n.change === "up") text += " Next time the coach plays a little harder.";
     if (n.change === "down") text += " Next time the coach plays a little gentler.";
@@ -1002,8 +1190,10 @@
     if (G.over || G.busy) return;
     var m = hintMove(G.st, G.mode);
     if (!m) return;
+    var reason = hintReason(G.st, m);
+    if (teamKey(S.who) === "kennedy") reason = reason.replace(/^Your knight/, "Your pony");
     G.hint = { from: m.from, to: m.to }; G.sel = -1; G.ask = null;
-    setStatus(hintReason(G.st, m), false);
+    setStatus(reason, false);
     say(S.status);
     render();
   }
@@ -1020,22 +1210,21 @@
       return;
     }
     if (act === "exit") { if (S.opts.onExit) S.opts.onExit(); return; }
-    if (act === "menu") { clearTimeout(S.timer); S.view = "menu"; setStatus("Pick a lesson.", false); return render(); }
+    if (act === "menu") { S.view = "menu"; setStatus("Pick a lesson, or go back to the game.", false); return render(); }
+    if (act === "game") {
+      if (S.g) { S.view = "game"; setStatus(S.g.over ? "Tap Play again for a new game." : "Your move.", false); return render(); }
+      return startGame(entryById("fullgame"));
+    }
+    if (act === "newgame") return startGame(S.entry && S.entry.kind === "game" ? S.entry : entryById("fullgame"));
     if (act === "start") { en = entryById(t.getAttribute("data-id")); return en.kind === "game" ? startGame(en) : startLesson(en); }
     if (act === "next") { S.L.pi++; return loadPuzzle(false); }
     if (act === "finish") return finishLesson();
     if (act === "retry") return loadPuzzle(false);
     if (act === "clue") return lessonClue();
-    if (act === "think") {
-      S.think = !S.think;
-      setStatus(S.think ? "Think ahead is on. Purple dots show squares the other side guards." : "Think ahead is off.", false);
-      return render();
-    }
     if (act === "hint") return gameHint();
     if (act === "undo") return undoMove();
     if (act === "anyway") { ask = S.g.ask; S.g.ask = null; return childMove(ask.mv, true); }
     if (act === "again") { S.g.ask = null; S.g.sel = -1; setStatus("Choose again. Your move.", false); return render(); }
-    if (act === "again_game") return startGame(S.entry);
   }
 
   var api = {
@@ -1044,16 +1233,15 @@
     open: function (container, opts) {
       if (S) api.close();
       injectCss();
+      opts = opts || {};
       var root = document.createElement("div");
-      root.className = "ch-wrap";
+      root.className = "ch-wrap ch-" + teamKey(opts.who);
       container.innerHTML = "";
       container.appendChild(root);
-      opts = opts || {};
-      S = { container: container, root: root, opts: opts, who: normalizeWho(opts.who), view: "menu", think: false,
-            status: "Welcome to chess. Pick a lesson.", star: false, statusEl: null, statusShown: null, timer: null };
+      S = { container: container, root: root, opts: opts, who: normalizeWho(opts.who), view: "game", g: null, art: {},
+            status: "", star: false, statusEl: null, statusShown: null, timer: null };
       root.addEventListener("click", onClick);
-      render();
-      say(S.status);
+      startGame(entryById("fullgame"));
     },
     close: function () {
       if (!S) return;
@@ -1080,7 +1268,9 @@
       landingSquareAttacked: landingSquareAttacked, coachMove: coachMove, hintMove: hintMove, hintReason: hintReason,
       describeMove: describeMove, checkGoalMove: checkGoalMove, solveStars: solveStars, goalMoves: goalMoves,
       puzzleProblems: puzzleProblems, visibleEntries: visibleEntries, isUnlocked: isUnlocked, defaultRecord: defaultRecord,
-      readRecord: readRecord, writeRecord: writeRecord, updateStrength: updateStrength, passTurn: passTurn
+      readRecord: readRecord, writeRecord: writeRecord, updateStrength: updateStrength, passTurn: passTurn,
+      dangerInfo: dangerInfo, moveMarks: moveMarks, pieceChar: pieceChar, pieceLabel: pieceLabel, pieceWord: pieceWord,
+      TEAMS: TEAMS, TIPS: TIPS
     };
   }
 })();

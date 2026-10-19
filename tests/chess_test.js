@@ -310,6 +310,31 @@ t("whole games always finish", () => {
   });
 });
 
+// ---------- play-first screen helpers ----------
+t("hint, danger and characters", () => {
+  const st = C.startState("standard");
+  const hm = C.hintMove(st, "standard");
+  ok("hint move is legal", !!hm && !!C.findMove(st, hm.from, hm.to));
+  const hang = C.parseFEN("4k3/8/5n2/8/4B3/8/8/4K3 w - - 0 1");
+  const d = C.dangerInfo(hang, "w");
+  ok("danger finds the hanging bishop on e4", d.length === 1 && d[0].sq === C.sqFromName("e4") && d[0].by === "n");
+  ok("no danger at the start", C.dangerInfo(st, "w").length === 0 && C.dangerInfo(st, "b").length === 0);
+  const marks = C.moveMarks(st, C.sqFromName("e2"));
+  ok("pawn on e2 shows 2 quiet moves and no captures", Object.keys(marks.dots).length === 2 && Object.keys(marks.caps).length === 0);
+  ["marie", "kennedy", "demo"].forEach(who => {
+    "kqrbnp".split("").forEach(k => {
+      const w = C.pieceChar(who, k.toUpperCase()), b = C.pieceChar(who, k);
+      ok(who + " " + k + " white and black have art and a name", !!w.art && !!w.name && !!b.art && !!b.name && w.kind === k && b.color === "b" && w.color === "w");
+      ok(who + " " + k + " has a tip", !!C.TIPS[who === "kennedy" ? "kennedy" : "marie"][k]);
+    });
+    ok(who + " white king has a crown", C.pieceChar(who, "K").crown === true);
+  });
+  ok("black is the goblin in both themes", C.pieceChar("marie", "q").id === "badguy" && C.pieceChar("kennedy", "n").id === "badguy");
+  ok("kennedy knight is the pony", C.pieceChar("kennedy", "N").id === "horse" && C.pieceWord("kennedy", "n") === "pony");
+  ok("marie queen is Bella (melody)", C.pieceChar("marie", "Q").id === "melody" && C.pieceLabel("marie", "Q") === "your queen, Bella");
+  ok("black label is plain", C.pieceLabel("marie", "r") === "goblin rook");
+});
+
 // ---------- registration with a window ----------
 t("registration", () => {
   ok("loading without a window did not touch the DOM", typeof C.api.open === "function" && typeof C.api.close === "function");

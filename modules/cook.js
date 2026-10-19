@@ -83,6 +83,7 @@
   }
   /* A soft filtered noise burst (pour, sizzle, sprinkle, squish). Peak gain is kept at or under 0.15. */
   function noise(dur, freq, q, gain, sweepTo) {
+    return;   // calm sound: the made-up sizzle and pour noises sounded strange, so they are off
     if (!soundOn()) return;
     try {
       if (!audio()) return;

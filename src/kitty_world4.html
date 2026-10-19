@@ -638,18 +638,25 @@ function speak(text, force) {
     if (kittyVoice) { u.voice = kittyVoice; u.lang = kittyVoice.lang; } else u.lang = "en-CA";
     const st = voiceStyle(), natural = kittyVoice && /Natural|Premium|Enhanced|Neural|Online/i.test(kittyVoice.name);
     // Natural voices already sound right; only nudge them. Plain voices get more pitch to sound young or deep.
-    u.pitch = natural ? 1 + (st.pitch - 1) / 2 : st.pitch; u.rate = st.rate; u.volume = .9;
+    u.pitch = 1; u.rate = .95; u.volume = .9;   // natural voice: no pitch tricks (they sounded strange)
     speechSynthesis.speak(u);
   } catch (e) {}
 }
 let actx = null;
-function tone(freqs, dur = .14, type = "sine", gap = .09) {
-  if (!P.sound) return;
+// Calm sound (Aldrin: "the sound is super weird"). Taps and wrong answers make no sound at all.
+// A right answer (any call with 2 or more notes) plays one soft, short two-note chime. Nothing else beeps.
+function tone(freqs) {
+  if (!P.sound || !freqs || freqs.length < 2) return;
   try {
     actx = actx || new (window.AudioContext || window.webkitAudioContext)();
     if (actx.state === "suspended") actx.resume();
-    let t = actx.currentTime;
-    for (const f of freqs) { const o = actx.createOscillator(), g = actx.createGain(); o.type = type; o.frequency.value = f; g.gain.setValueAtTime(.0001, t); g.gain.exponentialRampToValueAtTime(.15, t + .02); g.gain.exponentialRampToValueAtTime(.0001, t + dur); o.connect(g); g.connect(actx.destination); o.start(t); o.stop(t + dur + .03); t += gap; }
+    const t0 = actx.currentTime + .01;
+    [659.25, 987.77].forEach((f, i) => {
+      const o = actx.createOscillator(), g = actx.createGain(), t = t0 + i * .11;
+      o.type = "sine"; o.frequency.value = f;
+      g.gain.setValueAtTime(.0001, t); g.gain.exponentialRampToValueAtTime(.05, t + .02); g.gain.exponentialRampToValueAtTime(.0001, t + .7);
+      o.connect(g); g.connect(actx.destination); o.start(t); o.stop(t + .75);
+    });
   } catch (e) {}
 }
 
@@ -1571,6 +1578,8 @@ function startAs(p, thenView) {
   if (window.speechSynthesis) speechSynthesis.cancel();
   if (window.Mission) Mission.on = false;
   if (window.TopicHost && TopicHost.isOpen()) TopicHost.close();
+  if (window.CafeOrders && CafeOrders.isOpen()) CafeOrders.close();
+  if (window.River && River.isOpen()) River.close();
   clearTimers();
   if (phase === "cook") { try { CookGame.stop(); } catch (e) {} $("cook").hidden = true; $("cook").innerHTML = ""; }
   if (who !== p) {
