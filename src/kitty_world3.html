@@ -1510,7 +1510,7 @@ function showView(v) {
   if (window.KnightWorld) KnightWorld.unmount();
   if (window.ThinkTab) { if (v === "think") ThinkTab.mount($("viewThink")); else ThinkTab.unmount(); }
   if (v === "home" && who === "kennedy") { if (window.HomeGame) HomeGame.unmount(); KnightWorld.mount($("viewHome")); }
-  else if (v === "home") HomeGame.mount($("viewHome"), { artBase: "art2/" }); else if (window.HomeGame) HomeGame.unmount();
+  else if (v === "home") MarieWorld.mount($("viewHome")); else { if (window.MarieWorld) MarieWorld.unmount(); else if (window.HomeGame) HomeGame.unmount(); }
   if (v === "grown") renderGrown();
 }
 

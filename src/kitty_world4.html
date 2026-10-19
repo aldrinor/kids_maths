@@ -430,6 +430,7 @@ input[type="checkbox"] { width: 24px; height: 24px; accent-color: var(--pink-dee
 <script src="modules/parent.js"></script>
 <script src="modules/sync.js"></script>
 <script src="modules/knight.js"></script>
+<script src="modules/marie_world.js"></script>
 <script src="modules/brain_games.js"></script>
 <script src="modules/chess_coach.js"></script>
 <script src="modules/think.js"></script>
@@ -1539,7 +1540,7 @@ function showView(v) {
   if (window.KnightWorld) KnightWorld.unmount();
   if (window.ThinkTab) { if (v === "think") ThinkTab.mount($("viewThink")); else ThinkTab.unmount(); }
   if (v === "home" && who === "kennedy") { if (window.HomeGame) HomeGame.unmount(); KnightWorld.mount($("viewHome")); }
-  else if (v === "home") HomeGame.mount($("viewHome"), { artBase: "art2/" }); else if (window.HomeGame) HomeGame.unmount();
+  else if (v === "home") MarieWorld.mount($("viewHome")); else { if (window.MarieWorld) MarieWorld.unmount(); else if (window.HomeGame) HomeGame.unmount(); }
   if (v === "grown") renderGrown();
 }
 

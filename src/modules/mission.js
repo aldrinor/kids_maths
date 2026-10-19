@@ -77,7 +77,9 @@
     const d = dayLog(); d.sets++;
     P.round = []; save(); renderTop();
     if (who === "kennedy") return knightWin();
-    closeTopic(); showView("sums"); $("cover").hidden = true;
+    closeTopic();
+    if (window.MarieWorld) return MarieWorld.customer(html => card(html), () => { $("cover").hidden = true; startCooking(); });
+    showView("sums"); $("cover").hidden = true;
     startCooking();                                     // Marie and Demo: a short cooking break, then back to maths
   }
   // Kennedy: 5 answers send a bad guy home. Nobody is hurt; the bad guy runs away.
