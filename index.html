@@ -1,4 +1,4 @@
-<!doctype html><html><head><meta charset="utf-8"><meta name="robots" content="noindex,nofollow"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="Kitty Maths"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;padding-top:env(safe-area-inset-top);padding-bottom:env(safe-area-inset-bottom)}body{margin:0;font:14px system-ui,sans-serif}img{max-width:100%}[hidden]{display:none!important}</style></head><body><title>Kitty Number Blocks</title>
+<!doctype html><html><head><meta charset="utf-8"><meta name="robots" content="noindex,nofollow"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="Kids Maths"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;padding-top:env(safe-area-inset-top);padding-bottom:env(safe-area-inset-bottom)}body{margin:0;font:14px system-ui,sans-serif}img{max-width:100%}[hidden]{display:none!important}</style></head><body><title>Kids Maths</title>
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -330,6 +330,27 @@ input[type="checkbox"] { width: 24px; height: 24px; accent-color: var(--pink-dee
 @media (max-height: 700px) and (max-width: 500px) { .colsum { font-size: 23px; gap: 0; } .colsum .rule { border-top-width: 3px; } .colq { font-size: 17px; } }
 .headbox { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; min-height: 90px; font: 800 20px/1.2 var(--display); text-align: center; }
 .headbox button { min-height: 44px; padding: 0 18px; border-radius: 22px; border: 3px solid var(--ink); background: #fff; font: 800 18px var(--display); }
+
+.profiles { position: fixed; inset: 0; z-index: 60; display: grid; place-items: center; padding: 16px; background: #fff7fa; overflow: auto; }
+.profiles[hidden] { display: none !important; }
+.prof-card { width: min(560px, 100%); text-align: center; }
+.prof-card h2 { margin: 0 0 4px; font: 800 clamp(34px, 8vw, 48px)/1.05 var(--display); color: var(--ink); }
+.prof-card > p { margin: 0 0 18px; font-weight: 800; color: var(--soft-ink); font-size: 18px; }
+.prof-list { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+.prof { display: grid; justify-items: center; gap: 6px; padding: 12px 6px; border: 3px solid var(--ink); border-radius: 22px; background: var(--cream); box-shadow: 0 4px 0 var(--ink); font: 800 20px/1.1 var(--display); color: var(--ink); }
+.prof:active { transform: translateY(3px); box-shadow: 0 1px 0 var(--ink); }
+.prof svg { width: min(110px, 22vw); height: min(110px, 22vw); }
+.prof:focus-visible, .who:focus-visible { outline: 4px solid #4f7ff0; outline-offset: 3px; }
+.pin { display: grid; gap: 10px; justify-items: center; }
+.pin label { font-weight: 800; font-size: 18px; }
+.pin input { width: 8ch; font: 800 32px/1 var(--display); text-align: center; letter-spacing: 6px; padding: 8px; border: 3px solid var(--ink); border-radius: 14px; }
+.pin .row { display: flex; gap: 10px; }
+.pin-msg { min-height: 1.4em; font-weight: 800; color: #c0305c; margin: 0; }
+.who { display: flex; align-items: center; gap: 8px; padding: 0; border: 0; background: none; font: inherit; color: inherit; cursor: pointer; text-align: left; }
+.who-pic svg { width: 34px; height: 34px; display: block; }
+.who-name .brand { color: var(--soft-ink); }
+@media (max-width: 500px) { .prof { font-size: 17px; } }
+@media (max-width: 560px) { .top h1 { display: block; } .top { grid-template-columns: auto minmax(0, 1fr) auto; } .who-name { display: none; } }
 </style>
 
 <svg width="0" height="0" style="position:absolute" aria-hidden="true">
@@ -345,9 +366,10 @@ input[type="checkbox"] { width: 24px; height: 24px; accent-color: var(--pink-dee
   </defs>
 </svg>
 
+<div class="profiles" id="profiles" role="dialog" aria-modal="true" aria-labelledby="profTitle" hidden></div>
 <div class="app">
   <header class="top">
-    <h1>Kitty Number Blocks</h1>
+    <h1><button class="who" id="whoBtn" type="button" aria-label="Change who is playing"><span class="who-pic" id="whoPic"></span><span class="who-name"><span class="brand">Kids Maths</span> <span id="whoName"></span></span></button></h1>
     <div class="dots" id="dots" aria-label="Sums until the cooking break"></div>
     <span class="score" id="score"><img src="art/star.png" alt=""><span></span></span>
   </header>
@@ -355,7 +377,7 @@ input[type="checkbox"] { width: 24px; height: 24px; accent-color: var(--pink-dee
     <button class="tab" role="tab" id="tabSums" aria-selected="true" aria-controls="viewSums" type="button"><img src="art/sparkles.png" alt="">Sums</button>
     <button class="tab" role="tab" id="tabMaths" aria-selected="false" aria-controls="viewMaths" type="button"><img src="art/pie.png" alt="">Maths</button>
     <button class="tab" role="tab" id="tabHome" aria-selected="false" aria-controls="viewHome" type="button"><img src="art/dollhouse.png" alt="">Home</button>
-    <button class="tab" role="tab" id="tabGrown" aria-selected="false" aria-controls="viewGrown" type="button"><img src="art/crown.png" alt="">Grown-ups</button>
+    <button class="tab" role="tab" id="tabGrown" aria-selected="false" aria-controls="viewGrown" type="button"><img src="art/crown.png" alt="">Parent</button>
   </nav>
 
   <section class="view" id="viewSums" role="tabpanel" aria-labelledby="tabSums">
@@ -462,7 +484,14 @@ const INGREDIENT_NAMES = { egg: "egg", milk: "milk", butter: "butter", honey: "h
 const TOPPINGS = ["strawberry", "cherries", "candy", "chocolate", "lollipop", "heart", "star"];
 
 /* ================= Saved progress (same key and database document as before) ================= */
-const LS_KEY = "kittyBlocks.progress";
+const PROFILES = {
+  marie: { name: "Marie", key: "kittyBlocks.progress", doc: "blocks", pic: `<svg viewBox="0 0 100 100" aria-hidden="true"><path d="M17 44 L21 9 L44 27 Z" fill="#fff" stroke="#3b2a33" stroke-width="3" stroke-linejoin="round"/><path d="M83 44 L79 9 L56 27 Z" fill="#fff" stroke="#3b2a33" stroke-width="3" stroke-linejoin="round"/><path d="M24 32 L25 18 L36 27 Z" fill="#ffc2d4"/><path d="M76 32 L75 18 L64 27 Z" fill="#ffc2d4"/><ellipse cx="50" cy="58" rx="38" ry="31" fill="#fff" stroke="#3b2a33" stroke-width="3"/><g fill="#ff9fbd" stroke="#3b2a33" stroke-width="1.5"><circle cx="22" cy="17" r="6"/><circle cx="32" cy="15" r="6"/><circle cx="35" cy="25" r="6"/><circle cx="26" cy="30" r="6"/><circle cx="18" cy="26" r="6"/></g><circle cx="27" cy="23" r="4.5" fill="#ffd45c" stroke="#3b2a33" stroke-width="1.5"/><ellipse cx="37" cy="58" rx="4.5" ry="6" fill="#3b2a33"/><ellipse cx="63" cy="58" rx="4.5" ry="6" fill="#3b2a33"/><circle cx="38.6" cy="55.6" r="1.6" fill="#fff"/><circle cx="64.6" cy="55.6" r="1.6" fill="#fff"/><circle cx="27" cy="69" r="5" fill="#ffc2d4"/><circle cx="73" cy="69" r="5" fill="#ffc2d4"/><ellipse cx="50" cy="66" rx="3.2" ry="2.3" fill="#ff8fb1"/><path d="M45 71 Q50 75 55 71" fill="none" stroke="#3b2a33" stroke-width="2.2" stroke-linecap="round"/><g stroke="#3b2a33" stroke-width="2" stroke-linecap="round"><path d="M8 60 L20 62"/><path d="M9 70 L20 68"/><path d="M92 60 L80 62"/><path d="M91 70 L80 68"/></g></svg>` },
+  kennedy: { name: "Kennedy", key: "kidsMaths.kennedy", doc: "blocks_kennedy", pic: `<svg viewBox="0 0 100 100" aria-hidden="true"><path d="M50 15 Q58 1 77 5 Q66 9 57 19 Z" fill="#4f7ff0" stroke="#3b2a33" stroke-width="2.5" stroke-linejoin="round"/><path d="M16 60 Q16 15 50 14 Q84 15 84 60 Q84 92 50 93 Q16 92 16 60 Z" fill="#cfd8e4" stroke="#3b2a33" stroke-width="3"/><rect x="29" y="35" width="42" height="42" rx="17" fill="#ffd9bd" stroke="#3b2a33" stroke-width="3"/><path d="M50 15 V35" stroke="#3b2a33" stroke-width="2.5"/><circle cx="41" cy="53" r="3.6" fill="#3b2a33"/><circle cx="59" cy="53" r="3.6" fill="#3b2a33"/><circle cx="42.2" cy="51.8" r="1.2" fill="#fff"/><circle cx="60.2" cy="51.8" r="1.2" fill="#fff"/><circle cx="35" cy="63" r="4" fill="#ffb3a7"/><circle cx="65" cy="63" r="4" fill="#ffb3a7"/><path d="M43 64 Q50 70 57 64" fill="none" stroke="#3b2a33" stroke-width="2.4" stroke-linecap="round"/><circle cx="22" cy="62" r="2.5" fill="#3b2a33"/><circle cx="78" cy="62" r="2.5" fill="#3b2a33"/></svg>` }
+};
+const PARENT_PIC = `<svg viewBox="0 0 100 100" aria-hidden="true"><path d="M32 46 V34 Q32 16 50 16 Q68 16 68 34 V46" fill="none" stroke="#3b2a33" stroke-width="7" stroke-linecap="round"/><rect x="20" y="44" width="60" height="44" rx="12" fill="#b9a6f2" stroke="#3b2a33" stroke-width="3"/><path d="M50 78 C38 70 36 62 42 58 C46 55 50 58 50 61 C50 58 54 55 58 58 C64 62 62 70 50 78 Z" fill="#fff" stroke="#3b2a33" stroke-width="2"/></svg>`;
+// Demo: the parents play here to try the game. It has its own save, starts fresh each time, and is never sent anywhere.
+PROFILES.demo = { name: "Demo", key: "kidsMaths.demo", doc: "", pic: PARENT_PIC };
+let who = null, LS_KEY = PROFILES.marie.key, parentUntil = 0;
 const DEFAULTS = { v: 2, voiceName: "", level: 1, stars: 0, total: 0, firstTry: 0, round: [], goal: 50, voice: true, sound: true, cooks: 0,
   log: {}, lastDay: "", dayStreak: 0, levelStats: {}, missed: {}, review: [], teachRun: 0, crowns: 0,
   home: [{ uid: 1, id: "kitty", x: 40, y: 90 }, { uid: 2, id: "plant", x: 84, y: 72 }], homeSeq: 2, topics: {}, tq: 0, tqFirst: 0 };
@@ -493,11 +522,11 @@ async function pushCloud() {
 const work = o => (o.total || 0) + (o.tq || 0);
 async function connectCloud() {
   try {
-    if (!window.claude?.use) return;
+    if (!window.claude?.use || !PROFILES[who].doc) return;
     const [db, user] = await Promise.all([window.claude.use("db"), window.claude.use("user")]);
     if (!db || !user) return;
     const id = await user.id(); if (!id) return;
-    const ref = db.doc("data/users/" + id + "/blocks");
+    const ref = db.doc("data/users/" + id + "/" + PROFILES[who].doc);
     const snap = await ref.get();
     const remote = snap.exists ? snap.data() : null;
     if (remote && work(remote) > work(P)) {
@@ -706,7 +735,7 @@ const guiding = () => phase === "teach" || !!stopTeach;
 function showStart() {
   phase = "idle"; setKitty("");
   const c = $("cover"); c.hidden = false;
-  c.innerHTML = `<div class="cover-card"><div class="hello">${["kitty", "melody", "kuromi", "purin", "cinna"].map(faceSVG).join("")}</div><h2>Kitty Number Blocks</h2><p>${P.total ? `Welcome back! You have ${P.stars} stars. Level ${P.level}: ${LEVELS[P.level].name}.` : "Count the blocks, hop on the number line, and type the answer. Every 5 sums, cook something yummy!"}</p><button class="main-btn" id="goBtn" type="button">Let's play</button></div>`;
+  c.innerHTML = `<div class="cover-card"><div class="hello">${PROFILES[who].pic}</div><h2>${PROFILES[who].name}'s Maths</h2><p>${P.total ? `Welcome back! You have ${P.stars} stars. Level ${P.level}: ${LEVELS[P.level].name}.` : "Count the blocks, hop on the number line, and type the answer. Every 5 sums, cook something yummy!"}</p><button class="main-btn" id="goBtn" type="button">Let's play</button></div>`;
   say("Tap Let's play to start.", "", false);
   $("goBtn").onclick = () => { tone([523, 659]); c.hidden = true; nextQuestion(); };
   renderTop();
@@ -1528,7 +1557,7 @@ $("speakBtn").onclick = () => speak($("bubble").textContent);
 $("tabSums").onclick = () => showView("sums");
 $("tabMaths").onclick = () => showView("maths");
 $("tabHome").onclick = () => showView("home");
-$("tabGrown").onclick = () => showView("grown");
+$("tabGrown").onclick = () => parentGate(() => showView("grown"));
 document.addEventListener("keydown", e => {
   if (view !== "sums" || !Q || phase === "cook") return;
   if (e.target.closest && e.target.closest("input, select")) return;
@@ -1539,9 +1568,79 @@ document.addEventListener("keydown", e => {
 
 TopicHost.init({ speak, tone, face, ART, save, addStars, renderTop, burst, pick, PRAISE, todayLog, dayKey,
   clearFx: () => { $("fx").innerHTML = ""; }, COOK_EVERY, LEVEL_UP_NEED, TEACH_AFTER_MISTAKES });
-loadLocal();
 renderPad();
-showStart();
-connectCloud();
+$("whoBtn").onclick = () => showProfiles();
+showProfiles();
+
+/* ----- Profiles: who is playing, and the parent code ----- */
+function showProfiles() {
+  const box = $("profiles"); box.hidden = false;
+  box.innerHTML = `<div class="prof-card"><h2 id="profTitle">Kids Maths</h2><p>Who is playing?</p><div class="prof-list">
+    <button class="prof" type="button" data-p="marie">${PROFILES.marie.pic}Marie</button>
+    <button class="prof" type="button" data-p="kennedy">${PROFILES.kennedy.pic}Kennedy</button>
+    <button class="prof" type="button" data-p="parent">${PARENT_PIC}Parent</button></div></div>`;
+  box.querySelectorAll("[data-p]").forEach(b => b.onclick = () => {
+    const p = b.dataset.p;
+    if (p === "parent") parentGate(pickChildForParent); else startAs(p);
+  });
+  box.querySelector("[data-p]").focus();
+}
+function startAs(p, thenView) {
+  if (window.speechSynthesis) speechSynthesis.cancel();
+  if (who !== p) {
+    who = p; LS_KEY = PROFILES[p].key;
+    clearTimeout(cloud.timer); cloud.ref = null; cloud.on = false;
+    adopt(null); loadLocal();
+    if (window.HomeGame) HomeGame.refresh();
+    connectCloud();
+  }
+  $("whoPic").innerHTML = PROFILES[p].pic; $("whoName").textContent = PROFILES[p].name;
+  $("profiles").hidden = true; $("profiles").innerHTML = "";
+  showStart();
+  showView(thenView || "sums");
+}
+function pickChildForParent() {
+  const box = $("profiles"); box.hidden = false;
+  box.innerHTML = `<div class="prof-card"><h2 id="profTitle">Parent</h2><p>Whose settings and progress? Or try the game in Demo.</p><div class="prof-list">
+    <button class="prof" type="button" data-c="marie">${PROFILES.marie.pic}Marie</button>
+    <button class="prof" type="button" data-c="kennedy">${PROFILES.kennedy.pic}Kennedy</button>
+    <button class="prof" type="button" data-c="demo">${PARENT_PIC}Demo</button></div></div>`;
+  box.querySelectorAll("[data-c]").forEach(b => b.onclick = () => {
+    if (b.dataset.c !== "demo") return startAs(b.dataset.c, "grown");
+    try { localStorage.removeItem(PROFILES.demo.key); } catch (e) {}
+    who = null; startAs("demo");   // a fresh demo every time, so the children's progress is never touched
+  });
+  box.querySelector("[data-c]").focus();
+}
+// A simple lock so the children cannot change their own level. Not a strong password.
+const PIN_KEY = "kidsMaths.parentCode", PIN_SET = "1523212847";   // the parents chose this code (19 Oct 2026)
+const pinHash = t => { let h = 5381; for (const c of "kids-maths:" + t) h = ((h * 33) ^ c.charCodeAt(0)) >>> 0; return String(h); };
+function parentGate(done) {
+  if (Date.now() < parentUntil) return done();
+  let saved = PIN_SET; try { saved = localStorage.getItem(PIN_KEY) || PIN_SET; } catch (e) {}
+  const box = $("profiles"); box.hidden = false;
+  let first = "";
+  const ask = (title, label) => {
+    box.innerHTML = `<div class="prof-card"><h2 id="profTitle">${title}</h2><form class="pin" id="pinForm">
+      <label for="pinIn">${label}</label><input id="pinIn" type="password" inputmode="numeric" pattern="[0-9]*" maxlength="4" autocomplete="off">
+      <p class="pin-msg" id="pinMsg" aria-live="assertive"></p>
+      <div class="row"><button class="main-btn" type="submit">OK</button><button class="main-btn" type="button" id="pinBack">Back</button></div></form></div>`;
+    $("pinIn").focus();
+    $("pinBack").onclick = () => { if (who) { box.hidden = true; box.innerHTML = ""; } else showProfiles(); };
+    $("pinForm").onsubmit = e => { e.preventDefault(); check($("pinIn").value.trim()); };
+  };
+  const bad = m => { $("pinMsg").textContent = m; $("pinIn").value = ""; $("pinIn").focus(); };
+  const check = v => {
+    if (!/^\d{4}$/.test(v)) return bad("Please type 4 numbers.");
+    if (saved) { if (pinHash(v) !== saved) return bad("That code is not right. Try again."); }
+    else if (!first) { first = v; return ask("Parent code", "Type the same 4 numbers again to check."); }
+    else if (v !== first) { first = ""; return ask("Parent code", "The two codes were different. Make a 4-number parent code."); }
+    else { saved = pinHash(v); try { localStorage.setItem(PIN_KEY, saved); } catch (e) {} }
+    parentUntil = Date.now() + 10 * 60 * 1000;   // stays open for 10 minutes
+    box.hidden = true; box.innerHTML = "";
+    done();
+  };
+  if (saved) ask("Parent", "Type the 4-number parent code."); else ask("Parent code", "Make a 4-number parent code. The children should not see it.");
+}
 </script>
 </body></html>

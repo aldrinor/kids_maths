@@ -1,0 +1,1621 @@
+<title>Kids Maths</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;700;800&family=Nunito:wght@700;800;900&display=swap">
+<style>
+/* Look: one illustrated scene, like a children's app, not a web page.
+   Pink striped wallpaper; chunky toy buttons with a dark outline and a shadow under them;
+   the sum on a signboard; blocks on a gingham tablecloth; the number line is a wooden ruler Kitty hops along;
+   number keys are candy drops. Phone = one column; wide screens = scene left, signboard and candy keys right.
+   One light look on purpose (a child's toy), so every colour is set explicitly for any host theme. */
+:root {
+  color-scheme: light;
+  --ink: #3b2a33;
+  --soft-ink: #6e5562;
+  --wall-a: #ffe4ee;
+  --wall-b: #fff6f9;
+  --cream: #fff8ef;
+  --paper: #ffffff;
+  --pink: #ff6f9f;
+  --pink-deep: #e0306b;
+  --mint: #63d3b3;
+  --mint-deep: #23a483;
+  --lilac: #a98bff;
+  --lilac-deep: #7b55e6;
+  --sun: #ffc94a;
+  --sky: #74c8ff;
+  --wood: #f0bf87;
+  --wood-deep: #c98a52;
+  --good: #23a483;
+  --good-tint: #e2f8f0;
+  --warn: #c2511a;
+  --jump: #7b55e6;
+  --line-c: #3b2a33;
+  --pink-tint: #ffe4ee;
+  --gold: #ffb020;
+  --blk: clamp(44px, 11.5vw, 58px);
+  --display: "Baloo 2", "Comic Sans MS", "Trebuchet MS", sans-serif;
+  --body: "Nunito", "Segoe UI", system-ui, sans-serif;
+}
+html, body { height: 100%; color: var(--ink); background: var(--wall-b); }
+body { margin: 0; overflow: hidden; font-family: var(--body); font-size: 17px;
+  background: repeating-linear-gradient(90deg, var(--wall-a) 0 26px, var(--wall-b) 26px 52px);
+  padding-left: max(10px, env(safe-area-inset-left, 0px)); padding-right: max(10px, env(safe-area-inset-right, 0px));
+  -webkit-tap-highlight-color: transparent; }
+button { font-family: var(--display); color: var(--ink); touch-action: manipulation; -webkit-user-select: none; user-select: none; cursor: pointer; }
+button:focus-visible, select:focus-visible, input:focus-visible { outline: 4px solid var(--sky); outline-offset: 2px; }
+button:disabled { opacity: .4; cursor: default; }
+img, svg { -webkit-user-drag: none; user-select: none; }
+img { pointer-events: none; }
+.app { height: 100%; max-width: 1180px; margin: 0 auto; display: flex; flex-direction: column; gap: 8px; padding-block: 8px; box-sizing: border-box; }
+
+/* Chunky toy surfaces and buttons */
+.toy { border: 3px solid var(--ink); border-radius: 22px; box-shadow: 0 5px 0 var(--ink); }
+.chunky { border: 3px solid var(--ink); border-radius: 18px; box-shadow: 0 4px 0 var(--ink); font-weight: 800; transition: transform .08s, box-shadow .08s; }
+.chunky:active:not(:disabled) { transform: translateY(3px); box-shadow: 0 1px 0 var(--ink); }
+
+/* Header */
+.top { flex: none; display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 10px; }
+.top h1 { margin: 0; font: 800 clamp(22px, 3vw, 30px)/1 var(--display); color: var(--pink-deep); white-space: nowrap; -webkit-text-stroke: 1px var(--ink); paint-order: stroke fill; }
+.dots { display: flex; gap: 4px; justify-content: center; align-items: center; }
+.dots img { width: 28px; height: 28px; opacity: .25; filter: grayscale(1); transition: opacity .3s, transform .3s; }
+.dots img.on { opacity: 1; filter: none; transform: scale(1.12) rotate(-6deg); }
+.score { display: inline-flex; align-items: center; gap: 4px; background: var(--sun); border: 3px solid var(--ink); box-shadow: 0 3px 0 var(--ink); border-radius: 999px; padding: 0 12px 0 4px; font: 800 19px var(--display); font-variant-numeric: tabular-nums; }
+.score img { width: 26px; height: 26px; }
+.score.bump { animation: bump .5s; }
+@keyframes bump { 40% { transform: scale(1.2) rotate(-4deg); } }
+.tabs { flex: none; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.tab { min-height: 46px; border: 3px solid var(--ink); border-radius: 18px; box-shadow: 0 4px 0 var(--ink); background: var(--cream); font: 800 17px var(--display); display: flex; align-items: center; justify-content: center; gap: 6px; padding: 0 6px; white-space: nowrap; }
+.tab img { width: 28px; height: 28px; }
+#tabSums[aria-selected="true"] { background: var(--pink); color: #fff; }
+#tabHome[aria-selected="true"] { background: var(--mint); color: #fff; }
+#tabGrown[aria-selected="true"] { background: var(--lilac); color: #fff; }
+.tab[aria-selected="true"] { text-shadow: 0 2px 0 rgba(59, 42, 51, .35); }
+@media (max-width: 560px) { .top h1 { display: none; } .top { grid-template-columns: minmax(0, 1fr) auto; } .dots img { width: 24px; height: 24px; } .tab { font-size: 16px; gap: 4px; } .tab img { width: 24px; height: 24px; } }
+.view { flex: 1; min-height: 0; position: relative; }
+.scroll { overflow: auto; }
+
+/* Sums screen */
+.sums { height: 100%; display: grid; gap: 8px; grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: auto auto minmax(0, 1fr) auto auto; grid-template-areas: "say" "eq" "blocks" "line" "pad"; }
+.side { display: contents; }
+.say { grid-area: say; } .eq { grid-area: eq; } .blocks { grid-area: blocks; } .line { grid-area: line; } .pad { grid-area: pad; }
+@media (min-width: 900px) and (min-height: 560px) {
+  :root { --blk: 58px; }
+  .sums { grid-template-columns: minmax(0, 1.5fr) minmax(320px, 1fr); grid-template-rows: auto minmax(0, 1fr) auto; grid-template-areas: "say say" "blocks side" "line side"; gap: 12px; }
+  .side { display: flex; grid-area: side; flex-direction: column; justify-content: center; gap: 18px; }
+  .side .eq { font-size: 60px; padding: 18px 12px; }
+  .side .key { min-height: 70px; font-size: 32px; }
+}
+
+/* Kitty the teacher */
+.say { display: grid; grid-template-columns: 56px minmax(0, 1fr) 48px 48px; gap: 8px; align-items: center; }
+.say .kitty { width: 56px; height: 56px; filter: drop-shadow(0 3px 0 rgba(59, 42, 51, .25)); }
+.say .kitty.happy { animation: hop .45s ease 2; }
+.say .kitty.think { animation: tilt .7s ease; }
+@keyframes hop { 50% { transform: translateY(-10px) rotate(-4deg); } }
+@keyframes tilt { 30% { transform: rotate(-8deg); } 70% { transform: rotate(6deg); } }
+.bubble { position: relative; margin: 0; background: var(--paper); border: 3px solid var(--ink); border-radius: 20px; padding: 6px 14px; font: 700 clamp(15px, 2.1vw, 20px)/1.2 var(--display); min-height: 2.4em; display: flex; align-items: center; box-sizing: border-box; box-shadow: 0 4px 0 var(--ink); }
+.bubble::before { content: ""; position: absolute; left: -12px; top: 50%; margin-top: -9px; border: 9px solid transparent; border-right: 12px solid var(--ink); border-left: 0; }
+.bubble::after { content: ""; position: absolute; left: -7px; top: 50%; margin-top: -6px; border: 6px solid transparent; border-right: 8px solid var(--paper); border-left: 0; }
+.bubble.good { background: var(--good-tint); color: #0f6e4a; } .bubble.good::after { border-right-color: var(--good-tint); }
+.bubble.warn { background: #fff1e6; color: var(--warn); } .bubble.warn::after { border-right-color: #fff1e6; }
+.bubble.teach { background: #fff6d6; } .bubble.teach::after { border-right-color: #fff6d6; }
+.speak { width: 48px; height: 48px; border-radius: 50%; border: 3px solid var(--ink); box-shadow: 0 3px 0 var(--ink); background: var(--sun); display: grid; place-items: center; padding: 0; }
+.speak svg { width: 24px; height: 24px; }
+
+/* The sum on a signboard */
+.eq { position: relative; display: flex; justify-content: center; align-items: center; gap: .24em; font: 800 clamp(32px, 8.5vw, 54px)/1 var(--display); font-variant-numeric: tabular-nums;
+  background: var(--cream); border: 3px solid var(--ink); border-radius: 22px; box-shadow: 0 5px 0 var(--ink); padding: 3px 10px; }
+.eq > span { -webkit-text-stroke: 2px var(--ink); paint-order: stroke fill; }
+.eq .op { color: var(--ink); -webkit-text-stroke: 0; }
+.ans { min-width: 1.6em; padding: 0 .14em; text-align: center; border-radius: 16px; border: 3px dashed var(--pink-deep); background: #fff; color: var(--ink); -webkit-text-stroke: 0 !important; }
+.ans.filled { border-style: solid; background: #fff0f5; }
+.ans.dim { opacity: .35; border-color: var(--soft-ink); }
+.eq.long { font-size: clamp(26px, 7vw, 44px); }
+@media (min-width: 900px) and (min-height: 560px) { .side .eq.long { font-size: 42px; } }
+.shake { animation: shake .4s; }
+@keyframes shake { 25% { transform: translateX(-8px); } 75% { transform: translateX(8px); } }
+
+/* Blocks on a gingham tablecloth */
+.blocks { position: relative; min-height: 0; display: flex; flex-direction: column; overflow: hidden; border: 3px solid var(--ink); border-radius: 22px; box-shadow: 0 5px 0 var(--ink);
+  background:
+    repeating-linear-gradient(0deg, rgba(255, 111, 159, .16) 0 16px, transparent 16px 32px),
+    repeating-linear-gradient(90deg, rgba(255, 111, 159, .16) 0 16px, transparent 16px 32px), var(--paper); }
+.recount { width: 48px; height: 48px; border-radius: 50%; border: 3px solid var(--ink); box-shadow: 0 3px 0 var(--ink); background: var(--paper); display: grid; place-items: center; padding: 0; font: 800 22px var(--display); }
+.blocks-body { position: relative; flex: 1; min-height: 0; overflow: auto; padding: 10px; }
+.stack { display: grid; justify-content: center; row-gap: 8px; }
+/* Each person's blocks sit in their own box, so the question number sticks only over its own blocks. */
+.who { display: grid; grid-template-columns: auto auto; column-gap: 10px; align-items: start; }
+/* The question number stays in sight while the blocks panel scrolls. Both numbers get the same width, so both block groups start at the same left edge. */
+.stack .num { text-align: right; font: 800 34px/var(--blk) var(--display); height: var(--blk); -webkit-text-stroke: 2px var(--ink); paint-order: stroke fill; width: calc(var(--nd, 2) * .62em); position: sticky; top: 0; z-index: 2; }
+.stack .num .pl { color: var(--ink); -webkit-text-stroke: 0; margin-right: .08em; }
+.row-blocks { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 8px 14px; }
+.grp5 { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 6px; }
+/* Ones: each ten is two rows of 5. Where there is room the two fives sit side by side with a wider gap. */
+.frames { display: grid; gap: 8px; }
+.ten { display: flex; flex-wrap: wrap; gap: 5px 12px; }
+.five { display: flex; gap: 5px; }
+.blk { position: relative; width: var(--blk); height: var(--blk); border: 0; padding: 0; background: transparent; border-radius: 12px; }
+.blk svg { width: 100%; height: 100%; display: block; overflow: visible; }
+.blk.tower { height: calc(var(--blk) * 2.3); width: max(44px, calc(var(--blk) * .8)); }
+.blk.plate { width: calc(var(--blk) * 1.55); height: calc(var(--blk) * 1.55); }
+/* A counted block gets a heart stamp: a mark with no number, so she counts herself. */
+.blk .mark { position: absolute; top: -8px; right: -8px; width: 26px; height: 26px; z-index: 1; pointer-events: none; filter: drop-shadow(0 2px 0 rgba(59, 42, 51, .3)); }
+.blk .mark svg { width: 100%; height: 100%; display: block; }
+.blk.wiggle { animation: wiggle .45s ease; }
+@keyframes wiggle { 25% { transform: rotate(-8deg); } 75% { transform: rotate(8deg); } }
+/* Kitty's pointing glow in the lesson: a still outline (works with reduced motion) plus a soft pulse. */
+.blk.glow { outline: 5px solid var(--pink-deep); outline-offset: 3px; border-radius: 14px; animation: glowpulse 1.1s ease-in-out infinite; }
+.jbtn.glow { outline: 5px solid var(--sun); outline-offset: 2px; animation: glowpulse2 1.1s ease-in-out infinite; }
+@keyframes glowpulse { 50% { outline-color: var(--sun); } }
+@keyframes glowpulse2 { 50% { outline-color: var(--pink-deep); } }
+.blk.gone { opacity: .28; filter: grayscale(.6); }
+.blk.gone::after { content: ""; position: absolute; inset: 8%; background:
+  linear-gradient(45deg, transparent 43%, var(--warn) 43%, var(--warn) 57%, transparent 57%),
+  linear-gradient(-45deg, transparent 43%, var(--warn) 43%, var(--warn) 57%, transparent 57%); }
+.blk.pop { animation: pop .3s ease-out; }
+@keyframes pop { from { transform: scale(.4); } 70% { transform: scale(1.12); } }
+
+/* The ruler number line */
+.line { display: grid; gap: 4px; padding: 6px 10px 8px; background: var(--cream); border: 3px solid var(--ink); border-radius: 22px; box-shadow: 0 5px 0 var(--ink); }
+.line.focus { background: #fff6d6; }
+.run { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.run .sentence { font: 800 clamp(20px, 3vw, 28px)/1.1 var(--display); font-variant-numeric: tabular-nums; }
+.run .sentence b { color: var(--lilac-deep); }
+.run .sentence .stops { font-size: .72em; color: var(--lilac-deep); white-space: nowrap; }
+.run .taps { flex: none; font: 800 16px var(--display); color: #fff; background: var(--lilac); border: 3px solid var(--ink); border-radius: 999px; padding: 1px 12px; font-variant-numeric: tabular-nums; }
+/* The number line is drawn at the real width of the panel, so its numbers keep their real size on phones. */
+.line svg { width: 100%; height: auto; display: block; }
+/* The stop box: on big sums Kitty stops where the hop size changes and she types that number here. */
+.stopbox { display: inline-block; min-width: 2.4em; padding: 0 .3em; margin-left: .2em; text-align: center; border: 3px solid var(--pink-deep); border-radius: 14px; background: #fff; color: var(--ink); }
+.stopbox.glow { outline: 5px solid var(--sun); outline-offset: 2px; animation: glowpulse2 1.1s ease-in-out infinite; }
+.line .arcnew { animation: draw .35s ease-out; }
+@keyframes draw { from { stroke-dashoffset: 1; } }
+.jbtns { display: grid; grid-template-columns: minmax(0, 1fr) 48px 48px; gap: 8px; align-items: center; }
+/* While a stop number waits, the hop buttons make way for the stop box (hops are blocked until she types it). */
+.stopwrap { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 2px 6px; min-height: 48px; font: 800 20px/1.1 var(--display); text-align: center; }
+.stopwrap .stopbox { margin-left: 0; }
+.jbtns.many { grid-template-columns: repeat(var(--n), minmax(0, 1fr)) 48px 48px; }
+.jbtn { min-height: 48px; border: 3px solid var(--ink); border-radius: 18px; box-shadow: 0 4px 0 var(--ink); font: 800 21px var(--display); background: var(--lilac); color: #fff; text-shadow: 0 2px 0 rgba(59, 42, 51, .35); }
+.jbtn.icon { width: 48px; padding: 0; background: var(--paper); color: var(--ink); text-shadow: none; font-size: 24px; border-radius: 50%; }
+.jbtn:active:not(:disabled), .key:active, .tab:active, .speak:active, .recount:active { transform: translateY(3px); box-shadow: 0 1px 0 var(--ink); }
+
+/* Candy keys */
+.pad { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)) minmax(0, 1.35fr); gap: 6px; padding-bottom: env(safe-area-inset-bottom, 0px); }
+.key { min-height: 46px; border: 3px solid var(--ink); border-radius: 20px 20px 16px 16px; box-shadow: 0 4px 0 var(--ink), inset 0 -6px 0 rgba(0, 0, 0, .12), inset 0 5px 0 rgba(255, 255, 255, .45);
+  background: var(--c, var(--pink)); color: #fff; font: 800 28px var(--display); -webkit-text-stroke: 2px var(--ink); paint-order: stroke fill; }
+.key.del { --c: var(--paper); color: var(--ink); -webkit-text-stroke: 0; font-size: 24px; }
+.key.check { --c: var(--mint); font-size: 30px; -webkit-text-stroke: 0; text-shadow: 0 2px 0 rgba(59, 42, 51, .35); font-size: 24px; }
+
+/* Start cover */
+.cover[hidden] { display: none !important; }
+.cover { position: absolute; inset: 0; z-index: 5; display: grid; place-items: center; text-align: center; padding: 10px;
+  background: repeating-linear-gradient(90deg, var(--wall-a) 0 26px, var(--wall-b) 26px 52px); }
+.cover-card { background: var(--cream); border: 3px solid var(--ink); border-radius: 28px; box-shadow: 0 6px 0 var(--ink); padding: 18px 14px 22px; max-width: min(520px, 100%); box-sizing: border-box; }
+.cover h2 { margin: 6px 0; font: 800 clamp(30px, 6vw, 44px)/1.05 var(--display); color: var(--pink); -webkit-text-stroke: 2px var(--ink); paint-order: stroke fill; }
+.cover p { margin: 0 auto 16px; font-weight: 800; color: var(--soft-ink); max-width: 38ch; }
+.main-btn { min-height: 60px; padding: 0 34px; border: 3px solid var(--ink); border-radius: 20px; box-shadow: 0 5px 0 var(--ink); background: var(--pink); color: #fff; font: 800 24px var(--display); text-shadow: 0 2px 0 rgba(59, 42, 51, .35); }
+.main-btn:active { transform: translateY(3px); box-shadow: 0 2px 0 var(--ink); }
+.hello { display: flex; gap: 4px; justify-content: center; }
+.hello svg { width: clamp(40px, 13vw, 88px); height: auto; animation: hop 1.6s ease-in-out infinite; filter: drop-shadow(0 3px 0 rgba(59, 42, 51, .2)); }
+.hello svg:nth-child(2) { animation-delay: .2s; } .hello svg:nth-child(3) { animation-delay: .4s; } .hello svg:nth-child(4) { animation-delay: .6s; } .hello svg:nth-child(5) { animation-delay: .8s; }
+.mini { min-height: 46px; padding: 0 14px; border: 3px solid var(--ink); border-radius: 16px; box-shadow: 0 3px 0 var(--ink); background: var(--paper); color: var(--ink); font: 800 16px var(--display); }
+
+/* Cooking break: the cook.js module draws everything inside #cook */
+.cook-layer { position: absolute; inset: 0; z-index: 6; }
+.cook { position: absolute; inset: 0; z-index: 6; display: grid; grid-template-rows: auto minmax(0, 1fr) auto; gap: 8px; padding: 12px; box-sizing: border-box; border: 3px solid var(--ink); border-radius: 24px; box-shadow: 0 5px 0 var(--ink);
+  background: repeating-linear-gradient(45deg, #fff7e8 0 18px, #ffefd2 18px 36px); }
+.cook-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; font: 800 clamp(24px, 4vw, 32px) var(--display); color: #fff; -webkit-text-stroke: 2px var(--ink); paint-order: stroke fill; }
+.stage { position: relative; display: grid; place-items: center; min-height: 0; }
+.bowl { width: min(46vw, 230px, 34vh); height: auto; filter: drop-shadow(0 6px 0 rgba(59, 42, 51, .18)); }
+.bowl.stir { animation: stir .5s ease; }
+@keyframes stir { 50% { transform: rotate(-14deg) scale(1.05); } }
+.oven { width: min(62vw, 300px, 42vh); aspect-ratio: 5 / 4; border-radius: 28px; background: var(--pink); border: 4px solid var(--ink); display: grid; place-items: center; position: relative; box-shadow: 0 6px 0 var(--ink); box-sizing: border-box; }
+.oven::before { content: ""; position: absolute; left: 14%; right: 14%; top: 8%; height: 9%; border-radius: 99px; background: #fff; border: 3px solid var(--ink); box-sizing: border-box; }
+.oven .win { width: 64%; aspect-ratio: 16 / 10; border-radius: 18px; background: var(--ink); border: 4px solid #fff; display: grid; place-items: center; overflow: hidden; margin-top: 10%; box-sizing: border-box; }
+.oven .win.hot { animation: glow 1s ease-in-out infinite; }
+@keyframes glow { 50% { background: #ff8a3d; } }
+.oven .win img { width: 46%; }
+.result { position: relative; width: min(50vw, 240px, 34vh); margin: auto; }
+.result > img { width: 100%; display: block; filter: drop-shadow(0 6px 0 rgba(59, 42, 51, .18)); }
+.result .top-on { position: absolute; width: 26%; animation: drop .35s ease-out; }
+@keyframes drop { from { transform: translateY(-60px) scale(1.4); opacity: 0; } }
+.choices { display: grid; grid-template-columns: repeat(auto-fit, minmax(78px, 1fr)); gap: 10px; }
+.choice { min-height: 78px; border: 3px solid var(--ink); border-radius: 20px; box-shadow: 0 4px 0 var(--ink); background: var(--paper); display: grid; place-items: center; padding: 4px; }
+.choice img { width: 56px; height: 56px; }
+.choice.next { background: #fff6d6; animation: pulse 1s ease-in-out infinite; }
+.choice.used { opacity: .3; }
+.bowl-btn { border: 0; background: transparent; padding: 0; animation: pulse 1.2s ease-in-out infinite; border-radius: 50%; }
+.cook-note { text-align: center; font: 800 22px var(--display); color: var(--ink); align-self: center; }
+@keyframes pulse { 50% { transform: scale(1.06); } }
+
+/* Home */
+.home { height: 100%; display: grid; grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(0, 1fr) auto auto; gap: 8px; }
+.home > * { min-width: 0; }
+.room { position: relative; min-height: 200px; border-radius: 24px; overflow: hidden; touch-action: none; border: 3px solid var(--ink); box-shadow: 0 5px 0 var(--ink);
+  background: repeating-linear-gradient(90deg, #fff0d9 0 30px, #ffe6c4 30px 60px); }
+.room::before { content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 36%; background: repeating-linear-gradient(90deg, var(--wood) 0 60px, #e6ad6f 60px 120px); border-top: 3px solid var(--ink); }
+.room .win { position: absolute; left: 6%; top: 8%; width: 17%; aspect-ratio: 1; border-radius: 14px; border: 3px solid var(--ink); background: linear-gradient(#a9dcff, #e2f4ff); box-sizing: border-box; box-shadow: inset 0 0 0 5px #fff; }
+.room .win::after { content: ""; position: absolute; inset: 0; background: linear-gradient(90deg, transparent calc(50% - 2px), #fff calc(50% - 2px), #fff calc(50% + 2px), transparent calc(50% + 2px)), linear-gradient(transparent calc(50% - 2px), #fff calc(50% - 2px), #fff calc(50% + 2px), transparent calc(50% + 2px)); }
+.thing { position: absolute; transform: translate(-50%, -92%); border: 0; padding: 0; background: transparent; touch-action: none; cursor: grab; }
+.thing img, .thing svg { width: 100%; height: auto; display: block; filter: drop-shadow(0 4px 0 rgba(59, 42, 51, .2)); pointer-events: none; }
+.thing.drag { cursor: grabbing; transform: translate(-50%, -92%) scale(1.12); z-index: 999 !important; }
+.thing.wave { animation: wave .6s ease; }
+@keyframes wave { 30% { transform: translate(-50%, -100%) rotate(-8deg); } 60% { transform: translate(-50%, -96%) rotate(8deg); } }
+.bin { position: absolute; right: 10px; bottom: 10px; width: 76px; height: 76px; border-radius: 50%; background: var(--paper); border: 3px dashed var(--warn); display: grid; place-items: center; font: 800 13px var(--display); color: var(--warn); opacity: 0; transition: opacity .2s, transform .2s; pointer-events: none; text-align: center; z-index: 1000; }
+.bin.show { opacity: 1; }
+.bin.over { transform: scale(1.2); background: #ffe1cc; }
+.shop-tabs { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.shop-tab { min-height: 46px; border: 3px solid var(--ink); border-radius: 16px; box-shadow: 0 3px 0 var(--ink); background: var(--cream); font: 800 16px var(--display); }
+.shop-tab[aria-pressed="true"] { background: var(--sun); }
+.shop { display: grid; grid-auto-flow: column; grid-auto-columns: 98px; gap: 8px; overflow-x: auto; padding: 4px 2px 8px; margin-top: 6px; }
+.buy { min-height: 110px; border: 3px solid var(--ink); border-radius: 18px; box-shadow: 0 4px 0 var(--ink); background: var(--paper); display: grid; justify-items: center; align-content: center; gap: 2px; padding: 4px; }
+.buy img, .buy svg { width: 58px; height: 58px; }
+.buy .price { display: flex; align-items: center; gap: 2px; font: 800 16px var(--display); }
+.buy .price img { width: 20px; height: 20px; }
+.buy.cant { opacity: .55; }
+.buy.owned { background: var(--good-tint); }
+.home-msg { margin: 0; font: 700 18px/1.3 var(--display); min-height: 1.3em; }
+
+/* Grown-ups */
+.card { background: var(--paper); border: 3px solid var(--ink); border-radius: 22px; box-shadow: 0 5px 0 var(--ink); padding: 14px 16px; }
+.grown { display: grid; gap: 14px; font-family: var(--body); }
+.grown h2 { margin: 0; font: 800 28px var(--display); }
+.grown section { display: grid; gap: 6px; }
+.grown h3 { margin: 0; font-size: 18px; font-family: var(--body); }
+.grown p, .grown li { margin: 0; line-height: 1.5; }
+.grown ul { margin: 0; padding-left: 20px; }
+.set { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+.set label { font-weight: 800; }
+select, input[type="number"] { font-size: 17px; padding: 6px 8px; min-height: 44px; border-radius: 12px; border: 3px solid var(--ink); background: var(--paper); color: var(--ink); font-family: var(--body); }
+input[type="checkbox"] { width: 24px; height: 24px; accent-color: var(--pink-deep); }
+
+.fx { position: fixed; inset: 0; pointer-events: none; overflow: hidden; z-index: 30; }
+.fx img { position: absolute; bottom: -50px; width: 46px; height: 46px; animation: rise 2.3s ease-in forwards; }
+.fx img.fly { width: 56px; height: 56px; animation: none; bottom: auto; left: 0; top: 0; }
+@keyframes rise { to { transform: translateY(-110vh) rotate(25deg); opacity: 0; } }
+@media (max-height: 640px) {
+  .app, .sums { gap: 5px; } .app { padding-block: 5px; }
+  .eq { font-size: 30px; padding: 2px 8px; } .key { min-height: 44px; font-size: 22px; } .pad { gap: 5px; }
+  .jbtn { min-height: 46px; font-size: 18px; } .jbtns { grid-template-columns: minmax(0, 1fr) 46px 46px; } .jbtn.icon { width: 46px; }
+  .bubble { font-size: 14px; min-height: 2.3em; max-height: 6.2em; overflow: auto; padding: 3px 10px; } .tab { min-height: 44px; font-size: 14px; } .tab img { width: 22px; height: 22px; }
+  .run .sentence { font-size: 18px; } .line { padding: 4px 8px 6px; gap: 3px; } .blocks { min-height: 44px; }
+  .say { grid-template-columns: 44px minmax(0, 1fr) 44px 44px; gap: 6px; } .say .kitty { width: 44px; height: 44px; } .speak, .recount { width: 44px; height: 44px; }
+  .stack .num, .stack .plus { font-size: 26px; }
+}
+@media (max-width: 340px) { .pad { gap: 4px; } .bin { width: 60px; height: 60px; font-size: 11px; } }
+/* Phones held upright: more room for the blocks. The sentence row is hidden (the sum and Kitty already say it),
+   the "count again" button is hidden (Start again on the number line does the same), towers are a bit shorter. */
+@media (max-width: 899px) and (max-height: 760px) {
+  .line .run { display: none; } .say #recount { display: none; } .say { grid-template-columns: 44px minmax(0, 1fr) 44px; }
+  .key { min-height: 44px; height: 46px; padding: 0; line-height: 1; font-size: 24px; } .key.check, .key.del { font-size: 22px; }
+  .eq { font-size: 32px; padding: 2px 8px; } .eq.long { font-size: 28px; }
+  .blk.tower { height: calc(var(--blk) * 2); } .stopwrap { font-size: 17px; }
+}
+@media (max-width: 899px) and (max-height: 600px) {
+  .blk.tower { height: calc(var(--blk) * 1.9); }
+}
+/* iPhone SE: the blocks panel is only about 80 px tall while she hops, so a tower is a bit shorter there and fits whole. */
+@media (max-width: 380px) and (max-height: 600px) { .blk.tower { height: calc(var(--blk) * 1.6); } }
+/* Very narrow phones: the number sits above its blocks, at the right, so a row of 5 blocks has the full width. It sticks
+   at the top of the panel while its blocks are in view, so blocks are never shown without their number. Taps pass
+   through it, and a block under it is scrolled to just below it (scroll-padding-top = padding + number height). */
+@media (max-width: 380px) { .blocks-body { padding: 6px; scroll-padding-top: 34px; } .who { display: block; } .stack { justify-content: stretch; }
+  .stack .num { display: block; text-align: left; width: fit-content; margin-left: auto; box-sizing: border-box; height: 28px; font-size: 21px; line-height: 24px; padding: 0 8px; margin-bottom: 4px; -webkit-text-stroke-width: 1.5px;
+    position: sticky; top: 0; z-index: 3; background: var(--paper); border: 2px solid var(--ink); border-radius: 999px; pointer-events: none; }
+  .five { gap: 3px; } .ten { column-gap: 8px; } .blk.plate { width: calc(var(--blk) * 1.42); height: calc(var(--blk) * 1.42); } }
+/* Laptops: slightly smaller blocks so a whole 3-digit sum fits without scrolling. */
+@media (min-width: 900px) and (min-height: 560px) and (max-height: 820px) { :root { --blk: 54px; } .blk.tower { height: calc(var(--blk) * 2); } }
+/* When a long message makes the blocks panel very short, towers and plates shrink to fit the panel (never below
+   44 px). fitBlocks() sets --fitH only when the panel must scroll and a tower or plate would not fit whole. */
+.blocks-body .blk.tower { max-height: var(--fitH, none); }
+.blocks-body .stack { padding-bottom: var(--tail, 0px); }
+.blocks-body .blk.plate { max-height: var(--fitH, none); max-width: var(--fitH, none); }
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; } }
+/* Make 10: empty places in Kitty's ten-frame wait to be filled by the friend's blocks. */
+.blk.slot { display: inline-block; border: 3px dashed var(--pink-deep); background: #fff7fa; box-sizing: border-box; }
+/* 進位 (carrying): the sum written in columns. */
+.colsum { display: grid; justify-content: center; gap: 2px; font: 800 clamp(30px, 6vw, 46px)/1.05 var(--display); font-variant-numeric: tabular-nums; }
+.colsum .crow { display: grid; grid-template-columns: repeat(var(--cols), 1.25em); text-align: center; }
+.colsum .carry { font-size: .55em; grid-template-columns: repeat(var(--cols), 2.27em); color: var(--pink-deep); min-height: 1.1em; }
+.colsum .cell.on { background: #fff1b8; border-radius: 10px; }
+.colsum .rule { border-top: 4px solid var(--ink); }
+.colsum .q { color: var(--pink-deep); }
+.colq { text-align: center; font: 800 clamp(20px, 3.4vw, 28px)/1.2 var(--display); }
+.colq .stopbox { min-width: 2.2em; }
+@media (max-height: 700px) and (max-width: 500px) { .colsum { font-size: 23px; gap: 0; } .colsum .rule { border-top-width: 3px; } .colq { font-size: 17px; } }
+.headbox { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; min-height: 90px; font: 800 20px/1.2 var(--display); text-align: center; }
+.headbox button { min-height: 44px; padding: 0 18px; border-radius: 22px; border: 3px solid var(--ink); background: #fff; font: 800 18px var(--display); }
+
+.profiles { position: fixed; inset: 0; z-index: 60; display: grid; place-items: center; padding: 16px; background: #fff7fa; overflow: auto; }
+.profiles[hidden] { display: none !important; }
+.prof-card { width: min(560px, 100%); text-align: center; }
+.prof-card h2 { margin: 0 0 4px; font: 800 clamp(34px, 8vw, 48px)/1.05 var(--display); color: var(--ink); }
+.prof-card > p { margin: 0 0 18px; font-weight: 800; color: var(--soft-ink); font-size: 18px; }
+.prof-list { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+.prof { display: grid; justify-items: center; gap: 6px; padding: 12px 6px; border: 3px solid var(--ink); border-radius: 22px; background: var(--cream); box-shadow: 0 4px 0 var(--ink); font: 800 20px/1.1 var(--display); color: var(--ink); }
+.prof:active { transform: translateY(3px); box-shadow: 0 1px 0 var(--ink); }
+.prof svg { width: min(110px, 22vw); height: min(110px, 22vw); }
+.prof:focus-visible, .who:focus-visible { outline: 4px solid #4f7ff0; outline-offset: 3px; }
+.pin { display: grid; gap: 10px; justify-items: center; }
+.pin label { font-weight: 800; font-size: 18px; }
+.pin input { width: 8ch; font: 800 32px/1 var(--display); text-align: center; letter-spacing: 6px; padding: 8px; border: 3px solid var(--ink); border-radius: 14px; }
+.pin .row { display: flex; gap: 10px; }
+.pin-msg { min-height: 1.4em; font-weight: 800; color: #c0305c; margin: 0; }
+.who { display: flex; align-items: center; gap: 8px; padding: 0; border: 0; background: none; font: inherit; color: inherit; cursor: pointer; text-align: left; }
+.who-pic svg { width: 34px; height: 34px; display: block; }
+.who-name .brand { color: var(--soft-ink); }
+@media (max-width: 500px) { .prof { font-size: 17px; } }
+@media (max-width: 560px) { .top h1 { display: block; } .top { grid-template-columns: auto minmax(0, 1fr) auto; } .who-name { display: none; } }
+</style>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <radialGradient id="fur" cx="38%" cy="30%" r="80%"><stop offset="0" stop-color="#ffffff"/><stop offset=".75" stop-color="#fbf5f8"/><stop offset="1" stop-color="#e9d8e0"/></radialGradient>
+    <radialGradient id="furGold" cx="38%" cy="30%" r="80%"><stop offset="0" stop-color="#fff2b8"/><stop offset=".7" stop-color="#ffd76a"/><stop offset="1" stop-color="#e9b440"/></radialGradient>
+    <radialGradient id="hoodPink" cx="38%" cy="30%" r="80%"><stop offset="0" stop-color="#ffc3da"/><stop offset="1" stop-color="#ff7fb0"/></radialGradient>
+    <radialGradient id="hoodBlack" cx="38%" cy="30%" r="80%"><stop offset="0" stop-color="#5a4a63"/><stop offset="1" stop-color="#231a28"/></radialGradient>
+    <radialGradient id="nose" cx="35%" cy="30%" r="70%"><stop offset="0" stop-color="#ffe680"/><stop offset="1" stop-color="#f2a900"/></radialGradient>
+    <linearGradient id="tile" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff" stop-opacity=".9"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></linearGradient>
+    <linearGradient id="woodGrad" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ffdcae"/><stop offset="1" stop-color="#eaa968"/></linearGradient>
+    <pattern id="grid10" width="10" height="10" patternUnits="userSpaceOnUse"><path d="M10 0V10M0 10H10" stroke="rgba(59,42,51,.22)" stroke-width="1"/></pattern>
+  </defs>
+</svg>
+
+<div class="profiles" id="profiles" role="dialog" aria-modal="true" aria-labelledby="profTitle" hidden></div>
+<div class="app">
+  <header class="top">
+    <h1><button class="who" id="whoBtn" type="button" aria-label="Change who is playing"><span class="who-pic" id="whoPic"></span><span class="who-name"><span class="brand">Kids Maths</span> <span id="whoName"></span></span></button></h1>
+    <div class="dots" id="dots" aria-label="Sums until the cooking break"></div>
+    <span class="score" id="score"><img src="art/star.png" alt=""><span></span></span>
+  </header>
+  <nav class="tabs" role="tablist">
+    <button class="tab" role="tab" id="tabSums" aria-selected="true" aria-controls="viewSums" type="button"><img src="art/sparkles.png" alt="">Sums</button>
+    <button class="tab" role="tab" id="tabHome" aria-selected="false" aria-controls="viewHome" type="button"><img src="art/dollhouse.png" alt="">Home</button>
+    <button class="tab" role="tab" id="tabGrown" aria-selected="false" aria-controls="viewGrown" type="button"><img src="art/crown.png" alt="">Parent</button>
+  </nav>
+
+  <section class="view" id="viewSums" role="tabpanel" aria-labelledby="tabSums">
+    <div class="sums">
+      <div class="say">
+        <svg class="kitty" id="kitty" viewBox="0 0 100 100" aria-hidden="true"></svg>
+        <p class="bubble" id="bubble" aria-live="polite"></p>
+        <button class="recount" id="recount" type="button" aria-label="Count the blocks again" title="Count the blocks again" disabled>↺</button>
+        <button class="speak" id="speakBtn" type="button" aria-label="Say it again"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9h4l5-4v14l-5-4H4z" fill="#d92f68"/><path d="M16 8.5a5 5 0 0 1 0 7M18.5 6a8.5 8.5 0 0 1 0 12" fill="none" stroke="#d92f68" stroke-width="2" stroke-linecap="round"/></svg></button>
+      </div>
+      <div class="blocks">
+        <div class="blocks-body" id="blocks"></div>
+      </div>
+      <div class="line" id="line"></div>
+      <div class="side">
+        <div class="eq" id="eq" aria-live="polite"></div>
+        <div class="pad" id="pad"></div>
+      </div>
+    </div>
+    <div class="cover" id="cover" hidden></div>
+    <div id="cook" class="cook-layer" hidden></div>
+  </section>
+
+  <section class="view" id="viewHome" role="tabpanel" aria-labelledby="tabHome" hidden></section>
+
+  <section class="view scroll" id="viewGrown" role="tabpanel" aria-labelledby="tabGrown" hidden>
+    <div class="card grown" id="grown"></div>
+  </section>
+</div>
+<div class="fx" id="fx" aria-hidden="true"></div>
+
+<script src="modules/characters.js"></script>
+<script src="modules/home.js"></script>
+<script src="modules/cook.js"></script>
+<script>
+/* ================= Settings ================= */
+const LEVELS = [null,
+  { name: "Adding to 10", group: "Single digit", quick: 6 },
+  { name: "Taking away within 10", group: "Single digit", quick: 6 },
+  { name: "Adding to 20", group: "Single digit", quick: 8 },
+  { name: "Taking away within 20", group: "Single digit", quick: 8 },
+  { name: "Tens and ones", group: "Double digit", quick: 12 },
+  { name: "Two digits, no trading", group: "Double digit", quick: 18 },
+  { name: "Two digits with trading", group: "Double digit", quick: 25 },
+  { name: "Three digits, no trading", group: "Three digit", quick: 30 },
+  { name: "Three digits with trading", group: "Three digit", quick: 45 }
+];
+const MAX_LEVEL = 9;
+const COOK_EVERY = 5;             // a cooking break after every 5 sums
+const TEACH_AFTER_MISTAKES = 3;   // more than twice wrong: Hello Kitty does the jumps with her
+const LEVEL_UP_NEED = 9;          // 9 of the last 10 right first time
+const MINUS = "−";
+const ART = k => `art/${k}.png`;
+const PRAISE = ["Great job!", "Yes!", "Super!", "You got it!", "Brilliant!", "Well done!", "Amazing!", "Hooray!"];
+// Our own fan drawings for private family use. The characters belong to Sanrio.
+const CHARS = {
+  kitty: { name: "Hello Kitty", color: "#e8203f", tint: "#ffe3ea" },
+  melody: { name: "My Melody", color: "#ff4f95", tint: "#ffe0ee" },
+  kuromi: { name: "Kuromi", color: "#6b4bd6", tint: "#ece6ff" },
+  purin: { name: "Pompompurin", color: "#c58a12", tint: "#fff1c9" },
+  cinna: { name: "Cinnamoroll", color: "#2386c8", tint: "#e0f3ff" }
+};
+const FRIENDS = ["melody", "kuromi", "purin", "cinna"];
+const SHOP = [
+  { id: "kitty", cat: "friends", name: "Hello Kitty", price: 0, w: 15, char: true, unique: true },
+  { id: "melody", cat: "friends", name: "My Melody", price: 15, w: 15, char: true, unique: true },
+  { id: "kuromi", cat: "friends", name: "Kuromi", price: 25, w: 15, char: true, unique: true },
+  { id: "purin", cat: "friends", name: "Pompompurin", price: 35, w: 16, char: true, unique: true },
+  { id: "cinna", cat: "friends", name: "Cinnamoroll", price: 45, w: 16, char: true, unique: true },
+  { id: "cat", cat: "friends", name: "Kitten", price: 20, w: 12 }, { id: "bunnyfull", cat: "friends", name: "Bunny", price: 20, w: 12 },
+  { id: "fish", cat: "friends", name: "Fish", price: 12, w: 9 }, { id: "unicorn", cat: "friends", name: "Unicorn", price: 40, w: 16 },
+  { id: "teddy", cat: "friends", name: "Teddy", price: 12, w: 11 },
+  { id: "couch", cat: "things", name: "Sofa", price: 20, w: 26 }, { id: "bed", cat: "things", name: "Bed", price: 30, w: 26 },
+  { id: "tv", cat: "things", name: "TV", price: 25, w: 16 }, { id: "bathtub", cat: "things", name: "Bath", price: 30, w: 24 },
+  { id: "chair", cat: "things", name: "Chair", price: 8, w: 11 }, { id: "plant", cat: "things", name: "Plant", price: 6, w: 11 },
+  { id: "sunflower", cat: "things", name: "Sunflower", price: 6, w: 10 }, { id: "tulip", cat: "things", name: "Tulip", price: 5, w: 8 },
+  { id: "guitar", cat: "things", name: "Guitar", price: 15, w: 12 }, { id: "drum", cat: "things", name: "Drum", price: 15, w: 12 },
+  { id: "books", cat: "things", name: "Books", price: 6, w: 10 }, { id: "picture", cat: "things", name: "Picture", price: 10, w: 12 },
+  { id: "mirror", cat: "things", name: "Mirror", price: 12, w: 11 }, { id: "clock", cat: "things", name: "Clock", price: 10, w: 9 },
+  { id: "lantern", cat: "things", name: "Lantern", price: 8, w: 8 }, { id: "rainbow", cat: "things", name: "Rainbow", price: 20, w: 18 },
+  { id: "kite", cat: "things", name: "Kite", price: 10, w: 11 }, { id: "balloon", cat: "things", name: "Balloon", price: 5, w: 8 },
+  { id: "gift", cat: "things", name: "Present", price: 8, w: 10 }, { id: "crown", cat: "things", name: "Crown", price: 25, w: 10 },
+  { id: "birthday", cat: "treats", name: "Birthday cake", price: 10, w: 13 }, { id: "cupcake", cat: "treats", name: "Cupcake", price: 4, w: 8 },
+  { id: "donut", cat: "treats", name: "Doughnut", price: 4, w: 8 }, { id: "icecream", cat: "treats", name: "Ice cream", price: 4, w: 7 },
+  { id: "strawberry", cat: "treats", name: "Strawberry", price: 3, w: 7 }, { id: "teapot", cat: "treats", name: "Teapot", price: 6, w: 10 },
+  { id: "cocoa", cat: "treats", name: "Hot cocoa", price: 4, w: 8 }, { id: "watermelon", cat: "treats", name: "Watermelon", price: 5, w: 10 },
+  { id: "pancakes", cat: "treats", name: "Pancakes", price: 5, w: 10 }, { id: "bubbletea", cat: "treats", name: "Bubble tea", price: 5, w: 7 }
+];
+const RECIPES = [
+  { name: "Cupcakes", result: "cupcake", steps: ["egg", "milk", "butter"] },
+  { name: "Pancakes", result: "pancakes", steps: ["egg", "milk", "honey"] },
+  { name: "Birthday cake", result: "birthday", steps: ["butter", "egg", "milk"] }
+];
+const INGREDIENT_NAMES = { egg: "egg", milk: "milk", butter: "butter", honey: "honey" };
+const TOPPINGS = ["strawberry", "cherries", "candy", "chocolate", "lollipop", "heart", "star"];
+
+/* ================= Saved progress (same key and database document as before) ================= */
+const PROFILES = {
+  marie: { name: "Marie", key: "kittyBlocks.progress", doc: "blocks", pic: `<svg viewBox="0 0 100 100" aria-hidden="true"><path d="M17 44 L21 9 L44 27 Z" fill="#fff" stroke="#3b2a33" stroke-width="3" stroke-linejoin="round"/><path d="M83 44 L79 9 L56 27 Z" fill="#fff" stroke="#3b2a33" stroke-width="3" stroke-linejoin="round"/><path d="M24 32 L25 18 L36 27 Z" fill="#ffc2d4"/><path d="M76 32 L75 18 L64 27 Z" fill="#ffc2d4"/><ellipse cx="50" cy="58" rx="38" ry="31" fill="#fff" stroke="#3b2a33" stroke-width="3"/><g fill="#ff9fbd" stroke="#3b2a33" stroke-width="1.5"><circle cx="22" cy="17" r="6"/><circle cx="32" cy="15" r="6"/><circle cx="35" cy="25" r="6"/><circle cx="26" cy="30" r="6"/><circle cx="18" cy="26" r="6"/></g><circle cx="27" cy="23" r="4.5" fill="#ffd45c" stroke="#3b2a33" stroke-width="1.5"/><ellipse cx="37" cy="58" rx="4.5" ry="6" fill="#3b2a33"/><ellipse cx="63" cy="58" rx="4.5" ry="6" fill="#3b2a33"/><circle cx="38.6" cy="55.6" r="1.6" fill="#fff"/><circle cx="64.6" cy="55.6" r="1.6" fill="#fff"/><circle cx="27" cy="69" r="5" fill="#ffc2d4"/><circle cx="73" cy="69" r="5" fill="#ffc2d4"/><ellipse cx="50" cy="66" rx="3.2" ry="2.3" fill="#ff8fb1"/><path d="M45 71 Q50 75 55 71" fill="none" stroke="#3b2a33" stroke-width="2.2" stroke-linecap="round"/><g stroke="#3b2a33" stroke-width="2" stroke-linecap="round"><path d="M8 60 L20 62"/><path d="M9 70 L20 68"/><path d="M92 60 L80 62"/><path d="M91 70 L80 68"/></g></svg>` },
+  kennedy: { name: "Kennedy", key: "kidsMaths.kennedy", doc: "blocks_kennedy", pic: `<svg viewBox="0 0 100 100" aria-hidden="true"><path d="M50 15 Q58 1 77 5 Q66 9 57 19 Z" fill="#4f7ff0" stroke="#3b2a33" stroke-width="2.5" stroke-linejoin="round"/><path d="M16 60 Q16 15 50 14 Q84 15 84 60 Q84 92 50 93 Q16 92 16 60 Z" fill="#cfd8e4" stroke="#3b2a33" stroke-width="3"/><rect x="29" y="35" width="42" height="42" rx="17" fill="#ffd9bd" stroke="#3b2a33" stroke-width="3"/><path d="M50 15 V35" stroke="#3b2a33" stroke-width="2.5"/><circle cx="41" cy="53" r="3.6" fill="#3b2a33"/><circle cx="59" cy="53" r="3.6" fill="#3b2a33"/><circle cx="42.2" cy="51.8" r="1.2" fill="#fff"/><circle cx="60.2" cy="51.8" r="1.2" fill="#fff"/><circle cx="35" cy="63" r="4" fill="#ffb3a7"/><circle cx="65" cy="63" r="4" fill="#ffb3a7"/><path d="M43 64 Q50 70 57 64" fill="none" stroke="#3b2a33" stroke-width="2.4" stroke-linecap="round"/><circle cx="22" cy="62" r="2.5" fill="#3b2a33"/><circle cx="78" cy="62" r="2.5" fill="#3b2a33"/></svg>` }
+};
+const PARENT_PIC = `<svg viewBox="0 0 100 100" aria-hidden="true"><path d="M32 46 V34 Q32 16 50 16 Q68 16 68 34 V46" fill="none" stroke="#3b2a33" stroke-width="7" stroke-linecap="round"/><rect x="20" y="44" width="60" height="44" rx="12" fill="#b9a6f2" stroke="#3b2a33" stroke-width="3"/><path d="M50 78 C38 70 36 62 42 58 C46 55 50 58 50 61 C50 58 54 55 58 58 C64 62 62 70 50 78 Z" fill="#fff" stroke="#3b2a33" stroke-width="2"/></svg>`;
+// Demo: the parents play here to try the game. It has its own save, starts fresh each time, and is never sent anywhere.
+PROFILES.demo = { name: "Demo", key: "kidsMaths.demo", doc: "", pic: PARENT_PIC };
+let who = null, LS_KEY = PROFILES.marie.key, parentUntil = 0;
+const DEFAULTS = { v: 2, voiceName: "", level: 1, stars: 0, total: 0, firstTry: 0, round: [], goal: 50, voice: true, sound: true, cooks: 0,
+  log: {}, lastDay: "", dayStreak: 0, levelStats: {}, missed: {}, review: [], teachRun: 0, crowns: 0,
+  home: [{ uid: 1, id: "kitty", x: 40, y: 90 }, { uid: 2, id: "plant", x: 84, y: 72 }], homeSeq: 2 };
+var P = structuredClone(DEFAULTS);
+const cloud = { ref: null, writing: false, pending: false, timer: 0, on: false };
+function adopt(o) {
+  P = Object.assign(structuredClone(DEFAULTS), o || {});
+  if (!Array.isArray(P.home)) P.home = structuredClone(DEFAULTS.home);
+  if (window.HomeGame) HomeGame.migrate(P); else P.home = P.home.filter(t => SHOP.some(s => s.id === t.id));
+  if (!Array.isArray(P.round) || P.round.length >= COOK_EVERY) P.round = [];
+  P.v = 2;
+}
+function loadLocal() { try { const r = localStorage.getItem(LS_KEY); if (r) adopt(JSON.parse(r)); } catch (e) {} }
+function save() {
+  try { localStorage.setItem(LS_KEY, JSON.stringify(P)); } catch (e) {}
+  if (!cloud.ref) return;
+  clearTimeout(cloud.timer); cloud.timer = setTimeout(pushCloud, 2500);
+}
+async function pushCloud() {
+  if (cloud.writing) { cloud.pending = true; return; }
+  cloud.writing = true;
+  try { await cloud.ref.set(JSON.parse(JSON.stringify(P))); }
+  catch (e) { if (e && (e.code === "invalid_argument" || e.code === "revoked")) { cloud.ref = null; cloud.on = false; } }
+  cloud.writing = false;
+  if (cloud.pending) { cloud.pending = false; pushCloud(); }
+}
+async function connectCloud() {
+  try {
+    if (!window.claude?.use || !PROFILES[who].doc) return;
+    const [db, user] = await Promise.all([window.claude.use("db"), window.claude.use("user")]);
+    if (!db || !user) return;
+    const id = await user.id(); if (!id) return;
+    const ref = db.doc("data/users/" + id + "/" + PROFILES[who].doc);
+    const snap = await ref.get();
+    const remote = snap.exists ? snap.data() : null;
+    if (remote && (remote.total || 0) > (P.total || 0)) {
+      adopt(JSON.parse(JSON.stringify(remote))); try { localStorage.setItem(LS_KEY, JSON.stringify(P)); } catch (e) {}
+      if (phase === "idle") showStart();
+      if (window.HomeGame) HomeGame.refresh();
+    }
+    cloud.ref = ref; cloud.on = true;
+    if (!remote || (remote.total || 0) < (P.total || 0)) pushCloud();
+    renderTop();
+    if (view === "grown") renderGrown();
+  } catch (e) { /* keep playing with this device's copy */ }
+}
+
+/* ================= Helpers ================= */
+const $ = id => document.getElementById(id);
+const rand = (lo, hi) => lo + Math.floor(Math.random() * (hi - lo + 1));
+const pick = a => a[rand(0, a.length - 1)];
+const digits = n => String(n).split("").reverse().map(Number);
+const opSym = op => op === "+" ? "+" : MINUS;
+const opWord = op => op === "+" ? "plus" : "minus";
+const reduceMotion = () => matchMedia("(prefers-reduced-motion: reduce)").matches;
+function dayKey(d = new Date()) { return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0"); }
+function todayLog() { const k = dayKey(); return P.log[k] || (P.log[k] = { n: 0, first: 0 }); }
+function carries(a, b) { const A = digits(a), B = digits(b); let c = 0, k = 0; for (let i = 0; i < Math.max(A.length, B.length); i++) { const s = (A[i] || 0) + (B[i] || 0) + c; c = s >= 10 ? 1 : 0; k += c; } return k; }
+function borrows(a, b) { const A = digits(a), B = digits(b); let br = 0, k = 0; for (let i = 0; i < A.length; i++) { const t = A[i] - br; if (t < (B[i] || 0)) { br = 1; k++; } else br = 0; } return k; }
+
+/* ================= Sums for each level ================= */
+let lastKey = "";
+function gen(L) {
+  for (let i = 0; i < 4000; i++) {
+    let a, b, op = "+";
+    switch (L) {
+      case 1: a = rand(1, 9); b = rand(1, 10 - a); break;
+      case 2: op = "-"; a = rand(2, 10); b = rand(1, a - 1); break;
+      case 3: a = rand(2, 9); b = rand(Math.max(2, 11 - a), 9); break;
+      case 4: op = "-"; b = rand(2, 9); a = b + rand(2, 9); if (a < 11) continue; break;
+      case 5: if (Math.random() < .5) { a = rand(1, 8) * 10 + rand(0, 8); b = Math.random() < .5 ? rand(1, 9 - a % 10) : rand(1, 9 - Math.floor(a / 10)) * 10; }
+              else { op = "-"; a = rand(2, 9) * 10 + rand(1, 9); b = Math.random() < .5 ? rand(1, a % 10) : rand(1, Math.floor(a / 10) - 1) * 10; }
+              if (op === "+" && (a + b > 99 || carries(a, b))) continue; if (op === "-" && (b >= a || borrows(a, b))) continue; break;
+      case 6: if (Math.random() < .5) { a = rand(10, 89); b = rand(10, 89); if (a + b > 99 || carries(a, b)) continue; }
+              else { op = "-"; a = rand(20, 99); b = rand(10, a - 1); if (borrows(a, b)) continue; } break;
+      case 7: if (Math.random() < .5) { a = rand(10, 89); b = rand(10, 89); if (a + b > 99 || !carries(a, b)) continue; }
+              else { op = "-"; a = rand(20, 99); b = rand(10, a - 1); if (!borrows(a, b)) continue; } break;
+      case 8: if (Math.random() < .5) { a = rand(100, 899); b = rand(100, 899); if (a + b > 999 || carries(a, b)) continue; }
+              else { op = "-"; a = rand(200, 999); b = rand(100, a - 1); if (borrows(a, b)) continue; } break;
+      default: if (Math.random() < .5) { a = rand(100, 899); b = rand(100, 899); if (a + b > 999 || !carries(a, b)) continue; }
+               else { op = "-"; a = rand(200, 999); b = rand(100, a - 1); if (!borrows(a, b) || digits(a)[1] === 0) continue; }
+    }
+    const q = { a, b, op, level: L, ans: op === "+" ? a + b : a - b, key: `${a}${op}${b}` };
+    if (q.key === lastKey) continue;
+    return q;
+  }
+  return { a: 2, b: 3, op: "+", level: 1, ans: 5, key: "2+3" };
+}
+const isSmall = q => q.level <= 4;
+// Make 10: a small adding sum that goes past 10 (like 8 + 5). Kitty stops on 10 first, then adds the rest.
+const makeTen = q => !!q && q.op === "+" && q.level <= 4 && q.a < 10 && q.a + q.b > 10;
+// 進位: a two- or three-digit adding sum that carries. It is done in columns, ones first, with bundling.
+const colMode = q => !!q && q.op === "+" && !isSmall(q) && carries(q.a, q.b) > 0;
+const PLACE = ["ones", "tens", "hundreds"], PLACE1 = ["one", "ten", "hundred"];
+let col = null, headShown = false;
+// After 3 first-try right answers of one kind, the blocks hide ("in your head"); she can still ask for them.
+const headKind = () => makeTen(Q) ? "ten" : col ? "col" : "";
+const inHead = () => { const k = headKind(); return !!k && !headShown && ((P.head || {})[k] || 0) >= 3; };
+
+/* ================= Voice and sound ================= */
+// Kitty's voice: the softest girl's voice the device has, a little higher and slower.
+const VOICE_PREFS = [/Ana.*Natural/i, /Natural.*Ana/i, /Jenny.*Natural/i, /Aria.*Natural/i, /Clara.*Natural/i, /Natasha.*Natural/i,
+  /Samantha/i, /Karen/i, /Tessa/i, /Moira/i, /Fiona/i, /Google UK English Female/i, /Google US English/i, /Ana/i, /Jenny/i, /Aria/i, /Zira/i, /female/i];
+let kittyVoice = null;
+function englishVoices() { try { return speechSynthesis.getVoices().filter(v => /^en/i.test(v.lang)); } catch (e) { return []; } }
+function pickVoice() {
+  const vs = englishVoices();
+  if (P.voiceName) { const v = vs.find(x => x.name === P.voiceName); if (v) return v; }
+  for (const re of VOICE_PREFS) { const v = vs.find(x => re.test(x.name)); if (v) return v; }
+  return vs[0] || null;
+}
+if ("speechSynthesis" in window) { kittyVoice = pickVoice(); speechSynthesis.onvoiceschanged = () => { kittyVoice = pickVoice(); if (view === "grown") renderGrown(); }; }
+function speak(text, force) {
+  if ((!P.voice && !force) || !("speechSynthesis" in window)) return;
+  try {
+    speechSynthesis.cancel();
+    const u = new SpeechSynthesisUtterance(text.replace(/−/g, " minus "));
+    kittyVoice = kittyVoice || pickVoice();
+    if (kittyVoice) { u.voice = kittyVoice; u.lang = kittyVoice.lang; } else u.lang = "en-CA";
+    const childVoice = kittyVoice && /Ana/i.test(kittyVoice.name);
+    u.pitch = childVoice ? 1.15 : 1.35; u.rate = .86; u.volume = .9;
+    speechSynthesis.speak(u);
+  } catch (e) {}
+}
+let actx = null;
+function tone(freqs, dur = .14, type = "sine", gap = .09) {
+  if (!P.sound) return;
+  try {
+    actx = actx || new (window.AudioContext || window.webkitAudioContext)();
+    if (actx.state === "suspended") actx.resume();
+    let t = actx.currentTime;
+    for (const f of freqs) { const o = actx.createOscillator(), g = actx.createGain(); o.type = type; o.frequency.value = f; g.gain.setValueAtTime(.0001, t); g.gain.exponentialRampToValueAtTime(.15, t + .02); g.gain.exponentialRampToValueAtTime(.0001, t + dur); o.connect(g); g.connect(actx.destination); o.start(t); o.stop(t + dur + .03); t += gap; }
+  } catch (e) {}
+}
+
+/* ================= Character drawings (our own fan drawings, 100 x 100) ================= */
+const S = `stroke="#3b2a33" stroke-width="3.5" stroke-linejoin="round"`;
+function face(id) {
+  const eyes = (y, rx = 4.2, ry = 6) => `<ellipse cx="38" cy="${y}" rx="${rx}" ry="${ry}" fill="#3b2a33"/><ellipse cx="62" cy="${y}" rx="${rx}" ry="${ry}" fill="#3b2a33"/><circle cx="39.4" cy="${y - 2}" r="1.5" fill="#fff"/><circle cx="63.4" cy="${y - 2}" r="1.5" fill="#fff"/>`;
+  const blush = y => `<ellipse cx="27" cy="${y}" rx="6.5" ry="3.8" fill="#ff8fb4" opacity=".55"/><ellipse cx="73" cy="${y}" rx="6.5" ry="3.8" fill="#ff8fb4" opacity=".55"/>`;
+  switch (id) {
+    case "kitty": return `<path d="M15 44 L20 10 L44 28 Z" fill="url(#fur)" ${S}/><path d="M85 44 L80 10 L56 28 Z" fill="url(#fur)" ${S}/>
+      <path d="M22 18 L25 36 L36 31 Z" fill="#ffc9d9"/>
+      <ellipse cx="50" cy="60" rx="43" ry="34" fill="url(#fur)" ${S}/>
+      <g transform="translate(73 22) rotate(16)"><path d="M0 0 C-17 -15 -21 9 0 3 Z" fill="#e8203f" ${S}/><path d="M0 0 C17 -15 21 9 0 3 Z" fill="#e8203f" ${S}/><circle cx="0" cy="1.5" r="5.5" fill="#e8203f" ${S}/></g>
+      ${eyes(60)}<ellipse cx="50" cy="69" rx="5.5" ry="4" fill="url(#nose)" stroke="#3b2a33" stroke-width="2"/>
+      <g stroke="#3b2a33" stroke-width="2.6" stroke-linecap="round"><line x1="3" y1="58" x2="19" y2="61"/><line x1="2" y1="68" x2="18" y2="68"/><line x1="97" y1="58" x2="81" y2="61"/><line x1="98" y1="68" x2="82" y2="68"/></g>`;
+    case "melody": return `<ellipse cx="33" cy="22" rx="10" ry="22" fill="url(#hoodPink)" ${S}/><ellipse cx="67" cy="22" rx="10" ry="22" fill="url(#hoodPink)" ${S}/>
+      <circle cx="50" cy="60" r="38" fill="url(#hoodPink)" ${S}/><ellipse cx="50" cy="65" rx="30" ry="25" fill="url(#fur)" stroke="#3b2a33" stroke-width="2.5"/>
+      <g transform="translate(74 10)">${[0, 72, 144, 216, 288].map(r => `<ellipse cx="0" cy="-5" rx="4" ry="6" fill="#fff" stroke="#ff4f95" stroke-width="1.5" transform="rotate(${r})"/>`).join("")}<circle r="3.2" fill="#ffd24a"/></g>
+      ${eyes(63, 3.6, 5)}<ellipse cx="50" cy="71" rx="3.5" ry="2.6" fill="url(#nose)"/>${blush(72)}`;
+    case "kuromi": return `<path d="M16 46 C6 26 6 10 12 4 C20 12 30 22 38 30 Z" fill="url(#hoodBlack)" ${S}/><path d="M84 46 C94 26 94 10 88 4 C80 12 70 22 62 30 Z" fill="url(#hoodBlack)" ${S}/>
+      <circle cx="12" cy="5" r="4" fill="#ff8fc2"/><circle cx="88" cy="5" r="4" fill="#ff8fc2"/>
+      <circle cx="50" cy="60" r="38" fill="url(#hoodBlack)" ${S}/><ellipse cx="50" cy="67" rx="28" ry="23" fill="url(#fur)" stroke="#3b2a33" stroke-width="2.5"/>
+      <g transform="translate(50 33)"><circle r="7" fill="#ff8fc2"/><circle cx="-2.5" cy="-1" r="1.6" fill="#3b2a33"/><circle cx="2.5" cy="-1" r="1.6" fill="#3b2a33"/><path d="M-3 4 h6" stroke="#3b2a33" stroke-width="1.4"/></g>
+      ${eyes(65, 3.8, 5.4)}<path d="M44 76 Q50 81 56 76" fill="none" stroke="#3b2a33" stroke-width="2.4" stroke-linecap="round"/>${blush(74)}`;
+    case "purin": return `<ellipse cx="13" cy="62" rx="9" ry="17" fill="#a8743a" ${S}/><ellipse cx="87" cy="62" rx="9" ry="17" fill="#a8743a" ${S}/>
+      <ellipse cx="50" cy="60" rx="40" ry="34" fill="url(#furGold)" ${S}/>
+      <ellipse cx="50" cy="27" rx="20" ry="7.5" fill="#8a5a2b" ${S}/><rect x="47" y="15" width="6" height="7" rx="3" fill="#8a5a2b" stroke="#3b2a33" stroke-width="2"/>
+      ${eyes(60, 3.6, 4.6)}<path d="M44 70 Q47 74 50 70 Q53 74 56 70" fill="none" stroke="#7a4a1a" stroke-width="2.4" stroke-linecap="round"/>${blush(70)}`;
+    default: return `<ellipse cx="18" cy="42" rx="22" ry="9" fill="url(#fur)" stroke="#7cc4ec" stroke-width="3" transform="rotate(-18 18 42)"/><ellipse cx="82" cy="42" rx="22" ry="9" fill="url(#fur)" stroke="#7cc4ec" stroke-width="3" transform="rotate(18 82 42)"/>
+      <ellipse cx="50" cy="58" rx="38" ry="32" fill="url(#fur)" stroke="#7cc4ec" stroke-width="3.5"/>
+      <path d="M46 28 q4 -9 9 -3 q3 5 -3 6" fill="none" stroke="#7cc4ec" stroke-width="3" stroke-linecap="round"/>
+      <ellipse cx="38" cy="59" rx="4.4" ry="5.6" fill="#2a5fc4"/><ellipse cx="62" cy="59" rx="4.4" ry="5.6" fill="#2a5fc4"/><circle cx="39.6" cy="57" r="1.6" fill="#fff"/><circle cx="63.6" cy="57" r="1.6" fill="#fff"/>
+      <path d="M45 68 Q50 72 55 68" fill="none" stroke="#3b2a33" stroke-width="2.2" stroke-linecap="round"/>${blush(68)}`;
+  }
+}
+const faceSVG = id => `<svg viewBox="0 0 100 100" aria-hidden="true">${face(id)}</svg>`;
+function setKitty(mood) { const k = $("kitty"); k.innerHTML = face("kitty"); k.classList.remove("happy", "think"); void k.getBoundingClientRect(); if (mood) k.classList.add(mood); }
+function blockArt(who) {
+  const c = CHARS[who];
+  return `<svg viewBox="0 0 100 100" aria-hidden="true"><rect x="4" y="16" width="92" height="82" rx="20" fill="${c.color}" stroke="#3b2a33" stroke-width="4"/><rect x="4" y="10" width="92" height="80" rx="20" fill="${c.tint}" stroke="#3b2a33" stroke-width="4"/><rect x="11" y="15" width="78" height="22" rx="11" fill="url(#tile)"/>
+    <g transform="translate(14 13) scale(.72)">${face(who)}</g></svg>`;
+}
+function towerArt(who) {
+  const c = CHARS[who]; let s = "";
+  s += `<rect x="6" y="42" width="58" height="160" rx="8" fill="${c.color}" stroke="#3b2a33" stroke-width="3.5"/>`;
+  for (let k = 0; k < 10; k++) s += `<rect x="6" y="${40 + k * 16}" width="58" height="15" rx="4" fill="${c.tint}" stroke="#3b2a33" stroke-width="2.5"/>`;
+  return `<svg viewBox="0 0 70 202" aria-hidden="true">${s}<g transform="translate(5 0) scale(.6)">${face(who)}</g><rect x="17" y="112" width="36" height="22" rx="9" fill="#fff"/><text x="35" y="129" text-anchor="middle" font-family="Baloo 2, sans-serif" font-weight="800" font-size="18" fill="${c.color}">10</text></svg>`;
+}
+function plateArt(who) {
+  const c = CHARS[who];
+  return `<svg viewBox="0 0 110 110" aria-hidden="true"><rect x="5" y="9" width="100" height="100" rx="10" fill="${c.color}" stroke="#3b2a33" stroke-width="4"/><rect x="5" y="5" width="100" height="100" rx="10" fill="${c.tint}" stroke="#3b2a33" stroke-width="4"/><rect x="5" y="5" width="100" height="100" rx="10" fill="url(#grid10)"/>
+    <g transform="translate(31 14) scale(.48)">${face(who)}</g><rect x="30" y="68" width="50" height="26" rx="11" fill="#fff"/><text x="55" y="88" text-anchor="middle" font-family="Baloo 2, sans-serif" font-weight="800" font-size="20" fill="${c.color}">100</text></svg>`;
+}
+
+/* ================= Blocks state ================= */
+// A tap MARKS a block (a heart); it never shows or says a running number. She counts herself.
+let blocks = [], seq = 0, taken = 0, friend = "melody", kittyTold = false;
+function buildBlocks(q) {
+  blocks = []; taken = 0;
+  const add = (n, who) => {
+    if (isSmall(q)) { for (let i = 0; i < n; i++) blocks.push({ id: ++seq, who, size: 1 }); return; }
+    const d = digits(n); for (const [size, k] of [[100, d[2] || 0], [10, d[1] || 0], [1, d[0] || 0]]) for (let i = 0; i < k; i++) blocks.push({ id: ++seq, who, size });
+  };
+  add(q.a, "kitty"); if (q.op === "+") add(q.b, friend);
+}
+const takingAway = () => Q.op === "-" && taken < Q.b;
+const NUM_WORDS = ["zero", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine"];
+const times = n => n === 1 ? "one time" : (NUM_WORDS[n] || n) + " times";
+const sizeWord = sz => sz === 100 ? "hundreds" : sz === 10 ? "tens" : "ones";
+const blockNames = sz => sz === 100 ? "plates of 100" : sz === 10 ? "towers of 10" : isSmall(Q) ? "blocks" : "single blocks";
+const blockName1 = sz => sz === 100 ? "plate of 100" : "tower of 10";
+const blockName1s = sz => sz >= 10 ? blockName1(sz) : isSmall(Q) ? "block" : "single block";
+
+/* ================= Number line state ================= */
+// Blocks drive the number line: each friend block she taps (or each block she takes away) is one hop.
+// Invariant: total hop distance == total size of marked friend blocks (adding) or of blocks taken away.
+let line = { start: 0, pos: 0, hops: [], links: [], known: [] }, revealLanding = false, hopAnim = null, kittyX = null;
+// Wrong stop numbers for each stop (key = hop count at that stop). Kept for the whole sum: Undo and Start again
+// do not clear it, so she cannot guess forever. Cleared only when she types that stop right, or a new sum starts.
+let stopTyped = "", stopMisses = {};
+// After 3 wrong stop numbers Kitty counts that stretch WITH her: { from, to } hop counts. Each hop still waits for her tap.
+let stopTeach = null;
+// Small adding sums: before the first hop, Kitty walks from 0 with each of her own blocks she taps.
+let walk = 0;
+const walking = () => !!Q && phase === "ask" && Q.op === "+" && isSmall(Q) && !line.hops.length;
+function resetLine() { walk = 0; line = { start: Q.a, pos: Q.a, hops: [], links: [], known: [] }; stopTyped = ""; stopTeach = null; }
+function jumpPlan(q) { const d = digits(q.b), sign = q.op === "+" ? 1 : -1, out = []; for (const [size, k] of [[100, d[2] || 0], [10, d[1] || 0], [1, d[0] || 0]]) for (let i = 0; i < k; i++) out.push(sign * size); return out; }
+function jumpSizes(q) { if (isSmall(q)) return [1]; return q.level >= 8 ? [100, 10, 1] : [10, 1]; }
+const jumped = () => Math.abs(line.pos - line.start);
+const posAt = n => line.start + line.hops.slice(0, n).reduce((x, y) => x + y, 0);
+const nextStep = () => jumpPlan(Q)[line.hops.length];
+const planDone = () => line.hops.length >= jumpPlan(Q).length;
+// Big sums: Kitty stops where the hop size changes (after the last +100, after the last +10).
+function isStop(n) { if (makeTen(Q)) return n === 10 - Q.a; const p = jumpPlan(Q); return n > 0 && n < p.length && Math.abs(p[n]) !== Math.abs(p[n - 1]); }
+function stopPending() { return !!Q && (!isSmall(Q) || makeTen(Q)) && !col && !revealLanding && phase === "ask" && isStop(line.hops.length) && !line.known.some(k => k.n === line.hops.length); }
+function lastStopBefore(n) { for (let m = n - 1; m > 0; m--) if (isStop(m)) return m; return 0; }
+
+/* ================= Game flow ================= */
+let view = "sums", phase = "idle", Q = null, tries = 0, typed = "", helped = false, qStart = 0, teach = null, afterMiss = 0, timers = [];
+function clearTimers() { timers.forEach(clearTimeout); timers = []; }
+function say(text, tone, voice = true) { const b = $("bubble"); b.textContent = text; b.className = "bubble" + (tone ? " " + tone : ""); if (voice) speak(text); }
+const active = () => phase === "ask" || phase === "teach" || phase === "afterTeach";
+// Kitty is guiding: her lesson after 3 mistakes, or counting a stretch with her after 3 wrong stop numbers.
+const guiding = () => phase === "teach" || !!stopTeach;
+
+function showStart() {
+  phase = "idle"; setKitty("");
+  const c = $("cover"); c.hidden = false;
+  c.innerHTML = `<div class="cover-card"><div class="hello">${PROFILES[who].pic}</div><h2>${PROFILES[who].name}'s Maths</h2><p>${P.total ? `Welcome back! You have ${P.stars} stars. Level ${P.level}: ${LEVELS[P.level].name}.` : "Count the blocks, hop on the number line, and type the answer. Every 5 sums, cook something yummy!"}</p><button class="main-btn" id="goBtn" type="button">Let's play</button></div>`;
+  say("Tap Let's play to start.", "", false);
+  $("goBtn").onclick = () => { tone([523, 659]); c.hidden = true; nextQuestion(); };
+  renderTop();
+}
+
+function nextQuestion() {
+  clearTimers();
+  if (P.round.length >= COOK_EVERY) return startCooking();
+  const due = P.review.findIndex(r => r.due <= P.total);
+  if (due >= 0) { const r = P.review.splice(due, 1)[0]; Q = { ...r.q, review: r.rounds }; }
+  else Q = gen(P.level);
+  lastKey = Q.key;
+  friend = pick(FRIENDS);
+  tries = 0; typed = ""; helped = false; teach = null; afterMiss = 0; phase = "ask"; kittyTold = false; revealLanding = false; hopAnim = null; kittyX = null;
+  stopMisses = {}; headShown = false;
+  col = colMode(Q) ? { i: 0, n: Math.max(String(Q.a).length, String(Q.b).length), carry: [0, 0, 0, 0], out: [], step: "add", typed: "", miss: 0, count: false } : null;
+  buildBlocks(Q); resetLine(); setKitty("");
+  renderAll();
+  const lead = Q.review ? "Let's try this one again. " : "";
+  const big = isSmall(Q) ? "" : " Big blocks first.";
+  say(`${lead}${Q.op === "+" ? (walking() ? `Tap Hello Kitty's blocks to walk her to ${Q.a}. Then tap ${CHARS[friend].name}'s blocks to hop her along.` : `Hello Kitty starts on ${Q.a}. Tap ${CHARS[friend].name}'s blocks to hop her along.${big}`) : `Tap ${Q.b} of Hello Kitty's blocks to take them away. She hops back.${big}`}`, "", false);
+  speak(`${lead}${Q.a} ${opWord(Q.op)} ${Q.b}`);
+  if (col) say(`${lead}Let's add in columns. Start with the ones: ${colAsk()}`, "", false);
+  else if (makeTen(Q)) say(`${lead}Make 10 first! Tap Hello Kitty's blocks to walk her to ${Q.a}. Then tap ${CHARS[friend].name}'s blocks to fill Hello Kitty's ten. Kitty stops on 10.`, "", false);
+  qStart = performance.now();
+}
+
+/* ----- small helpers for taps ----- */
+function wiggle(id) { const el = document.querySelector(`[data-b="${id}"]`); if (!el) return; el.classList.remove("wiggle"); void el.offsetWidth; el.classList.add("wiggle"); }
+// Why a hop of this size cannot happen now: a message, "" (ignore quietly) or null (go ahead).
+function hopBlocked(sz) {
+  if (!active()) return "";
+  if (stopPending()) return "First type the number where Hello Kitty stopped. Use the number buttons.";
+  if (phase === "ask" && walking() && walk < Q.a) return `First tap Hello Kitty's blocks to walk her to ${Q.a}.`;   // Kitty walks from 0 to her number first
+  const st = nextStep();
+  if (st === undefined) return Q.op === "+" ? `All of ${CHARS[friend].name}'s blocks are used. Where did Hello Kitty land? Type it.` : `You took away ${Q.b} already. Where did Hello Kitty land? Type it.`;
+  if (sz !== Math.abs(st)) return Q.op === "+" ? `First hop with ${CHARS[friend].name}'s ${blockNames(Math.abs(st))}.` : `First take away Hello Kitty's ${blockNames(Math.abs(st))}.`;
+  return null;
+}
+// The block a hop button uses: the next unmarked friend block (adding), or Kitty's last block of that size (taking away).
+function blockForHop(sz) {
+  if (Q.op === "+") return blocks.find(b => b.who === friend && !b.mark && b.size === sz) || null;
+  for (let i = blocks.length - 1; i >= 0; i--) if (blocks[i].who === "kitty" && !blocks[i].gone && blocks[i].size === sz) return blocks[i];
+  return null;
+}
+// Taking away with no block of the right size left: she must open a bigger one herself.
+function blockToOpen(sz) {
+  const bigger = blocks.filter(b => b.who === "kitty" && !b.gone && b.size > sz).sort((p, q) => p.size - q.size);
+  if (!bigger.length) return null;
+  const s = bigger[0].size, same = bigger.filter(b => b.size === s); return same[same.length - 1];
+}
+function doHop(size, b) {
+  hopAnim = { from: line.pos };
+  line.hops.push(size); line.links.push(b.id); line.pos += size;
+  if (size > 0) b.mark = true; else { b.gone = true; taken += b.size; }
+  const n = line.hops.length;
+  if (isSmall(Q)) speak(`${size > 0 ? "plus" : "minus"} ${n}`);   // she hears the hop count: plus 1, plus 2, ...
+  tone(size > 0 ? [600 + Math.min(n, 30) * 12, 720 + Math.min(n, 30) * 12] : [620 - Math.min(n, 30) * 8, 520 - Math.min(n, 30) * 8], .07, "sine", .06);
+  if (phase === "teach") { teachCheck(); return; }
+  renderAll();
+  if (stopTeach) { stopTeachTalk(true); return; }   // keeps the glowing block in view
+  if (stopPending()) say(makeTen(Q) ? "The ten is full! Type Kitty's number in the glowing box." : "Kitty stopped! Type her number in the glowing box.", "");
+  else if (planDone()) say(Q.op === "+" ? "All hops done! Where did Hello Kitty land? Count, then type it." : `You took away ${Q.b}. Where did Hello Kitty land? Count, then type it.`, "");
+  // Keep the block she tapped in view (after the bubble text changed, as that can resize the blocks panel).
+  keepBlockInView(document.querySelector(`[data-b="${b.id}"]`));
+}
+function openBlock(k, b) {
+  const smaller = b.size / 10;
+  blocks.splice(k, 1, ...Array.from({ length: 10 }, () => ({ id: ++seq, who: b.who, size: smaller, fresh: true })));
+  tone([440, 550, 660], .07);
+  if (phase === "teach") { teach.said = ""; teachCheck(); return; }
+  renderAll();
+  if (stopTeach) { stopTeachTalk(false); return; }
+  say(`You opened a ${b.size}. Now there are ten ${smaller === 1 ? "ones" : "tens"}.`, "");
+}
+
+/* ----- tapping blocks ----- */
+function tapBlock(id) {
+  if (!active()) return;
+  const k = blocks.findIndex(x => x.id === id); if (k < 0) return;
+  const b = blocks[k];
+  if (b.gone) return;
+  if (col) return colTap(b);
+  // Adding: a friend block is a hop of its size.
+  if (Q.op === "+" && b.who === friend) {
+    if (b.mark) { wiggle(id); return; }
+    const err = hopBlocked(b.size);
+    if (err !== null) { if (err) say(err, "warn"); wiggle(id); return; }
+    return doHop(b.size, b);
+  }
+  // Taking away: Kitty hops back by the block's size. A block too big for the next hop opens into ten (no hop).
+  if (takingAway()) {
+    if (stopPending()) { say(hopBlocked(b.size), "warn"); wiggle(id); return; }
+    const sz = Math.abs(nextStep());
+    if (b.size > sz) return openBlock(k, b);
+    if (b.size < sz) { say(`First take away Hello Kitty's ${blockNames(sz)}.`, "warn"); wiggle(id); return; }
+    return doHop(-b.size, b);
+  }
+  // Hello Kitty's own blocks (adding): on small sums each one walks Kitty one step from 0, so the line moves with every tap.
+  if (b.mark) { wiggle(id); return; }
+  b.mark = true;
+  if (walking() && b.who !== friend) {
+    walk = Math.min(Q.a, walk + b.size); hopAnim = { from: walk - b.size };
+    tone([560 + walk * 12, 680 + walk * 12], .07, "sine", .06);
+    renderAll(); wiggle(id);
+    if (walk >= Q.a) say(`Hello Kitty is on her number. Now tap ${CHARS[friend].name}'s blocks to hop her along.`, "");
+    return;
+  }
+  tone([560 + Math.min(blocks.filter(x => x.mark).length, 40) * 6], .05);
+  renderAll();
+  if (Q.op === "+" && !kittyTold) { kittyTold = true; say(`Hello Kitty is already on ${Q.a}. Count on with ${CHARS[friend].name}'s blocks.`, ""); }
+  else wiggle(id);
+}
+function clearCount() { restartLine(); }
+
+/* ----- hopping on the number line (a hop button marks a block too, so the link works both ways) ----- */
+function jump(size) {
+  if (!active()) return;
+  const sz = Math.abs(size), err = hopBlocked(sz);
+  if (err !== null) { if (err) say(err, "warn"); return; }
+  const b = blockForHop(sz);
+  if (!b) {
+    const big = blockToOpen(sz);
+    say(big ? `No ${sizeWord(sz)} left. Tap a ${blockName1(big.size)} to open it.` : "That hop goes off the line!", "warn");
+    if (big) wiggle(big.id);
+    return;
+  }
+  doHop(size > 0 ? sz : -sz, b);
+}
+// Take back the last hop and its block (the heart comes off, or the crossed-out block comes back).
+function popHop() {
+  const size = line.hops.pop(), id = line.links.pop(); line.pos -= size;
+  const b = blocks.find(x => x.id === id);
+  if (b) { if (size > 0) b.mark = false; else { b.gone = false; taken -= b.size; } }
+  line.known = line.known.filter(k => k.n <= line.hops.length);
+}
+function undoJump() {
+  if (!line.hops.length || !active()) return;
+  // Counting a stretch with Kitty starts at the last stop: undo cannot go back past it.
+  if (stopTeach && line.hops.length <= stopTeach.from) { stopTeachTalk(false); return; }
+  const id = line.links[line.links.length - 1];
+  popHop();
+  stopTyped = ""; hopAnim = null;
+  tone([500, 400], .07);
+  if (phase === "teach") { teach.said = ""; teachCheck(); return; }
+  renderAll();
+  if (stopTeach) { stopTeachTalk(false); return; }
+  keepBlockInView(document.querySelector(`[data-b="${id}"]`));   // show the block whose heart came off
+}
+function restartLine() {
+  if (!Q || !active()) return;
+  if (col) { if (col.step === "add" && !col.count) blocks.forEach(b => { delete b.mark; }); renderAll(); return; }
+  if (Q.op === "-") buildBlocks(Q); else blocks.forEach(b => { delete b.mark; });
+  resetLine(); hopAnim = null;
+  if (phase === "teach") { teach.said = ""; teachCheck(); return; }
+  renderAll();
+}
+function tapNumber(n) {
+  if (!isSmall(Q) || !active()) return;
+  const dir = Q.op === "+" ? 1 : -1;
+  if (n === line.pos + dir) jump(dir);
+  else if (n !== line.pos) say("Hop one tick at a time. Tap the next tick, or the Hop button.", "warn");
+}
+
+/* ----- the stop number on big sums (typed by her; mistakes here do not count) ----- */
+function checkStop() {
+  if (!stopTyped) { say("Type the number where Hello Kitty stopped.", "warn"); return; }
+  const n = line.hops.length, want = line.pos;
+  if (parseInt(stopTyped, 10) === want) {
+    line.known.push({ n, v: want }); stopTyped = ""; delete stopMisses[n]; stopTeach = null;
+    tone([660, 880]);
+    renderAll();
+    say(makeTen(Q) ? `Yes! ${Q.a} + ${10 - Q.a} = 10. Now add the rest: 10 + ${Q.b - (10 - Q.a)}. Hop on!` : `Yes! Hello Kitty is on ${want}. Now hop by ${sizeWord(Math.abs(nextStep()))}.`, "good");
+    return;
+  }
+  const stopMiss = stopMisses[n] = (stopMisses[n] || 0) + 1; stopTyped = ""; tone([330], .2, "triangle");
+  renderAll();
+  const box = $("stopBox"); if (box) { box.classList.remove("shake"); void box.offsetWidth; box.classList.add("shake"); }
+  // She already counted this stretch with Kitty: the number is under Kitty now. Only a tip, no new lesson.
+  if (stopTeach) { say(`Not quite. ${lastHopTip()} Type where she stopped.`, "warn"); return; }
+  const m = lastStopBefore(n), from = posAt(m), sz = Math.abs(line.hops[n - 1]);
+  if (makeTen(Q) && stopMiss < TEACH_AFTER_MISTAKES) say("Not quite. Look at Hello Kitty's ten-frame. Is it full? Count all the places.", "warn");
+  else if (stopMiss < TEACH_AFTER_MISTAKES) say(`Not quite. Count by ${sizeWord(sz)} from ${from}. Look at the hops.`, "warn");
+  else startStopTeach(m, sz, from);
+}
+// 3 wrong stop numbers: Kitty takes the hops of this stretch back and counts them again WITH her, one tap per hop.
+// Nothing hops by itself. This sum then counts as helped (no first-try stars), so guessing does not pay.
+function startStopTeach(m, sz, from) {
+  helped = true;
+  const n = line.hops.length;
+  while (line.hops.length > m) popHop();
+  stopTeach = { from: m, to: n }; stopTyped = ""; hopAnim = null;
+  renderAll();
+  say(`Count by ${sizeWord(sz)} with me from ${from}. ${stopTeachAsk()}`, "teach");
+  showGlow();
+}
+// How to work out where Kitty is now: the number before her last hop and that hop. Never the number she is on.
+function lastHopTip() {
+  const n = line.hops.length; if (!n) return "";
+  const h = line.hops[n - 1], from = posAt(n - 1), sz = Math.abs(h);
+  const w = sz === 100 ? "one hundred" : sz === 10 ? "ten" : "one";   // in words, so a hop size is never mistaken for the answer
+  return `Before her last hop she was on ${from}. Then she hopped ${h > 0 ? "forward" : "back"} ${w}.`;
+}
+function stopTeachAsk() {
+  const sz = Math.abs(nextStep() ?? 0), open = blockForHop(sz) ? null : blockToOpen(sz);
+  return open ? `No ${sizeWord(sz)} left. Tap the glowing ${blockName1(open.size)} to open it.` : `Tap the glowing ${blockName1s(sz)}.`;
+}
+function stopTeachTalk(counted) {
+  // At the stop the number Kitty is on is what Marie must type: Kitty never says it. She says where the last hop
+  // started and how big it was, and Marie works out the stop herself.
+  if (stopPending()) { say(`Kitty stopped. ${lastHopTip()} Type her number in the glowing box.`, "teach"); return; }
+  say(`${counted ? line.pos + "! " : ""}${stopTeachAsk()}`, "teach");
+  showGlow();   // the bubble may have changed size
+}
+
+/* ----- 進位: adding in columns (ones first; 10 of a kind bundle into 1 of the next) ----- */
+const colSum = i => (digits(Q.a)[i] || 0) + (digits(Q.b)[i] || 0) + col.carry[i];
+function colAsk() {
+  const i = col.i, da = digits(Q.a)[i] || 0, db = digits(Q.b)[i] || 0;
+  return `${col.carry[i] ? "1 + " : ""}${da} + ${db} = ?`;
+}
+function colHint() {
+  const i = col.i, da = digits(Q.a)[i] || 0, db = digits(Q.b)[i] || 0;
+  return `Count the ${PLACE[i]} blocks: Hello Kitty has ${da}, ${CHARS[friend].name} has ${db}${col.carry[i] ? ", and 1 more you carried" : ""}. Start at ${da} and count on.`;
+}
+function colCheck() {
+  if (!col.typed) { say("Type your number with the number buttons.", "warn"); return; }
+  const want = colSum(col.i);
+  if (parseInt(col.typed, 10) === want) {
+    col.typed = ""; col.miss = 0; col.count = false; blocks.forEach(b => { delete b.mark; });
+    tone([660, 880]);
+    if (want >= 10) { col.step = "bundle"; renderAll(); say(`Yes, ${want} ${PLACE[col.i]}! That is 10 or more. Tap 10 ${PLACE[col.i]} blocks to bundle them into 1 ${PLACE1[col.i + 1]}.`, "good"); return; }
+    col.out[col.i] = want; return colNext(`Yes! Write ${want} under the ${PLACE[col.i]}.`);
+  }
+  col.typed = ""; col.miss++; tries++; helped = true; P.missed[Q.key] = (P.missed[Q.key] || 0) + 1; save();
+  tone([330], .2, "triangle"); setKitty("think");
+  if (col.miss === 1) { renderAll(); say(`Not quite. Tap each ${PLACE1[col.i]} block and count in your head.`, "warn"); return; }
+  if (col.miss === 2) { renderAll(); say(colHint(), "warn"); return; }
+  // 3 mistakes: count them together, out loud, one tap at a time. Then she types the number.
+  col.count = true; blocks.forEach(b => { delete b.mark; }); headShown = true;
+  renderAll(); say(`Let's count the ${PLACE[col.i]} together. Tap each glowing block.`, "teach");
+}
+function colTap(b) {
+  const sz = 10 ** col.i;
+  if (b.size !== sz) { say(`We are adding the ${PLACE[col.i]} now. Tap the ${PLACE1[col.i]} blocks.`, "warn"); wiggle(b.id); return; }
+  if (b.mark) { wiggle(b.id); return; }
+  b.mark = true;
+  const n = blocks.filter(x => x.size === sz && x.mark).length;
+  tone([560 + Math.min(n, 20) * 12], .05);
+  if (col.step === "bundle" && n >= 10) return colBundle(sz);
+  renderAll();
+  if (col.count) { speak(String(n)); if (!blocks.some(x => x.size === sz && !x.mark)) say(`Now type how many ${PLACE[col.i]}.`, "teach"); }
+  else wiggle(b.id);
+}
+function colBundle(sz) {
+  const ten = blocks.filter(x => x.size === sz && x.mark).slice(0, 10), at = blocks.indexOf(ten[0]);
+  blocks = blocks.filter(x => !ten.includes(x));
+  blocks.forEach(b => { delete b.mark; });
+  // The new bigger block joins Hello Kitty's bigger blocks.
+  let k = blocks.findIndex(x => x.who === "kitty" && x.size === sz * 10);
+  if (k < 0) k = Math.max(0, at);
+  blocks.splice(k, 0, { id: ++seq, who: "kitty", size: sz * 10, fresh: true });
+  const want = colSum(col.i);
+  col.out[col.i] = want - 10; col.carry[col.i + 1] = 1;
+  tone([440, 550, 660, 880], .07);
+  colNext(`10 ${PLACE[col.i]} make 1 ${PLACE1[col.i + 1]}! Carry the 1 to the ${PLACE[col.i + 1]}. Write ${want - 10} under the ${PLACE[col.i]}.`);
+}
+function colNext(msg) {
+  col.i++; col.step = "add";
+  if (col.i >= col.n) { typed = String(Q.ans); return correct(); }
+  renderAll();
+  say(`${msg} Now the ${PLACE[col.i]}: ${colAsk()}`, "good");
+}
+function renderCol() {
+  const n = col.n, cols = n + 1, A = digits(Q.a), B = digits(Q.b), la = String(Q.a).length, lb = String(Q.b).length;
+  const cell = (v, i, cls = "") => `<span class="cell${i === col.i ? " on" : ""}${cls}">${v}</span>`;
+  const row = f => { let h = ""; for (let i = n - 1; i >= 0; i--) h += f(i); return h; };
+  const done = col.i >= n;
+  const carry = `<div class="crow carry" style="--cols:${cols}"><span></span>${row(i => `<span>${col.carry[i] ? "1" : ""}</span>`)}</div>`;
+  const ra = `<div class="crow" style="--cols:${cols}"><span></span>${row(i => cell(i < la ? A[i] : "", i))}</div>`;
+  const rb = `<div class="crow" style="--cols:${cols}"><span>+</span>${row(i => cell(i < lb ? B[i] : "", i))}</div>`;
+  const ro = `<div class="crow" style="--cols:${cols}"><span></span>${row(i => col.out[i] !== undefined ? cell(col.out[i], i) : i === col.i ? cell("?", i, " q") : cell("", i))}</div>`;
+  const word = done ? "" : PLACE[col.i][0].toUpperCase() + PLACE[col.i].slice(1);
+  const ask = done ? "" : col.step === "add" ? `${word}: ${colAsk().replace("?", `<span class="stopbox glow" id="colBox">${col.typed || "?"}</span>`)}` : `Tap 10 ${PLACE[col.i]} blocks to bundle them.`;
+  $("line").classList.remove("focus");
+  $("line").innerHTML = `<div class="colsum" aria-label="Column sum">${carry}${ra}${rb}<div class="rule"></div>${ro}</div><div class="colq">${ask}</div>`;
+}
+
+/* ----- answering ----- */
+function press(k) {
+  if (phase !== "ask" && phase !== "afterTeach") return;
+  if (col) {
+    if (col.step !== "add") { say(`Tap 10 ${PLACE[col.i]} blocks first, to bundle them.`, "warn"); return; }
+    if (k === "del") col.typed = col.typed.slice(0, -1);
+    else if (k === "go") return colCheck();
+    else if (col.typed.length < 2) col.typed = (col.typed === "0" ? "" : col.typed) + k;
+    renderLine(); return;
+  }
+  if (stopPending()) {
+    if (k === "del") stopTyped = stopTyped.slice(0, -1);
+    else if (k === "go") return checkStop();
+    else if (stopTyped.length < 4) stopTyped = (stopTyped === "0" ? "" : stopTyped) + k;
+    renderLine(); return;
+  }
+  if (k === "del") typed = typed.slice(0, -1);
+  else if (k === "go") return submit();
+  else if (typed.length < 4) typed = (typed === "0" ? "" : typed) + k;
+  renderEq();
+}
+function submit() {
+  if (!typed) { say("Type your answer with the number buttons.", "warn"); return; }
+  if (parseInt(typed, 10) === Q.ans) return correct();
+  const e = $("eq"); e.classList.remove("shake"); void e.offsetWidth; e.classList.add("shake");
+  typed = ""; renderEq(); tone([330], .2, "triangle"); setKitty("think");
+  if (phase === "afterTeach") {
+    afterMiss++;
+    // Never the answer: each tip says how to work out the last step.
+    say(`Not quite. ${lastHopTip()} Count that last hop, then type where she landed.`, "warn");
+    return;
+  }
+  tries++; helped = true; P.missed[Q.key] = (P.missed[Q.key] || 0) + 1; save();
+  if (tries === 1) say("Not quite. Try again. Count carefully.", "warn");
+  else if (tries < TEACH_AFTER_MISTAKES) say(hint(), "warn");
+  else startTeach();
+}
+// A hint says HOW to work it out. It never says the answer.
+function hint() {
+  const who = CHARS[friend].name;
+  if (col) return colHint();
+  if (makeTen(Q)) return `Make 10 first: ${Q.a} and how many make 10? Then add the rest of ${CHARS[friend].name}'s blocks.`;
+  if (isSmall(Q)) return Q.op === "+" ? `Start at ${Q.a}. Count on ${Q.b} hops: tap ${who}'s blocks and count the ticks.` : `Start at ${Q.a}. Take away ${Q.b}: tap ${Q.b} of Hello Kitty's blocks and count the ticks back.`;
+  const plan = jumpPlan(Q), parts = [], sign = plan[0] > 0 ? "+" : MINUS;
+  for (const size of [100, 10, 1]) { const n = plan.filter(p => Math.abs(p) === size).length; if (n) parts.push(`${sign}${size} ${times(n)}`); }
+  return `Start at ${Q.a}. Hop ${parts.join(", then ")}. Type each stop.`;
+}
+// Kitty's lesson after 3 mistakes: she counts WITH Marie, one hop per tap, and shows each number reached.
+function startTeach() {
+  phase = "teach"; typed = ""; revealLanding = true;
+  if (Q.op === "-") buildBlocks(Q); else blocks.forEach(b => { delete b.mark; });
+  resetLine(); hopAnim = null; teach = { said: "" };
+  teachCheck(true);
+}
+// What Kitty points at in the lesson: block ids and the hop button size that glow.
+function teachTargets() {
+  const out = { blocks: new Set(), hop: 0 };
+  if (!guiding() || !Q || planDone() || stopPending()) return out;
+  const sz = Math.abs(nextStep()), b = blockForHop(sz);
+  if (b) { out.blocks.add(b.id); out.hop = sz; }
+  else { const big = blockToOpen(sz); if (big) out.blocks.add(big.id); }
+  return out;
+}
+function teachCheck(first) {
+  const plan = jumpPlan(Q), done = line.hops.length;
+  const counted = done && !first ? `${line.pos}! ` : "";
+  // The last hop lands on the answer: Kitty does not say or show it. Marie works out the last step herself.
+  if (done >= plan.length) { phase = "afterTeach"; teach = null; renderAll(); say(`You did all the hops! ${lastHopTip()} Where did she land? Type that number.`, "good"); return; }
+  const sz = Math.abs(plan[done]), left = plan.slice(done).filter(p => Math.abs(p) === sz).length;
+  const open = blockForHop(sz) ? null : blockToOpen(sz);
+  const key = sz + (open ? "open" : "");
+  renderAll();
+  if (first || key !== teach.said) {
+    teach.said = key;
+    let msg;
+    if (open) msg = `No ${sizeWord(sz)} left. Tap the glowing ${blockName1(open.size)} to open it.`;
+    else if (left === 1) msg = `Tap the glowing ${blockName1s(sz)}. Count with me.`;
+    else msg = `Tap the glowing ${blockNames(sz)}, ${times(left)}. Count with me.`;
+    say(`${first ? "Let's do it together! " : counted}${msg}`, "teach");
+  } else if (counted) speak(String(line.pos));
+  showGlow();   // the bubble may have changed size, so point at the glowing block again
+}
+
+/* ================= Rewards ================= */
+function addStars(n) { P.stars += n; const s = $("score"); s.classList.remove("bump"); void s.offsetWidth; s.classList.add("bump"); }
+function correct() {
+  clearTimers();
+  const secs = (performance.now() - qStart) / 1000;
+  const first = phase === "ask" && tries === 0 && !helped;
+  const quick = first && secs <= LEVELS[Q.level].quick;
+  const earn = (first ? 2 : 1) + (quick ? 1 : 0);
+  const d = todayLog(), tk = dayKey();
+  if (P.lastDay !== tk) { const y = new Date(); y.setDate(y.getDate() - 1); P.dayStreak = P.lastDay === dayKey(y) ? P.dayStreak + 1 : 1; P.lastDay = tk; }
+  const goalBefore = d.n >= P.goal;
+  addStars(earn); P.total++; d.n++;
+  if (first) { P.firstTry++; d.first++; }
+  P.round.push(first ? 1 : 0);
+  const qq = { a: Q.a, b: Q.b, op: Q.op, level: Q.level, ans: Q.ans, key: Q.key };
+  if (!first) P.review.push({ q: qq, due: P.total + 3, rounds: 2 });
+  else if (Q.review && Q.review > 1) P.review.push({ q: qq, due: P.total + 8, rounds: Q.review - 1 });
+  if (P.review.length > 40) P.review = P.review.slice(-40);
+  const wasTaught = phase === "afterTeach";
+  { const k = makeTen(Q) ? "ten" : colMode(Q) ? "col" : ""; if (k) { P.head = P.head || {}; P.head[k] = first && !headShown ? (P.head[k] || 0) + 1 : first ? (P.head[k] || 0) : 0; } }
+  P.teachRun = wasTaught ? (P.teachRun || 0) + 1 : first ? 0 : P.teachRun;
+  const notes = []; let big = false;
+  if (!Q.review && Q.level === P.level) {
+    const arr = P.levelStats[P.level] = (P.levelStats[P.level] || []).concat(first ? 1 : 0).slice(-10);
+    if (arr.length >= 10 && arr.reduce((x, y) => x + y, 0) >= LEVEL_UP_NEED && P.level < MAX_LEVEL) { P.level++; P.levelStats[P.level] = []; addStars(10); big = true; notes.push(`Level up! Now: ${LEVELS[P.level].name}. 10 bonus stars!`); }
+  }
+  if (P.teachRun >= 3 && P.level > 1) { P.level--; P.teachRun = 0; P.levelStats[P.level] = []; notes.push("Let's practise some easier ones for a bit."); }
+  if (!goalBefore && d.n >= P.goal) { P.crowns++; addStars(10); big = true; notes.push(`${P.goal} sums today! You win a crown.`); }
+  save();
+  phase = "done"; col = null;
+  const praise = wasTaught ? "You worked it out!" : pick(PRAISE);
+  say(`${praise} ${Q.a} ${opSym(Q.op)} ${Q.b} = ${Q.ans}. +${earn} ${earn === 1 ? "star" : "stars"}${quick ? ", quick!" : "."} ${notes.join(" ")}`, "good", false);
+  speak(`${praise} ${notes.join(" ")}`);
+  setKitty("happy"); tone(big ? [523, 659, 784, 1047] : [659, 880]);
+  burst(big ? 16 : quick ? 6 : 3);
+  renderAll();
+  timers.push(setTimeout(nextQuestion, big ? 3200 : notes.length ? 2600 : 1300));
+}
+function burst(n, art) {
+  if (reduceMotion()) return;
+  for (let i = 0; i < n; i++) { const img = document.createElement("img"); img.src = ART(art || (i % 2 ? "star" : "heart")); img.style.left = rand(3, 92) + "vw"; img.style.animationDelay = (i * .06).toFixed(2) + "s"; $("fx").appendChild(img); setTimeout(() => img.remove(), 3000); }
+}
+
+/* ================= Cooking break (cook.js) ================= */
+function startCooking() {
+  phase = "cook";
+  clearTimers();
+  const layer = $("cook");
+  layer.hidden = false;
+  say("Cooking time!", "good", false);
+  renderTop();
+  const finish = () => {
+    if (phase !== "cook") return;
+    CookGame.stop();
+    layer.hidden = true; layer.innerHTML = "";
+    P.round = []; save(); renderTop();
+    phase = "ask"; nextQuestion();
+  };
+  CookGame.start(layer, {
+    recipe: P.cooks % 3,
+    onDone() { P.cooks++; finish(); },
+    onSkip() { finish(); }
+  });
+}
+function endCooking() { if (phase === "cook") { CookGame.stop(); $("cook").hidden = true; $("cook").innerHTML = ""; P.round = []; save(); phase = "ask"; nextQuestion(); } }
+function flyTo(fromEl, toEl, src) {
+  if (reduceMotion() || !fromEl || !toEl) return;
+  const a = fromEl.getBoundingClientRect(), b = toEl.getBoundingClientRect();
+  const img = document.createElement("img"); img.src = src; img.className = "fly"; $("fx").appendChild(img);
+  const x0 = a.left + a.width / 2 - 28, y0 = a.top + a.height / 2 - 28, x1 = b.left + b.width / 2 - 28, y1 = b.top + b.height / 2 - 28;
+  img.animate([{ transform: `translate(${x0}px,${y0}px)` }, { transform: `translate(${(x0 + x1) / 2}px,${Math.min(y0, y1) - 80}px) scale(1.2)` }, { transform: `translate(${x1}px,${y1}px) scale(.5)`, opacity: .2 }], { duration: 380, easing: "ease-in-out" }).onfinish = () => img.remove();
+}
+
+/* ================= Rendering: sums ================= */
+function renderTop() {
+  $("score").querySelector("span").textContent = P.stars;
+  $("score").setAttribute("aria-label", `${P.stars} stars`);
+  const done = Math.min(P.round.length, COOK_EVERY);
+  $("dots").innerHTML = Array.from({ length: COOK_EVERY }, (_, i) => `<img src="${ART("cupcake")}" alt="" class="${i < done ? "on" : ""}">`).join("");
+  $("dots").setAttribute("aria-label", `${done} of ${COOK_EVERY} sums until the cooking break`);
+}
+function renderEq() {
+  if (!Q || phase === "idle") return;
+  const ca = CHARS.kitty.color, cb = Q.op === "+" ? CHARS[friend].color : "#5b4a8a";
+  const shown = typed || (phase === "done" ? Q.ans : "?");
+  const dim = stopPending() ? " dim" : "";
+  $("eq").innerHTML = `<span style="color:${ca}">${Q.a}</span><span class="op">${opSym(Q.op)}</span><span style="color:${cb}">${Q.b}</span><span class="op">=</span><span class="ans${typed || phase === "done" ? " filled" : ""}${dim}">${shown}</span>`;
+  $("eq").classList.toggle("long", String(Q.a).length + String(Q.b).length >= 5);
+  $("eq").setAttribute("aria-label", `${Q.a} ${opWord(Q.op)} ${Q.b} equals ${typed || (phase === "done" ? Q.ans : "what")}`);
+}
+// The heart stamp on a counted block: no number in it.
+const MARK = `<span class="mark" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 21.2 C5 16.4 2 12.6 2 8.6 C2 5.4 4.5 3 7.4 3 C9.3 3 10.9 4 12 5.6 C13.1 4 14.7 3 16.6 3 C19.5 3 22 5.4 22 8.6 C22 12.6 19 16.4 12 21.2 Z" fill="#ff6f9f" stroke="#3b2a33" stroke-width="2.2" stroke-linejoin="round"/><path d="M6.5 7.4 C7 6.2 8 5.6 9 5.6" fill="none" stroke="#fff" stroke-width="1.8" stroke-linecap="round"/></svg></span>`;
+function blockBtn(b, glow) {
+  if (b.slot) return `<span class="blk slot" aria-hidden="true"></span>`;
+  const cls = b.size === 10 ? " tower" : b.size === 100 ? " plate" : "";
+  const art = b.size === 10 ? towerArt(b.who) : b.size === 100 ? plateArt(b.who) : blockArt(b.who);
+  const fresh = b.fresh ? " pop" : ""; delete b.fresh;
+  const label = `${CHARS[b.who].name} block${b.size > 1 ? " of " + b.size : ""}${b.gone ? ", taken away" : ""}${b.mark ? ", counted" : ""}`;
+  return `<button class="blk${cls}${b.gone ? " gone" : ""}${fresh}${glow.has(b.id) ? " glow" : ""}" type="button" data-b="${b.id}" aria-label="${label}">${art}${b.mark && !b.gone ? MARK : ""}</button>`;
+}
+// Blocks sit in groups she can count: ten-frames (two rows of 5) for ones, groups of 5 for towers and plates.
+function rowHTML(who, n, plus, glow) {
+  let mine = blocks.filter(b => b.who === who);
+  // Make 10: the friend's first blocks move into Hello Kitty's ten-frame; its empty places show what is still needed.
+  if (makeTen(Q)) {
+    const need = 10 - Q.a, moved = line.links.slice(0, need).map(id => blocks.find(x => x.id === id)).filter(Boolean);
+    if (who === "kitty") mine = mine.concat(moved, Array.from({ length: need - moved.length }, () => ({ slot: true })));
+    else mine = mine.filter(b => !moved.includes(b));
+  }
+  if (!mine.length) return "";
+  const num = `<span class="num" style="color:${CHARS[who].color}">${plus ? `<span class="pl">+</span>` : ""}${n}</span>`;
+  const five = list => `<div class="five">${list.map(b => blockBtn(b, glow)).join("")}</div>`;
+  const frames = list => { let h = ""; for (let i = 0; i < list.length; i += 10) { const t = list.slice(i, i + 10); h += `<div class="ten">${five(t.slice(0, 5))}${t.length > 5 ? five(t.slice(5)) : ""}</div>`; } return h; };
+  let inner = "";
+  if (isSmall(Q)) inner = `<div class="frames">${frames(mine)}</div>`;
+  else {
+    for (const size of [100, 10]) { const big = mine.filter(b => b.size === size); for (let i = 0; i < big.length; i += 5) inner += `<div class="grp5">${big.slice(i, i + 5).map(b => blockBtn(b, glow)).join("")}</div>`; }
+    const ones = mine.filter(b => b.size === 1); if (ones.length) inner += `<div class="frames">${frames(ones)}</div>`;
+  }
+  return `<div class="who">${num}<div class="row-blocks">${inner}</div></div>`;
+}
+// The block Kitty points at is scrolled fully into the blocks panel. It uses the block's resting place (offsetTop),
+// not its on-screen box, because a block that was just opened is still growing in ("pop").
+// On narrow phones the question number sticks at the top of the panel, so the block is kept below it
+// (scroll-padding-top). A block too tall to fit below it is kept fully inside the panel instead.
+function keepBlockInView(el) {
+  const box = $("blocks"); if (!el || !box) return;
+  // Only a block that sits under its group's sticking number (same columns) must stay below it.
+  let head = 0;
+  try {
+    const num = el.closest(".who")?.querySelector(".num");
+    if (num && getComputedStyle(num).position === "sticky") {
+      const a = num.getBoundingClientRect(), r = el.getBoundingClientRect();
+      if (Math.min(a.right, r.right + 8) - Math.max(a.left, r.left) > 0) head = parseFloat(getComputedStyle(box).scrollPaddingTop) || 0;   // +8: the heart
+    }
+  } catch (e) {}
+  const m = 10, top = el.offsetTop, bot = top + el.offsetHeight, H = box.clientHeight;   // m: room for the heart above a block
+  const hi = top - Math.max(m, head), lo = bot + 2 - H;   // scrollTop must be <= hi (below the number) and >= lo (bottom shows)
+  let st = box.scrollTop;
+  if (st > hi) st = hi;
+  if (st < lo) st = lo <= hi ? lo : Math.min(top - 2, lo);   // too tall to fit below the number: show the whole block
+  box.scrollTop = Math.max(0, st);
+  fixCutNumbers();
+}
+// A question number sticks at the top of the blocks panel, but it cannot leave its own group. When only the last
+// bit of a group is still in view, the group's bottom pushes the number up and its top is cut off. So when the
+// panel comes to rest (after her finger is off it), it moves the few pixels that show the whole number again,
+// or moves the group out of view if that is nearer. `keep` = the block she just tapped (or the glowing one in a
+// lesson): it stays fully in the panel. When the panel is too short for both, a little empty tablecloth is added
+// below the blocks (--tail), so the group can move out of view and the block stays whole.
+let blockTapAt = -1e9, numTouch = false, numSnapT = 0, numSelf = false;   // numSelf: the next scroll event is our own move
+function keepTarget() {
+  if (guiding()) return document.querySelector("#blocks .blk.glow");
+  const id = line.links[line.links.length - 1];
+  return id === undefined ? null : document.querySelector(`#blocks [data-b="${id}"]`);
+}
+function fixCutNumbers(keep = keepTarget()) {
+  const box = $("blocks"); if (!box) return;
+  const pr = box.getBoundingClientRect(), top = pr.top + box.clientTop, H = box.clientHeight;
+  // A block she has scrolled away from is not kept: her number must still show whole.
+  if (keep) { const r = keep.getBoundingClientRect(); if (!keep.isConnected || r.top < top - 0.5 || r.bottom > top + H + 0.5) keep = null; }
+  for (const who of box.querySelectorAll(".who")) {
+    const num = who.querySelector(".num"); if (!num || getComputedStyle(num).position !== "sticky") continue;
+    const n = num.getBoundingClientRect();
+    const cutTop = n.top < top - 0.5 && n.bottom > top + 0.5, cutBot = n.bottom > top + H + 0.5 && n.top < top + H - 0.5;
+    if (!cutTop && !cutBot) continue;   // whole number shows, or it is out of view
+    const st = box.scrollTop, maxSt = box.scrollHeight - H, g = who.getBoundingClientRect();
+    // Top: the group pushes its number out. Up = show the whole number, down = the group leaves the panel.
+    // Bottom: the number of a group coming in from below. Down = show it, up = hide it below the panel.
+    const up = cutTop ? st - Math.ceil(top - n.top) : st - Math.ceil(top + H - n.top) - 1;
+    const down = cutTop ? st + Math.ceil(g.bottom - top) + 1 : st + Math.ceil(n.bottom - top - H);
+    const shows = (s, el) => { if (!el || !el.isConnected) return true; const r = el.getBoundingClientRect(), d = st - s; return r.top + d >= top - 0.5 && r.bottom + d <= top + H + 0.5; };
+    const ok = s => s >= 0 && s <= maxSt + 0.5 && shows(s, keep);
+    const tries = (st - up) <= (down - st) ? [up, down] : [down, up];
+    let s = tries.find(ok);
+    if (s === undefined && down > maxSt && shows(down, keep)) {   // room below the blocks, then move down
+      const tail = (parseFloat(box.style.getPropertyValue("--tail")) || 0) + Math.ceil(down - maxSt) + 2;
+      box.style.setProperty("--tail", tail + "px"); s = down;
+    }
+    if (s !== undefined && Math.abs(s - box.scrollTop) > 0.5) { numSelf = true; box.scrollTop = s; }
+  }
+}
+// Towers and plates shrink to fit a very short blocks panel, so the block she taps is never cut off.
+function fitBlocks() {
+  const box = $("blocks"); if (!box) return;
+  box.style.removeProperty("--fitH");
+  const cs = getComputedStyle(box), pad = (parseFloat(cs.paddingTop) || 0) + (parseFloat(cs.paddingBottom) || 0);
+  const room = Math.floor(box.clientHeight - pad - 10);   // 10: the heart stamp above a block
+  const tall = Math.max(0, ...[...box.querySelectorAll(".blk.tower, .blk.plate")].map(b => b.offsetHeight));
+  if (box.scrollHeight > box.clientHeight + 1 && tall > room) box.style.setProperty("--fitH", Math.max(44, room) + "px");
+}
+{
+  const box = $("blocks");
+  const later = () => { clearTimeout(numSnapT); numSnapT = setTimeout(() => { if (!numTouch && Q && phase !== "idle") fixCutNumbers(); }, 160); };
+  box.addEventListener("touchstart", () => { numTouch = true; clearTimeout(numSnapT); }, { passive: true });
+  const up = () => { numTouch = false; later(); };
+  box.addEventListener("touchend", up, { passive: true }); box.addEventListener("touchcancel", up, { passive: true });
+  box.addEventListener("scroll", () => { if (numSelf) { numSelf = false; return; } later(); }, { passive: true });
+  if (window.ResizeObserver) {
+    let h = 0;
+    // When the panel changes size (a longer or shorter message above it, turning the device), the block she just
+    // tapped (in the last 1.5 s) or the glowing one in a lesson is kept fully in view. Otherwise her scrolling stays.
+    new ResizeObserver(() => { const nh = box.clientHeight; if (!nh || Math.abs(nh - h) < 1) return; h = nh; if (Q && phase !== "idle") { fitBlocks(); if (guiding() || performance.now() - blockTapAt < 1500) keepBlockInView(keepTarget()); later(); } }).observe(box);
+  }
+}
+function showGlow() {
+  if (!guiding()) return;
+  keepBlockInView(document.querySelector("#blocks .blk.glow"));
+}
+function renderBlocks() {
+  if (!Q || phase === "idle") return;
+  if (inHead()) {
+    $("blocks").innerHTML = `<div class="headbox"><span>Try it in your head!</span><button type="button" data-show="1">Show the blocks</button></div>`;
+    $("recount").disabled = true; return;
+  }
+  const glow = teachTargets().blocks;
+  if (col && col.count && col.i < col.n) blocks.forEach(b => { if (b.size === 10 ** col.i && !b.mark) glow.add(b.id); });
+  const a = rowHTML("kitty", Q.a, false, glow), b = Q.op === "+" ? rowHTML(friend, Q.b, true, glow) : "";
+  const nd = Math.max(String(Q.a).length, String(Q.b).length + (Q.op === "+" ? 1 : 0));
+  const keepSt = $("blocks").scrollTop;
+  $("blocks").style.removeProperty("--tail");
+  $("blocks").innerHTML = `<div class="stack" style="--nd:${nd}">${a}${b}</div>`;
+  $("blocks").scrollTop = keepSt;
+  $("recount").disabled = !(line.hops.length || taken || blocks.some(x => x.mark));
+  fitBlocks();
+  // In the lesson the block Kitty points at must be on screen (small phones scroll the blocks panel).
+  showGlow();
+  fixCutNumbers();
+}
+// The number line never shows a running number. Small sums: a ruler labelled only at 0, 5, 10, 15, 20 and the
+// start; ticks she has hopped onto get a dot. Big sums: an open line (not to scale: a hop of 100 is drawn a bit
+// longer than a hop of 10, and a hop of 10 a bit longer than a hop of 1) labelled at the start and at the stops
+// she typed herself; Kitty's spot shows "?" until she types it. When Kitty counts with her (the lesson, or a
+// stretch after 3 wrong stop numbers) only the number Kitty is on is shown, so the numbers never run together.
+// It is drawn at the real pixel width of the panel, so the numbers keep a readable size on phones.
+let lineW = 0;
+function renderLine() {
+  const box = $("line");
+  if (!Q || phase === "idle") return;
+  if (col) return renderCol();
+  box.classList.toggle("focus", guiding());
+  const sign = Q.op === "+" ? 1 : -1, taps = line.hops.length, waiting = stopPending();
+  const landings = []; { let at = line.start; line.hops.forEach(h => { at += h; landings.push(at); }); }
+  const sentence = makeTen(Q) ? (line.known.length ? `${Q.a} + ${10 - Q.a} = 10. Then 10 + ${Q.b - (10 - Q.a)}.` : `Make 10 first: ${Q.a} + ? = 10`) : walking() && walk < Q.a ? `Walk Hello Kitty to ${Q.a}.` : `Hello Kitty starts on ${line.start}.${line.known.length ? ` <small class="stops">Stops: ${line.known.map(k => k.v).join(", ")}</small>` : ""}`;
+  const pill = isSmall(Q) ? `<span class="taps" id="runTaps">${Q.b} ${Q.b === 1 ? "hop" : "hops"}${sign < 0 ? " back" : ""}</span>` : "";
+  lineW = box.clientWidth;
+  const W = Math.max(240, Math.round((lineW || 660) - 20)), narrow = W < 480;
+  const KS = narrow ? 30 : 40;                       // Kitty's face on the line, in px
+  const TOP = isSmall(Q) ? (narrow ? 14 : 16) : 0;   // room above Kitty for the "+1", "+2" hop labels
+  const RY = KS + 4 + TOP, RH = narrow ? 36 : 44, H = RY + RH + 6;
+  const FL = narrow ? 17 : 22, FH = narrow ? 12 : 15; // label and hop-size font sizes, px
+  const textW = (v, f) => String(v).length * f * .6 + 4;
+  let s = `<rect x="2" y="${RY + 4}" width="${W - 4}" height="${RH}" rx="12" fill="#c98a52"/><rect x="2" y="${RY}" width="${W - 4}" height="${RH}" rx="12" fill="url(#woodGrad)" stroke="#3b2a33" stroke-width="3"/>`;
+  const kittyAt = cx => `<g id="lineKitty" pointer-events="none"><g transform="translate(${(cx - KS / 2).toFixed(1)} ${TOP}) scale(${KS / 100})">${face("kitty")}</g></g>`;
+  const arc = (x1, x2, lift, col, w, isNew) => `<path d="M${x1.toFixed(1)} ${RY - 2} Q${((x1 + x2) / 2).toFixed(1)} ${(RY - 2 - lift).toFixed(1)} ${x2.toFixed(1)} ${RY - 2}" fill="none" stroke="${col}" stroke-width="${w}" stroke-linecap="round"${isNew ? ` pathLength="1" stroke-dasharray="1" stroke-dashoffset="0" class="arcnew"` : ""}/>`;
+  const txt = (x, y, v, size, fill) => `<text x="${x.toFixed(1)}" y="${y}" text-anchor="middle" font-size="${size}" font-weight="800" fill="${fill}" font-family="Baloo 2, sans-serif">${v}</text>`;
+  const LY = RY + RH - (narrow ? 7 : 9);           // baseline of the numbers inside the ruler
+  // The number Kitty is on, shown only while Kitty counts with her, or once the answer is in. The number she
+  // must type (the answer after the lesson, or the stop in a stop lesson) is never shown: Kitty's spot gets the
+  // "?" flag, and the number before her last hop is shown instead, so Marie works out the last step herself.
+  const cur = (phase === "teach" && taps) || (stopTeach && taps > stopTeach.from && !waiting) || phase === "done" ? line.pos : null;
+  const prev = taps && (phase === "afterTeach" || (stopTeach && waiting)) ? posAt(taps - 1) : null;
+  const curPill = (cx, v = line.pos) => { const w = textW(v, FL) + 8; return `<rect x="${(cx - w / 2).toFixed(1)}" y="${LY - FL + 1}" width="${w.toFixed(1)}" height="${FL + 5}" rx="${(FL + 5) / 2}" fill="#7b55e6" stroke="#3b2a33" stroke-width="2"/>${txt(cx, LY, v, FL, "#fff")}`; };
+  const flag = cx => `<rect x="${(cx - FL * .9).toFixed(1)}" y="${LY - FL + 1}" width="${(FL * 1.8).toFixed(1)}" height="${FL + 5}" rx="${(FL + 5) / 2}" fill="#ffc94a" stroke="#3b2a33" stroke-width="2.5"/>${txt(cx, LY, "?", FL, "#3b2a33")}`;
+  let kx, hopLabs = "";
+  if (isSmall(Q)) {
+    // Phones show a 10- or 15-tick part of the ruler (cut at 0, 5, 10 or 15), so the ticks are far enough apart to count.
+    let lo = 0, hi = 20;
+    const m1 = Q.op === "+" ? 0 : Math.min(Q.a, Q.ans), m2 = Math.max(Q.a, Q.ans);   // adding: 0 stays in view, Kitty walks from 0
+    if (narrow) search: for (const w of [10, 15]) for (let L = 0; L + w <= 20; L += 5) if (L <= m1 && m2 <= L + w) { lo = L; hi = L + w; break search; }
+    lo = Math.min(lo, m1); hi = Math.max(hi, m2);
+    const M = narrow ? 16 : 22, sp = (W - 2 * M) / (hi - lo);
+    const x = k => M + (k - lo) * sp;
+    let at = line.start;
+    // Each hop gets its arc and its count ("+1", "+2", ...), so she sees how many she has added. Labels sit in two rows so they never touch.
+    hopLabs = "";
+    line.hops.forEach((h, i) => {
+      const to = at + h, lift = Math.min(KS * .7, sp * .9);
+      s += arc(x(at), x(to), lift, "#7b55e6", narrow ? 3 : 4, hopAnim && i === taps - 1);
+      const t = `${h > 0 ? "+" : MINUS}${i + 1}`, y = RY - 4 - lift - ((i % 2) ? (narrow ? 12 : 15) : 0);
+      hopLabs += `<text x="${((x(at) + x(to)) / 2).toFixed(1)}" y="${y.toFixed(1)}" text-anchor="middle" font-size="${narrow ? 11 : 14}" font-weight="800" fill="#7b55e6" stroke="#fffaf3" stroke-width="3" stroke-linejoin="round" paint-order="stroke" font-family="Baloo 2, sans-serif">${t}</text>`;
+      at = to;
+    });
+    const dots = new Set(landings);
+    const kpos = walking() ? walk : line.pos;
+    if (walking()) for (let k = 1; k <= walk; k++) dots.add(k);
+    for (let k = lo; k <= hi; k++) {
+      s += `<line x1="${x(k).toFixed(1)}" y1="${RY}" x2="${x(k).toFixed(1)}" y2="${RY + (k % 5 ? 9 : 14)}" stroke="#3b2a33" stroke-width="${k % 5 ? 2 : 3}"/>`;
+      if (dots.has(k) && (k !== line.start || walking())) s += `<circle cx="${x(k).toFixed(1)}" cy="${RY + (narrow ? 6.5 : 7.5)}" r="${narrow ? 3.5 : 4.5}" fill="#7b55e6" stroke="#3b2a33" stroke-width="1.5"/>`;
+      s += `<rect x="${(x(k) - sp / 2).toFixed(1)}" y="0" width="${sp.toFixed(1)}" height="${RY + RH}" fill="transparent" data-n="${k}"/>`;
+    }
+    // Labels never run together: Kitty's shown number first, then the start, then the landmarks 0, 5, 10, 15, 20.
+    const lw = v => String(v).length * FL * .55 + 2, keepS = [];
+    const roomS = (cx, w) => keepS.every(k => Math.abs(k.x - cx) >= (k.w + w) / 2 + 3);
+    // Every tick has its number, and the number Kitty stands on sits in a purple pill (Aldrin asked, 19 Oct 2026).
+    keepS.push({ x: x(kpos), w: lw(kpos) + 8 }); s += curPill(x(kpos), kpos);
+    for (let k = lo; k <= hi; k++) {
+      if (k === kpos) continue;
+      const fs = Math.max(9, Math.min(FL, Math.floor(sp * .92 / (String(k).length * .6))));
+      if (roomS(x(k), String(k).length * fs * .55 + 2)) s += txt(x(k), LY, k, fs, k === line.start ? "#e0306b" : "#3b2a33");
+    }
+    kx = x(kpos);
+  } else {
+    // Open line: every planned hop has its own place; a run of same-size hops is never shorter than a label.
+    const plan = jumpPlan(Q), wt = sz => sz >= 100 ? 2.2 : sz >= 10 ? 1.6 : 1;
+    const runs = []; plan.forEach(p => { const sz = Math.abs(p); if (runs.length && runs[runs.length - 1].sz === sz) runs[runs.length - 1].n++; else runs.push({ sz, n: 1 }); });
+    const M = narrow ? 22 : 34, avail = W - 2 * M, MIN = narrow ? 42 : 60, CAP = narrow ? 44 : 80;
+    let u = avail / Math.max(1, plan.reduce((t, p) => t + wt(Math.abs(p)), 0));
+    for (let it = 0; it < 6; it++) {
+      let fixed = 0, flex = 0;
+      runs.forEach(r => { const len = r.n * wt(r.sz) * u; if (len < MIN) fixed += MIN; else flex += r.n * wt(r.sz); });
+      u = Math.min(CAP, flex ? (avail - fixed) / flex : u);
+    }
+    const step = []; runs.forEach(r => { const len = Math.max(MIN, r.n * wt(r.sz) * u); for (let i = 0; i < r.n; i++) step.push(len / r.n); });
+    const total = step.reduce((t, v) => t + v, 0), x0 = sign > 0 ? (W - total) / 2 : (W + total) / 2;
+    const X = i => x0 + sign * step.slice(0, i).reduce((t, v) => t + v, 0);
+    // Hop sizes ("+10", "−100") sit over their arcs. Kitty's face sits at the end of the last hop, so that label
+    // moves away from her face (as far as the label before it allows) and is drawn on top of her with a white edge.
+    let lastLab = "", edge = null;   // edge: the near side of the label before, so labels never touch
+    const kx0 = X(taps);
+    line.hops.forEach((h, i) => {
+      const x1 = X(i), x2 = X(i + 1), lift = Math.min(KS * .8, 8 + Math.abs(x2 - x1) * .5), sz = Math.abs(h);
+      s += arc(x1, x2, lift, sz >= 100 ? "#e0306b" : sz === 10 ? "#7b55e6" : "#23a483", sz >= 10 ? (narrow ? 3.5 : 4.5) : 3, hopAnim && i === taps - 1);
+      const t = `${h > 0 ? "+" : MINUS}${sz}`, w = textW(t, FH);
+      if (!(sz >= 10 && Math.abs(x2 - x1) >= w + 2)) return;
+      let cx = (x1 + x2) / 2;
+      const y = RY - 2 - lift / 2 - 3;
+      if (i === taps - 1) {
+        if (sign > 0) { cx = Math.min(cx, kx0 - KS / 2 - 2 - w / 2); if (edge !== null) cx = Math.max(cx, edge + 3 + w / 2); cx = Math.max(cx, w / 2 + 2); }
+        else { cx = Math.max(cx, kx0 + KS / 2 + 2 + w / 2); if (edge !== null) cx = Math.min(cx, edge - 3 - w / 2); cx = Math.min(cx, W - w / 2 - 2); }
+        lastLab = `<text x="${cx.toFixed(1)}" y="${y}" text-anchor="middle" font-size="${FH}" font-weight="800" fill="#3b2a33" stroke="#fffaf3" stroke-width="3" stroke-linejoin="round" paint-order="stroke" font-family="Baloo 2, sans-serif">${t}</text>`;
+      } else s += txt(cx, y, t, FH, "#3b2a33");
+      edge = sign > 0 ? cx + w / 2 : cx - w / 2;
+    });
+    // Small unlabelled ticks where she landed, so she can count the hops.
+    for (let i = 1; i <= taps; i++) s += `<line x1="${X(i).toFixed(1)}" y1="${RY}" x2="${X(i).toFixed(1)}" y2="${RY + 9}" stroke="#3b2a33" stroke-width="2"/>`;
+    // Labels: Kitty's number (while Kitty counts with her) or the "?" flag first, then the start, then the stops she typed.
+    const keep = [];
+    const room = (cx, w) => keep.every(k => Math.abs(k.x - cx) >= (k.w + w) / 2 + 6);
+    const askHere = phase !== "done" && cur === null && taps > 0 && (waiting || planDone()) && !line.known.some(k => k.n === taps);
+    if (cur !== null) keep.push({ x: X(taps), w: textW(line.pos, FL) + 8, svg: curPill(X(taps)) });
+    else if (askHere) keep.push({ x: X(taps), w: FL * 1.8, svg: flag(X(taps)) });
+    if (prev !== null && room(X(taps - 1), textW(prev, FL) + 8)) keep.push({ x: X(taps - 1), w: textW(prev, FL) + 8, svg: curPill(X(taps - 1), prev) });
+    const marks = [{ i: 0, v: line.start, col: "#e0306b" }, ...line.known.map(k => ({ i: k.n, v: k.v, col: "#3b2a33" }))];
+    for (const m of marks) {
+      const cx = X(m.i), w = textW(m.v, FL);
+      if (room(cx, w)) keep.push({ x: cx, w, svg: txt(cx, LY, m.v, FL, m.col) });
+    }
+    keep.forEach(k => { s += `<line x1="${k.x.toFixed(1)}" y1="${RY}" x2="${k.x.toFixed(1)}" y2="${RY + 12}" stroke="#3b2a33" stroke-width="3"/>` + k.svg; });
+    kx = X(taps);
+    s += kittyAt(kx) + lastLab;
+  }
+  if (isSmall(Q)) s += kittyAt(kx) + hopLabs;
+  const where = waiting ? "Hello Kitty stopped. Type the number where she is." : planDone() && taps ? "Hello Kitty finished her hops." : taps ? "Hello Kitty is hopping." : "";
+  const svg = `<svg viewBox="0 0 ${W} ${H}" role="group" aria-label="Number line. Hello Kitty started on ${line.start}. ${where}">${s}</svg>`;
+  const sizes = jumpSizes(Q), glowHop = teachTargets().hop;
+  // While a stop number waits, the stop box takes the place of the hop buttons (hops are blocked until she types it).
+  const btns = waiting
+    ? `<span class="stopwrap">Stopped on <span class="stopbox glow" id="stopBox" role="textbox" aria-label="Type where Hello Kitty stopped">${stopTyped || "?"}</span></span>`
+    : sizes.map(sz => `<button class="jbtn${glowHop === sz ? " glow" : ""}" type="button" data-j="${sign * sz}">${isSmall(Q) ? (sign > 0 ? "Hop +1" : `Hop ${MINUS}1`) : (sign > 0 ? "+" : MINUS) + sz}</button>`).join("");
+  const many = !waiting && sizes.length > 1;
+  box.innerHTML = `<div class="run"><span class="sentence" id="runSentence" aria-live="polite">${sentence}</span>${pill}</div>${svg}
+    <div class="jbtns${many ? " many" : ""}" style="--n:${sizes.length}">${btns}<button class="jbtn icon" type="button" data-undo="1" aria-label="Undo" title="Undo"${taps ? "" : " disabled"}>↶</button><button class="jbtn icon" type="button" data-restart="1" aria-label="Start again" title="Start again">⟲</button></div>`;
+  // Kitty hops along an arc from where she was: only right after her own tap.
+  const g = $("lineKitty");
+  if (g && hopAnim && kittyX !== null && !reduceMotion() && g.animate) {
+    const dx = kittyX - kx;
+    g.animate([{ transform: `translate(${dx}px, 0px)` }, { transform: `translate(${dx / 2}px, -${Math.round(KS * .6)}px)` }, { transform: "translate(0px, 0px)" }], { duration: 380, easing: "ease-out" });
+  }
+  hopAnim = null; kittyX = kx;
+}
+// Redraw the number line when its width changes (turning the device, resizing, or coming back to the Sums tab).
+// A redraw never starts a hop animation.
+if (window.ResizeObserver) {
+  let lineRedraw = 0;
+  new ResizeObserver(() => {
+    const w = $("line").clientWidth;
+    if (!w || Math.abs(w - lineW) < 2 || !Q || phase === "idle" || lineRedraw) return;
+    lineRedraw = requestAnimationFrame(() => { lineRedraw = 0; hopAnim = null; renderLine(); });
+  }).observe($("line"));
+}
+function renderPad() {
+  const candy = ["var(--pink)", "var(--sun)", "var(--mint)", "var(--sky)", "var(--lilac)"];
+  $("pad").innerHTML = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "0"].map((k, i) => `<button class="key" type="button" data-k="${k}" style="--c:${candy[i % 5]}">${k}</button>`).join("").replace(`data-k="5" style="--c:var(--lilac)">5</button>`, `data-k="5" style="--c:var(--lilac)">5</button><button class="key del" type="button" data-k="del" aria-label="Delete">⌫</button>`) + `<button class="key check" type="button" data-k="go" aria-label="Check my answer">✓</button>` +
+    "";
+}
+function renderAll() { renderTop(); renderEq(); renderBlocks(); renderLine(); }
+
+/* ================= Grown-ups ================= */
+let resetAsk = false;
+function renderGrown() {
+  const d = P.log[dayKey()] || { n: 0, first: 0 }, pct = (a, b) => b ? Math.round(a / b * 100) : 0;
+  const missed = Object.entries(P.missed).sort((a, b) => b[1] - a[1]).slice(0, 12).map(([k, n]) => `<li>${k.replace("+", " + ").replace("-", " " + MINUS + " ")}: missed ${n} ${n === 1 ? "time" : "times"}</li>`).join("") || "<li>None yet.</li>";
+  const week = []; for (let i = 6; i >= 0; i--) { const x = new Date(); x.setDate(x.getDate() - i); const dd = P.log[dayKey(x)]; week.push(`<li>${x.toLocaleDateString("en-CA", { weekday: "long", month: "short", day: "numeric" })}: ${dd ? `${dd.n} sums, ${dd.first} right first time` : "no play"}</li>`); }
+  let opts = ""; for (let i = 1; i <= MAX_LEVEL; i++) opts += `<option value="${i}"${i === P.level ? " selected" : ""}>Level ${i}: ${LEVELS[i].name} (${LEVELS[i].group})</option>`;
+  $("grown").innerHTML = `<h2>For grown-ups</h2>
+    <section><h3>Today</h3><p>${d.n} sums. ${d.first} right first time (${pct(d.first, d.n)} percent). Daily goal: ${P.goal}.</p></section>
+    <section><h3>All time</h3><p>${P.total} sums. ${P.firstTry} right first time (${pct(P.firstTry, P.total)} percent). ${P.stars} stars to spend. ${P.cooks} cooking breaks. ${P.home.length} things in her home. ${P.dayStreak} days in a row.</p></section>
+    <section><h3>Level now</h3><p>Level ${P.level}: ${LEVELS[P.level].name}. She moves up after ${LEVEL_UP_NEED} of 10 right first time, and gently down after 3 lessons in a row.</p></section>
+    <section><h3>How it works</h3><p>Each sum shows Hello Kitty's blocks for the first number and a friend's blocks for the second. Ones sit in rows of 5 (two rows make a ten), and towers of 10 and plates of 100 sit in groups of 5, so she can count them. The question number stays in sight when the blocks scroll. When she taps a block it gets a small heart. The heart has no number: the game never counts for her, and it never says a running total. Hello Kitty starts on the first number on the number line. Each friend block she taps makes Hello Kitty hop: a single block hops 1, a tower hops 10, a plate hops 100. The hop buttons do the same and put a heart on the next friend block. Undo takes back the last hop and its heart. Start again clears them all. Tapping Hello Kitty's own blocks does not move her, because she is already on that number. For taking away, each block she taps is crossed out and Hello Kitty hops back. A big block opens into ten smaller ones when she needs it; opening does not hop. On small sums the ruler shows only 0, 5, 10, 15, 20 and the start number. A dot marks each tick she hopped onto, so she counts the ticks herself. On a phone the ruler shows only the part she needs (for example 5 to 15), so the ticks are big enough to count. On big sums Hello Kitty stops when the hop size changes, for example after the last hop of 10. A box with a question mark glows and she types where Hello Kitty stopped. A wrong stop number only brings a tip, for example count by tens from 37; it does not count as a mistake. After 3 wrong stop numbers, Hello Kitty takes those hops back and counts them again with her. Each hop still waits for her tap. On the last hop Kitty does not say the stop number: she says where the last hop started, and Marie works out the stop herself. That sum then earns the smaller star reward, so guessing does not pay. On big sums the line is not drawn to scale: each hop has room, so she can count the hops of 1 too. The answer never shows anywhere until she types it. Every 5 sums there is a short cooking break with no maths. Stars buy friends and things for her home, which she arranges by dragging.</p></section>
+    <section><h3>Mistakes</h3><p>First mistake: try again. Second: a hint on how to work it out, for example start at 7 and count on 3 hops. Third: Hello Kitty's lesson. A glow shows what to tap. Hello Kitty waits for each tap and counts each hop with her, and the number line shows the number they have reached. The last hop is different: it lands on the answer, so Kitty does not say it and the line shows a question mark. Kitty says where the last hop started, and Marie works out where she landed and types it. If she is still wrong, Kitty tells her again how to count that last hop. Kitty never says or shows the answer. Stars are never taken away. Sums she needed help with come back 3 sums later and again 8 sums later.</p></section>
+    <section><h3>Sums she finds hard</h3><ul>${missed}</ul></section>
+    <section><h3>Last 7 days</h3><ul>${week.join("")}</ul></section>
+    <section><h3>Settings</h3>
+      <div class="set"><label for="levelSel">Level</label><select id="levelSel">${opts}</select></div>
+      <div class="set"><label for="goalIn">Daily goal (sums)</label><input id="goalIn" type="number" min="5" max="500" value="${P.goal}"></div>
+      <div class="set"><input id="voiceChk" type="checkbox"${P.voice ? " checked" : ""}><label for="voiceChk">Read sums and numbers out loud</label></div>
+      <div class="set"><label for="voiceSel">Kitty's voice</label><select id="voiceSel">${englishVoices().map(v => `<option value="${v.name.replace(/"/g, "&quot;")}"${kittyVoice && v.name === kittyVoice.name ? " selected" : ""}>${v.name} (${v.lang})</option>`).join("") || "<option>No voices on this device</option>"}</select><button class="mini" id="voiceTry" type="button">Try the voice</button></div>
+      <div class="set"><input id="soundChk" type="checkbox"${P.sound ? " checked" : ""}><label for="soundChk">Sounds</label></div></section>
+    <section><h3>Where progress is saved</h3><p>${cloud.on ? "In your Claude account, so it follows her on iPhone, iPad and computer when the same account is signed in. Also on this device." : "On this device only right now. Open it while signed in to Claude to keep progress in your account."}</p></section>
+    <section><h3>Start again</h3><div class="set">${resetAsk ? `<span>Erase all stars, home and history?</span><button class="mini" id="resetYes" type="button">Yes, erase everything</button><button class="mini" id="resetNo" type="button">Keep it</button>` : `<button class="mini" id="resetBtn" type="button">Reset all progress</button>`}</div></section>
+    <section><h3>Pictures</h3><p>Hello Kitty, My Melody, Kuromi, Pompompurin and Cinnamoroll are Sanrio characters; the drawings here are our own, for private family use only. Pictures: Microsoft Fluent Emoji, copyright Microsoft Corporation, MIT License. Home pictures: Tiny Treats by Isa Lousberg (CC0) and Microsoft Fluent Emoji (MIT). Room, furniture drawings and characters: our own.</p></section>`;
+  $("levelSel").onchange = e => { P.level = +e.target.value; P.levelStats[P.level] = []; P.teachRun = 0; save(); if (Q && (phase === "ask" || phase === "teach" || phase === "afterTeach")) nextQuestion(); };
+  $("goalIn").onchange = e => { const v = Math.max(5, Math.min(500, parseInt(e.target.value, 10) || 50)); P.goal = v; e.target.value = v; save(); };
+  $("voiceChk").onchange = e => { P.voice = e.target.checked; if (!P.voice) try { speechSynthesis.cancel(); } catch (x) {} save(); };
+  $("soundChk").onchange = e => { P.sound = e.target.checked; save(); };
+  $("voiceSel").onchange = e => { P.voiceName = e.target.value; kittyVoice = pickVoice(); save(); speak("Hello! I'm Kitty. Let's do sums together!", true); };
+  $("voiceTry").onclick = () => speak("Hello! I'm Kitty. Let's do sums together!", true);
+  if (resetAsk) {
+    $("resetYes").onclick = () => { adopt({ goal: P.goal, voice: P.voice, sound: P.sound, voiceName: P.voiceName }); resetAsk = false; save(); renderGrown(); if (window.HomeGame) HomeGame.refresh(); showStart(); };
+    $("resetNo").onclick = () => { resetAsk = false; renderGrown(); };
+  } else $("resetBtn").onclick = () => { resetAsk = true; renderGrown(); };
+}
+function showView(v) {
+  view = v;
+  for (const [n, t, p] of [["sums", "tabSums", "viewSums"], ["home", "tabHome", "viewHome"], ["grown", "tabGrown", "viewGrown"]]) { $(t).setAttribute("aria-selected", String(n === v)); $(p).hidden = n !== v; }
+  if (v === "home") HomeGame.mount($("viewHome"), { artBase: "art2/" }); else if (window.HomeGame) HomeGame.unmount();
+  if (v === "grown") renderGrown();
+}
+
+/* ================= Wiring ================= */
+$("blocks").addEventListener("click", e => { if (e.target.closest("[data-show]")) { headShown = true; renderBlocks(); say("Here are the blocks.", ""); return; } const b = e.target.closest("[data-b]"); if (b) { blockTapAt = performance.now(); tapBlock(+b.dataset.b); } });
+$("recount").onclick = clearCount;
+$("line").addEventListener("click", e => {
+  const j = e.target.closest("[data-j]"); if (j) return jump(+j.dataset.j);
+  if (e.target.closest("[data-undo]")) return undoJump();
+  if (e.target.closest("[data-restart]")) return restartLine();
+  const n = e.target.closest("[data-n]"); if (n) return tapNumber(+n.dataset.n);
+});
+$("pad").addEventListener("click", e => { const k = e.target.closest("[data-k]"); if (k) press(k.dataset.k); });
+$("speakBtn").onclick = () => speak($("bubble").textContent);
+$("tabSums").onclick = () => showView("sums");
+$("tabHome").onclick = () => showView("home");
+$("tabGrown").onclick = () => parentGate(() => showView("grown"));
+document.addEventListener("keydown", e => {
+  if (view !== "sums" || !Q || phase === "cook") return;
+  if (e.target.closest && e.target.closest("input, select")) return;
+  if (/^[0-9]$/.test(e.key)) press(e.key);
+  else if (e.key === "Backspace") { e.preventDefault(); press("del"); }
+  else if (e.key === "Enter") { e.preventDefault(); press("go"); }
+});
+
+renderPad();
+$("whoBtn").onclick = () => showProfiles();
+showProfiles();
+
+/* ----- Profiles: who is playing, and the parent code ----- */
+function showProfiles() {
+  const box = $("profiles"); box.hidden = false;
+  box.innerHTML = `<div class="prof-card"><h2 id="profTitle">Kids Maths</h2><p>Who is playing?</p><div class="prof-list">
+    <button class="prof" type="button" data-p="marie">${PROFILES.marie.pic}Marie</button>
+    <button class="prof" type="button" data-p="kennedy">${PROFILES.kennedy.pic}Kennedy</button>
+    <button class="prof" type="button" data-p="parent">${PARENT_PIC}Parent</button></div></div>`;
+  box.querySelectorAll("[data-p]").forEach(b => b.onclick = () => {
+    const p = b.dataset.p;
+    if (p === "parent") parentGate(pickChildForParent); else startAs(p);
+  });
+  box.querySelector("[data-p]").focus();
+}
+function startAs(p, thenView) {
+  if (window.speechSynthesis) speechSynthesis.cancel();
+  if (who !== p) {
+    who = p; LS_KEY = PROFILES[p].key;
+    clearTimeout(cloud.timer); cloud.ref = null; cloud.on = false;
+    adopt(null); loadLocal();
+    if (window.HomeGame) HomeGame.refresh();
+    connectCloud();
+  }
+  $("whoPic").innerHTML = PROFILES[p].pic; $("whoName").textContent = PROFILES[p].name;
+  $("profiles").hidden = true; $("profiles").innerHTML = "";
+  showStart();
+  showView(thenView || "sums");
+}
+function pickChildForParent() {
+  const box = $("profiles"); box.hidden = false;
+  box.innerHTML = `<div class="prof-card"><h2 id="profTitle">Parent</h2><p>Whose settings and progress? Or try the game in Demo.</p><div class="prof-list">
+    <button class="prof" type="button" data-c="marie">${PROFILES.marie.pic}Marie</button>
+    <button class="prof" type="button" data-c="kennedy">${PROFILES.kennedy.pic}Kennedy</button>
+    <button class="prof" type="button" data-c="demo">${PARENT_PIC}Demo</button></div></div>`;
+  box.querySelectorAll("[data-c]").forEach(b => b.onclick = () => {
+    if (b.dataset.c !== "demo") return startAs(b.dataset.c, "grown");
+    try { localStorage.removeItem(PROFILES.demo.key); } catch (e) {}
+    who = null; startAs("demo");   // a fresh demo every time, so the children's progress is never touched
+  });
+  box.querySelector("[data-c]").focus();
+}
+// A simple lock so the children cannot change their own level. Not a strong password.
+const PIN_KEY = "kidsMaths.parentCode", PIN_SET = "1523212847";   // the parents chose this code (19 Oct 2026)
+const pinHash = t => { let h = 5381; for (const c of "kids-maths:" + t) h = ((h * 33) ^ c.charCodeAt(0)) >>> 0; return String(h); };
+function parentGate(done) {
+  if (Date.now() < parentUntil) return done();
+  let saved = PIN_SET; try { saved = localStorage.getItem(PIN_KEY) || PIN_SET; } catch (e) {}
+  const box = $("profiles"); box.hidden = false;
+  let first = "";
+  const ask = (title, label) => {
+    box.innerHTML = `<div class="prof-card"><h2 id="profTitle">${title}</h2><form class="pin" id="pinForm">
+      <label for="pinIn">${label}</label><input id="pinIn" type="password" inputmode="numeric" pattern="[0-9]*" maxlength="4" autocomplete="off">
+      <p class="pin-msg" id="pinMsg" aria-live="assertive"></p>
+      <div class="row"><button class="main-btn" type="submit">OK</button><button class="main-btn" type="button" id="pinBack">Back</button></div></form></div>`;
+    $("pinIn").focus();
+    $("pinBack").onclick = () => { if (who) { box.hidden = true; box.innerHTML = ""; } else showProfiles(); };
+    $("pinForm").onsubmit = e => { e.preventDefault(); check($("pinIn").value.trim()); };
+  };
+  const bad = m => { $("pinMsg").textContent = m; $("pinIn").value = ""; $("pinIn").focus(); };
+  const check = v => {
+    if (!/^\d{4}$/.test(v)) return bad("Please type 4 numbers.");
+    if (saved) { if (pinHash(v) !== saved) return bad("That code is not right. Try again."); }
+    else if (!first) { first = v; return ask("Parent code", "Type the same 4 numbers again to check."); }
+    else if (v !== first) { first = ""; return ask("Parent code", "The two codes were different. Make a 4-number parent code."); }
+    else { saved = pinHash(v); try { localStorage.setItem(PIN_KEY, saved); } catch (e) {} }
+    parentUntil = Date.now() + 10 * 60 * 1000;   // stays open for 10 minutes
+    box.hidden = true; box.innerHTML = "";
+    done();
+  };
+  if (saved) ask("Parent", "Type the 4-number parent code."); else ask("Parent code", "Make a 4-number parent code. The children should not see it.");
+}
+</script>
