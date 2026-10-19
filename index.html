@@ -682,7 +682,7 @@ let stopTyped = "", stopMisses = {};
 let stopTeach = null;
 // Small adding sums: before the first hop, Kitty walks from 0 with each of her own blocks she taps.
 let walk = 0;
-const walking = () => !!Q && Q.op === "+" && isSmall(Q) && !line.hops.length;
+const walking = () => !!Q && phase === "ask" && Q.op === "+" && isSmall(Q) && !line.hops.length;
 function resetLine() { walk = 0; line = { start: Q.a, pos: Q.a, hops: [], links: [], known: [] }; stopTyped = ""; stopTeach = null; }
 function jumpPlan(q) { const d = digits(q.b), sign = q.op === "+" ? 1 : -1, out = []; for (const [size, k] of [[100, d[2] || 0], [10, d[1] || 0], [1, d[0] || 0]]) for (let i = 0; i < k; i++) out.push(sign * size); return out; }
 function jumpSizes(q) { if (isSmall(q)) return [1]; return q.level >= 8 ? [100, 10, 1] : [10, 1]; }
@@ -727,10 +727,10 @@ function nextQuestion() {
   renderAll();
   const lead = Q.review ? "Let's try this one again. " : "";
   const big = isSmall(Q) ? "" : " Big blocks first.";
-  say(`${lead}${Q.op === "+" ? `Hello Kitty starts on ${Q.a}. Tap ${CHARS[friend].name}'s blocks to hop her along.${big}` : `Tap ${Q.b} of Hello Kitty's blocks to take them away. She hops back.${big}`}`, "", false);
+  say(`${lead}${Q.op === "+" ? (walking() ? `Tap Hello Kitty's blocks to walk her to ${Q.a}. Then tap ${CHARS[friend].name}'s blocks to hop her along.` : `Hello Kitty starts on ${Q.a}. Tap ${CHARS[friend].name}'s blocks to hop her along.${big}`) : `Tap ${Q.b} of Hello Kitty's blocks to take them away. She hops back.${big}`}`, "", false);
   speak(`${lead}${Q.a} ${opWord(Q.op)} ${Q.b}`);
   if (col) say(`${lead}Let's add in columns. Start with the ones: ${colAsk()}`, "", false);
-  else if (makeTen(Q)) say(`${lead}Make 10 first! Tap ${CHARS[friend].name}'s blocks to fill Hello Kitty's ten. Kitty stops on 10.`, "", false);
+  else if (makeTen(Q)) say(`${lead}Make 10 first! Tap Hello Kitty's blocks to walk her to ${Q.a}. Then tap ${CHARS[friend].name}'s blocks to fill Hello Kitty's ten. Kitty stops on 10.`, "", false);
   qStart = performance.now();
 }
 
@@ -740,6 +740,7 @@ function wiggle(id) { const el = document.querySelector(`[data-b="${id}"]`); if 
 function hopBlocked(sz) {
   if (!active()) return "";
   if (stopPending()) return "First type the number where Hello Kitty stopped. Use the number buttons.";
+  if (phase === "ask" && walking() && walk < Q.a) return `First tap Hello Kitty's blocks to walk her to ${Q.a}.`;   // Kitty walks from 0 to her number first
   const st = nextStep();
   if (st === undefined) return Q.op === "+" ? `All of ${CHARS[friend].name}'s blocks are used. Where did Hello Kitty land? Type it.` : `You took away ${Q.b} already. Where did Hello Kitty land? Type it.`;
   if (sz !== Math.abs(st)) return Q.op === "+" ? `First hop with ${CHARS[friend].name}'s ${blockNames(Math.abs(st))}.` : `First take away Hello Kitty's ${blockNames(Math.abs(st))}.`;
@@ -1320,7 +1321,7 @@ function renderLine() {
   box.classList.toggle("focus", guiding());
   const sign = Q.op === "+" ? 1 : -1, taps = line.hops.length, waiting = stopPending();
   const landings = []; { let at = line.start; line.hops.forEach(h => { at += h; landings.push(at); }); }
-  const sentence = makeTen(Q) ? (line.known.length ? `${Q.a} + ${10 - Q.a} = 10. Then 10 + ${Q.b - (10 - Q.a)}.` : `Make 10 first: ${Q.a} + ? = 10`) : `Hello Kitty starts on ${line.start}.${line.known.length ? ` <small class="stops">Stops: ${line.known.map(k => k.v).join(", ")}</small>` : ""}`;
+  const sentence = makeTen(Q) ? (line.known.length ? `${Q.a} + ${10 - Q.a} = 10. Then 10 + ${Q.b - (10 - Q.a)}.` : `Make 10 first: ${Q.a} + ? = 10`) : walking() && walk < Q.a ? `Walk Hello Kitty to ${Q.a}.` : `Hello Kitty starts on ${line.start}.${line.known.length ? ` <small class="stops">Stops: ${line.known.map(k => k.v).join(", ")}</small>` : ""}`;
   const pill = isSmall(Q) ? `<span class="taps" id="runTaps">${Q.b} ${Q.b === 1 ? "hop" : "hops"}${sign < 0 ? " back" : ""}</span>` : "";
   lineW = box.clientWidth;
   const W = Math.max(240, Math.round((lineW || 660) - 20)), narrow = W < 480;
