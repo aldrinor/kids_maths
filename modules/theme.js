@@ -78,6 +78,12 @@ body.who-kennedy .tp-score { visibility: hidden; }
 .kd-keys { grid-template-columns: repeat(6, minmax(0, 1fr)) !important; min-width: min(380px, 100%); }
 .ch-row, .bg-row { display: grid !important; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); gap: 8px; }
 .ch-row > *, .bg-row > * { width: 100%; min-width: 0; }
+.pad { grid-template-columns: repeat(6, minmax(0, 1fr)) !important; }
+.pad > button { width: auto !important; min-width: 0 !important; }
+.pin .row { display: grid !important; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; width: min(360px, 100%); }
+.pin .row > button { width: 100%; padding-inline: 8px; }
+.set:has(> button + button) > button, .set:has(> button + span + button) > button { flex: 1 1 0; min-width: 0; }
+.pin input { border: 1px solid var(--line) !important; box-shadow: var(--shadow); border-radius: 16px !important; }
 `;
   const st = document.createElement("style"); st.id = "theme-css"; st.textContent = CSS; document.head.appendChild(st);
 
