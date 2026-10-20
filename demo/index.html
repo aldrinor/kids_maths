@@ -34,7 +34,7 @@ button { font: inherit; color: inherit; cursor: pointer; }
 
 #work { grid-area: work; position: relative; min-height: 0; overflow: hidden; }
 #qbody { position: absolute; inset: 8px 16px 12px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: clamp(12px, 2.4vh, 24px); text-align: center; pointer-events: none; }
-#qbody .box, #qbody .opt, #qbody .bulb, #qbody .nl, #qbody .nlreset { pointer-events: auto; position: relative; z-index: 4; }
+#qbody .box, #qbody .opt, #qbody .bulb, #qbody .nlbox, #qbody .hoprow { pointer-events: auto; position: relative; z-index: 4; }
 #qbody .bulb { position: absolute; z-index: 5; }
 .qline { font-weight: 800; font-size: clamp(18px, 2.6vw, 26px); color: #6b6b6b; }
 .qline .kw { color: var(--teal); }
@@ -55,17 +55,23 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .opt.right { background: #dff5e7; border-color: var(--green); color: #255e3a; }
 .opt.wrong { border-color: var(--red); }
 
-/* the working number line */
-.nlwrap { width: min(760px, 100%); display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 8px; }
-.nl { width: 100%; height: auto; touch-action: none; }
-.nl .tick { cursor: pointer; }
-.nlreset { width: 44px; height: 44px; border-radius: 50%; border: 2px solid #c8d3d0; background: #fff; display: grid; place-items: center; padding: 0; }
-.nlreset svg { width: 60%; height: 60%; }
-.nlhelp { font-size: clamp(14px, 1.8vw, 17px); color: #7a7a7a; font-weight: 700; }
+/* the working number line: full width, about 11 big numbers, a marker that hops */
+.nlbox { width: 100%; max-width: 1100px; touch-action: none; }
+.nlbox svg { display: block; width: 100%; }
+.nlbox .tick { cursor: pointer; }
+.nlbox .hop.new { stroke-dasharray: 400; stroke-dashoffset: 400; animation: draw .35s ease forwards; }
+@keyframes draw { to { stroke-dashoffset: 0; } }
+.nlbox .hopper.land { animation: land .35s ease; transform-box: fill-box; transform-origin: 50% 100%; }
+@keyframes land { 0% { transform: translateY(-40%) scale(.9); } 70% { transform: translateY(4%) scale(1.06, .94); } 100% { transform: none; } }
+.hoprow { width: min(640px, 100%); display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+.hoprow button { min-height: clamp(48px, 7vh, 64px); border-radius: 14px; border: 2px solid #c8d3d0; background: #fff; font-size: clamp(16px, 2.2vw, 22px); font-weight: 800; color: #3d5a55; white-space: nowrap; padding: 0 6px; box-shadow: 0 3px 0 rgba(0, 0, 0, .1); }
+.hoprow button.go { background: #e9f8f4; border-color: var(--teal); color: #0b6f59; }
+.hoprow button:disabled { opacity: .4; }
 
 /* scratch drawing: one pencil, eraser, clear */
 #draw { position: absolute; inset: 0; width: 100%; height: 100%; z-index: 3; pointer-events: none; touch-action: none; }
 #app.drawing #draw { pointer-events: auto; cursor: crosshair; }
+#app.drawing #qbody * { pointer-events: none !important; }   /* pencil on: draw anywhere, even over the number line */
 #tools { grid-area: tools; background: var(--panel); display: flex; flex-direction: column; align-items: center; gap: 12px; padding: 14px 8px; }
 #tools button { width: 100%; max-width: 76px; aspect-ratio: 1; border-radius: 14px; border: 2px solid #d4d4d4; background: #fff; display: grid; place-items: center; padding: 0; }
 #tools button svg { width: 56%; height: 56%; }
@@ -97,8 +103,7 @@ button { font: inherit; color: inherit; cursor: pointer; }
   #pad { grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 8px; }
   #pad button { min-height: 52px; }
   #tile { min-height: 56px; }
-  .nlwrap { grid-template-columns: minmax(0, 1fr); }
-  .nlreset { justify-self: end; width: 40px; height: 40px; margin-top: -6px; }
+  .hoprow button { font-size: 15px; }
 }
 /* phone turned sideways: short screen, keep it compact */
 @media (max-height: 520px) and (orientation: landscape) {
@@ -107,7 +112,7 @@ button { font: inherit; color: inherit; cursor: pointer; }
   #qbody { inset: 4px 12px 6px; gap: 8px; }
   .eq { font-size: 28px; } .qline, .story { font-size: 17px; } .story { line-height: 1.3; }
   .bars { grid-template-columns: repeat(3, minmax(0, 1fr)); width: min(600px, 100%); } .opt { min-height: 46px; justify-content: center; }
-  .nl { max-height: 30vh; } .nlhelp { display: none; } .nlreset { width: 38px; height: 38px; }
+  .hoprow button { min-height: 40px; } .nlbox { max-width: 700px; }
   #keys { padding: 6px 10px calc(6px + env(safe-area-inset-bottom)); gap: 8px; } #pad { gap: 6px; }
   #pad button, #tile { min-height: 44px; } #msg { padding: 4px 12px; }
 }
@@ -212,7 +217,7 @@ function makeQuestion(i) {
 function drawDots() { $("#dots").innerHTML = Array.from({ length: SET }, (_, i) => `<i class="${i < n ? "done" : i === n ? "now" : ""}"></i>`).join(""); }
 function nextQuestion() {
   closeHint(); clearDraw();
-  Q = makeQuestion(n); QS = { tries: 0, phase: "ask", typed: "", pick: null, line: null, hops: [] };
+  Q = makeQuestion(n); QS = { tries: 0, phase: "ask", typed: "", pick: null, line: null, hops: [], lo: null, hi: null };
   $("#app").classList.toggle("nokeys", !Q.typed); $("#app").classList.remove("locked");
   $("#msg").hidden = true; tileTo("", "Check");
   drawDots(); renderBody();
@@ -224,42 +229,57 @@ function renderBody() {
   if (Q.word) top = `<div class="story">${Q.story}<br><b>${Q.ask}</b><span class="inbulb">${bulb}</span></div><div class="eq"><span class="box ${boxCls()}" id="ansBox">${QS.typed || "&nbsp;"}</span></div>`;
   else if (Q.typed) top = `<div class="eq"><span>${Q.a}</span><span>${Q.op}</span><span>${Q.b}</span><span>=</span><span class="box ${boxCls()}" id="ansBox">${QS.typed || "&nbsp;"}${bulb}</span></div>`;
   else top = `<div class="qline">What is <span class="kw">${Q.a} + ${Q.b}</span>?<span class="inbulb">${bulb}</span></div><div class="bars">${Q.opts.map((o, i) => `<button class="opt" data-v="${o}"><small>${"abc"[i]})</small>${o}</button>`).join("")}</div>`;
-  b.innerHTML = top + `<div class="nlwrap">${lineSvg()}<button class="nlreset" aria-label="Start the number line again">${ICON.reset}</button></div>
-    <div class="nlhelp"${QS.phase === "ask" ? "" : " hidden"}>${QS.line == null ? "Tap a number to start. Then tap to hop." : "Tap the next number to hop."}</div>`;
+  const off = QS.phase === "shown" ? " disabled" : "";
+  b.innerHTML = top + `<div class="nlbox" aria-label="Number line"></div>
+    <div class="hoprow"><button data-h="-1"${off} aria-label="Hop back one">◀ Back</button><button data-h="1" class="go"${off} aria-label="Hop forward one">Forward ▶</button><button data-h="0"${off} aria-label="Start again">↺ Restart</button></div>`;
+  drawLine();
+  b.querySelectorAll(".hoprow button").forEach(x => x.onclick = () => { const h = +x.dataset.h; if (h) hopTo(QS.line + h); else { QS.line = Q.a; QS.hops = []; drawLine(); } });
   b.querySelectorAll(".bulb").forEach(x => x.onclick = e => { e.stopPropagation(); document.querySelector(".bubble") ? closeHint() : openHint(true); });
   b.querySelectorAll(".opt").forEach(x => x.onclick = () => { if (QS.phase !== "ask") return; QS.pick = +x.dataset.v; QS.mark = null; renderBody(); speak(x.dataset.v); });
   if (QS.pick != null) b.querySelectorAll(`.opt[data-v="${QS.pick}"]`).forEach(x => x.classList.add("sel", ...(QS.mark ? [QS.mark] : [])));
-  b.querySelectorAll(".tick").forEach(t => t.onclick = () => hopTo(+t.dataset.n));
-  b.querySelector(".nlreset").onclick = () => { if (QS.phase === "shown") return; QS.line = null; QS.hops = []; renderBody(); };
 }
 function boxCls() { return QS.mark === "right" ? "right" : QS.mark === "wrong" ? "wrong" : QS.phase === "ask" ? "active" : ""; }
-/* the number line: 0 to 20, every number labelled; the child taps a start, then taps to hop. No running count. */
-function lineSvg() {
-  let lo = 0, hi = 20;
-  if (matchMedia(NARROW).matches) { lo = Math.max(0, Math.min(Q.a, Q.ans) - 2); hi = lo + 12; if (hi > 20) { hi = 20; lo = 8; } }   // phones: 13 big numbers around the question
-  const W = hi - lo > 12 ? 840 : 560, pad = 26, step = (W - pad * 2) / (hi - lo), X = v => pad + (v - lo) * step;
-  let s = `<svg class="nl" viewBox="0 0 ${W} 150" aria-label="Number line from ${lo} to ${hi}">`;
-  s += `<line x1="${pad - 14}" y1="96" x2="${W - pad + 14}" y2="96" stroke="#555" stroke-width="3"/>`;
-  QS.hops.forEach(([a, c]) => { const m = (X(a) + X(c)) / 2, h = Math.min(70, 26 + Math.abs(c - a) * 6);
-    s += `<path class="hop" d="M${X(a)} 90 Q${m} ${90 - h} ${X(c)} 90" stroke="#f08a24" stroke-width="3.4" fill="none" stroke-linecap="round"/>`; });
+/* The number line: about 11 numbers around the question, sized from the real screen width.
+   A small hopper starts on the first number of the sum. The child hops with the buttons or taps a number.
+   The game never counts the hops for her. */
+function lineRange() {
+  const span = 10, extra = span - Q.b, left = 1 + Math.floor(Math.random() * Math.max(1, extra - 1));
+  let lo = Math.min(Q.a, Q.ans) - left; lo = Math.max(0, Math.min(lo, 20 - span));
+  return [lo, lo + span];
+}
+function drawLine() {
+  const box = document.querySelector("#qbody .nlbox"); if (!box) return;
+  if (QS.lo == null) [QS.lo, QS.hi] = lineRange();
+  if (QS.line == null) QS.line = Q.a;
+  const lo = QS.lo, hi = QS.hi, Wd = Math.max(240, box.clientWidth), step = Wd / (hi - lo + 1), X = v => step / 2 + (v - lo) * step;
+  const font = Math.max(18, Math.min(40, step * 0.42)), tick = font * 0.8, arcH = Math.min(step * 0.8, 74), r = Math.max(12, Math.min(26, step * 0.26));
+  const base = arcH + r + 10, H = base + tick / 2 + font + 18;
+  let s = `<svg viewBox="0 0 ${Wd} ${H}" height="${H}" role="img" aria-label="Number line from ${lo} to ${hi}">`;
+  s += `<line x1="4" y1="${base}" x2="${Wd - 4}" y2="${base}" stroke="#4d4d4d" stroke-width="4" stroke-linecap="round"/>`;
+  QS.hops.forEach(([a, c], i) => { const m = (X(a) + X(c)) / 2, h = Math.min(arcH, arcH * (0.6 + Math.abs(c - a) * 0.15));
+    s += `<path class="hop${i === QS.hops.length - 1 && QS.fresh ? " new" : ""}" d="M${X(a)} ${base - 4} Q${m} ${base - 4 - h * 1.6} ${X(c)} ${base - 4}" stroke="#f08a24" stroke-width="${Math.max(3, step * 0.06)}" fill="none" stroke-linecap="round"/>`; });
   for (let v = lo; v <= hi; v++) {
-    s += `<g class="tick" data-n="${v}"><rect x="${X(v) - step / 2}" y="20" width="${step}" height="130" fill="transparent"/>
-      <line x1="${X(v)}" y1="84" x2="${X(v)}" y2="108" stroke="#555" stroke-width="${v % 5 ? 2 : 3.4}"/>
-      <text x="${X(v)}" y="136" font-size="${W < 800 ? (v % 5 ? 27 : 31) : (v % 5 ? 19 : 23)}" font-weight="${v % 5 ? 600 : 800}" text-anchor="middle" fill="#444">${v}</text></g>`;
+    const five = v % 5 === 0;
+    s += `<g class="tick" data-n="${v}"><rect x="${X(v) - step / 2}" y="0" width="${step}" height="${H}" fill="transparent"/>
+      <line x1="${X(v)}" y1="${base - tick / 2}" x2="${X(v)}" y2="${base + tick / 2}" stroke="#4d4d4d" stroke-width="${five ? 4 : 2.6}" stroke-linecap="round"/>
+      <text x="${X(v)}" y="${base + tick / 2 + font + 4}" font-size="${font}" font-weight="${five ? 900 : 700}" text-anchor="middle" fill="#3f3f3f">${v}</text></g>`;
   }
-  if (QS.line != null) s += `<circle cx="${X(QS.line)}" cy="96" r="11" fill="#0aae90" stroke="#fff" stroke-width="3" pointer-events="none"/>`;
-  return s + "</svg>";
+  const x = X(QS.line), y = base - r - 3;
+  s += `<g class="hopper${QS.fresh ? " land" : ""}" pointer-events="none"><circle cx="${x}" cy="${y}" r="${r}" fill="#0aae90" stroke="#fff" stroke-width="3"/>
+    <circle cx="${x - r * .32}" cy="${y - r * .12}" r="${r * .13}" fill="#fff"/><circle cx="${x + r * .32}" cy="${y - r * .12}" r="${r * .13}" fill="#fff"/>
+    <path d="M${x - r * .3} ${y + r * .28} Q${x} ${y + r * .52} ${x + r * .3} ${y + r * .28}" stroke="#fff" stroke-width="${Math.max(2, r * .1)}" fill="none" stroke-linecap="round"/></g>`;
+  box.innerHTML = s + "</svg>";
+  QS.fresh = false;
+  box.querySelectorAll(".tick").forEach(t => t.onclick = () => hopTo(+t.dataset.n));
 }
 function hopTo(v) {
-  if (QS.phase === "shown") return;
-  if (QS.line == null) { QS.line = v; speak(String(v)); }
-  else if (v !== QS.line) { QS.hops.push([QS.line, v]); QS.line = v; }
-  renderBody();
+  if (!QS || QS.phase === "shown" || v < QS.lo || v > QS.hi || v === QS.line) return;
+  QS.hops.push([QS.line, v]); QS.line = v; QS.fresh = true; drawLine();
 }
-async function showHops() {                 // after "See The Answer": the game hops slowly, one hop at a time
-  const me = QS; QS.line = Q.a; QS.hops = []; renderBody(); await wait(500);
+async function showHops() {                 // after "See The Answer": the hopper goes back to the start and hops slowly
+  const me = QS; QS.line = Q.a; QS.hops = []; drawLine(); await wait(500);
   const dir = Q.op === "+" ? 1 : -1;
-  for (let i = 0; i < Q.b; i++) { if (QS !== me) return; QS.hops.push([QS.line, QS.line + dir]); QS.line += dir; renderBody(); await wait(420); }
+  for (let i = 0; i < Q.b; i++) { if (QS !== me) return; QS.hops.push([QS.line, QS.line + dir]); QS.line += dir; QS.fresh = true; drawLine(); await wait(480); }
 }
 
 /* ---------- keypad (digits only: fewer choices) ---------- */
@@ -307,6 +327,7 @@ async function tile() {
   if (QS.phase === "final") {
     QS.phase = "shown"; QS.mark = "right";
     if (Q.typed) QS.typed = String(Q.ans); else QS.pick = Q.ans;
+    renderBody();
     msg("shown", "This is the correct answer!"); tileTo("next", "Next ➜");
     speak(`${Q.hint} ${Q.a} ${Q.op === "+" ? "plus" : "minus"} ${Q.b} is ${Q.ans}.`);
     showHops();
@@ -388,7 +409,7 @@ addEventListener("resize", () => { buildPad(); sizeDraw(); if (QS) renderBody();
 requestAnimationFrame(sizeDraw);
 drawDots();
 overlay(`<div class="panel">${ICON.star.replace("<svg", '<svg class="big"')}<h1>Maths practice demo</h1>
-  <p>${SET} questions, one after another. Use the number line or the pencil to work it out.</p>
+  <p>${SET} questions, one after another. Hop on the number line, or draw with the pencil, to work it out.</p>
   <p>Plain look for now. The kitty story and the knight story come later.</p><button class="go">Start</button></div>`)
   .then(() => { sizeDraw(); nextQuestion(); });
 window.__demo = { get Q() { return Q; }, get QS() { return QS; }, skill, get n() { return n; } };
