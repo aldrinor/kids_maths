@@ -242,3 +242,38 @@ body[data-theme="castle"] #tile.next span { background: var(--ok); }
 .skillcard button { border: 3px solid #fff; background: transparent; color: #fff; font-weight: 800; font-size: 22px; border-radius: 999px; padding: 10px 44px; }
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: .01s !important; animation-iteration-count: 1 !important; transition-duration: .01s !important; } }
 #tools .bin { color: var(--ink-soft); }
+
+/* ---------------- layout fixes (20 Oct 2026, from tests/demo_layout_test.py) ---------------- */
+/* during a lesson: the hop buttons hide and the number line gets a little smaller, so the board has room */
+#app.lesson .hoprow { display: none; }
+#app.lesson .nlbox svg { max-height: 22vh; }
+/* short phones held upright (small iPhones, or Safari's bars showing) */
+@media (max-height: 700px) and (orientation: portrait) {
+  #deco { height: 14px; } #top { padding-top: 16px; gap: 8px; } #speak { width: 42px; height: 42px; } #mascot { width: 40px; height: 48px; }
+  #tools { height: 62px; } #tools .pencil { height: 58px; width: 26px; } #tools .rubber { height: 54px; width: 30px; } #tools .bin { width: 40px; height: 40px; }
+  .eq { font-size: 30px; } .qline, .story { font-size: 16px; } .story { line-height: 1.35; } .opt { min-height: 48px; }
+  .room { min-height: 0; } .qbottom { gap: 6px; } .hoprow button { min-height: 42px; } .nlbox svg { max-height: 19vh; }
+  #pad { gap: 6px; } #pad button { min-height: 42px; } #tile { min-height: 46px; } #keys { padding-top: 8px; gap: 8px; } #msg { padding: 4px 12px; }
+}
+/* phones turned sideways: too short for maths with a keypad, so ask to turn the phone */
+#rotate { display: none; }
+@media (max-height: 430px) and (orientation: landscape) {
+  #rotate { display: grid; position: fixed; inset: 0; z-index: 60; place-items: center; background: var(--bg); color: var(--ink); text-align: center; font-size: 22px; font-weight: 700; }
+  #rotate svg { width: 72px; height: 72px; color: var(--primary); }
+}
+/* short wide screens (laptops, iPads turned sideways with Safari's bars) */
+@media (max-height: 820px) and (orientation: landscape) and (min-width: 900px) {
+  .nlbox svg { max-height: 21vh; } #app.lesson .nlbox svg { max-height: 15vh; }
+  #pad button, #tile { min-height: 50px; } .opt { min-height: 52px; } .hoprow button { min-height: 46px; }
+  .qtop { gap: 10px; } .eq { font-size: clamp(30px, 5vw, 46px); }
+}
+/* the smallest phones held upright */
+@media (max-height: 600px) and (orientation: portrait) {
+  #mascot { display: none; } #top { padding-top: 14px; }
+  #tools { height: 52px; } #tools .pencil { height: 48px; width: 22px; } #tools .rubber { height: 46px; width: 26px; } #tools .bin { width: 36px; height: 36px; margin-top: 4px; }
+  .eq { font-size: 26px; } .story { font-size: 15px; line-height: 1.3; } .opt { min-height: 42px; }
+  .nlbox svg { max-height: 16vh; } #app.lesson .nlbox svg { max-height: 12vh; } .hoprow button { min-height: 38px; }
+  #pad button { min-height: 38px; } #tile { min-height: 42px; }
+}
+/* small phones: during a lesson the word story steps aside (the board writes it as a sum); the answer box stays */
+@media (max-height: 700px) and (orientation: portrait) { #app.lesson .story { display: none; } }

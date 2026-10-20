@@ -10,7 +10,7 @@ THEME = sys.argv[3] if len(sys.argv) > 3 else "cafe"
 # speech is stubbed and recorded, so the test is silent and can check what would be spoken
 STUB = ("window.__demoFast=true;window.__noVoice=true;window.__spoken=[];window.speechSynthesis={speak(u){window.__spoken.push(u.text)},cancel(){},getVoices(){return[]},pause(){},resume(){}};"
         "window.SpeechSynthesisUtterance=function(t){this.text=t};window.AudioContext=window.webkitAudioContext=undefined;")
-SIZES = [(360, 740, "phone"), (390, 844, "phone2"), (844, 390, "phone_side"), (768, 1024, "ipad_tall"),
+SIZES = [(360, 740, "phone"), (390, 844, "phone2"), (375, 553, "iphone_se_safari"), (768, 1024, "ipad_tall"),
          (1024, 768, "ipad"), (1366, 1024, "ipad_pro"), (1440, 900, "desktop")]
 res = []
 
@@ -67,7 +67,7 @@ def teaching(pg, q, tag, i, again=False):
     pg.wait_for_selector("#board", timeout=6000)
     pg.wait_for_function("()=>__demo.QS && !__demo.QS.teaching && !document.querySelector('#board .again').hidden", timeout=40000)
     ok(f"{tag} q{i} drawing wiped for the lesson", pg.evaluate(INK) == 0)
-    ok(f"{tag} q{i} working hand-written on the board", pg.evaluate(BOARD_INK) > 800, pg.evaluate(BOARD_INK))
+    ok(f"{tag} q{i} working hand-written on the board", pg.evaluate(BOARD_INK) > 400, pg.evaluate(BOARD_INK))
     line = pg.evaluate("()=>({at:__demo.QS.line, hops:__demo.QS.hops.length, nl:document.querySelector('#qbody .nlbox').getBoundingClientRect().top, board:document.querySelector('#board').getBoundingClientRect().bottom})")
     ok(f"{tag} q{i} the hopper hopped {q['b']} times on the number line to {q['ans']}", line["at"] == q["ans"] and line["hops"] == q["b"], line)
     ok(f"{tag} q{i} the number line stays in view during the lesson", line["board"] <= line["nl"] + 1, line)

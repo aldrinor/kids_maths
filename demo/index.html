@@ -21,6 +21,7 @@
 <body>
 <div id="app">
   <div id="deco"></div>
+  <div id="rotate" role="alert"><div><svg viewBox="0 0 48 48" aria-hidden="true"><rect x="15" y="6" width="18" height="32" rx="4" fill="none" stroke="currentColor" stroke-width="3"/><path d="M8 30a16 16 0 0 0 10 12M40 18A16 16 0 0 0 30 6" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"/></svg><p>Please turn the phone upright.</p></div></div>
   <div id="top"><button id="speak" aria-label="Read the question out loud"></button><div id="dots" aria-label="Progress"></div><div id="mascot" aria-hidden="true"></div></div>
   <div id="tools"></div>
   <div id="work"><canvas id="draw"></canvas><div id="qbody"></div></div>
@@ -267,9 +268,7 @@ async function showHops() {
 function placeBoard() {
   const bd = $("#board"), work = $("#work").getBoundingClientRect(), top = document.querySelector(".qtop"), row = document.querySelector("#qbody .nlbox");   // stop above the number line, so it stays in view
   if (!bd || !top || !row) return;
-  const t = top.getBoundingClientRect().bottom - work.top + 8, bt = row.getBoundingClientRect().top - work.top - 8;
-  let y0 = t, h = bt - t;
-  if (h < 230) { y0 = 6; h = Math.max(100, bt - 6); }       // short screens: the board also covers the question (it is written on the board)
+  const y0 = top.getBoundingClientRect().bottom - work.top + 6, h = Math.max(60, row.getBoundingClientRect().top - work.top - 6 - y0);
   Object.assign(bd.style, { left: "12px", right: "12px", top: y0 + "px", height: h + "px" });
   bd.style.setProperty("--rule", Math.max(28, Math.round(h / 6)) + "px");
 }
@@ -295,7 +294,7 @@ async function teach() {
   const W = r.width, H = r.height, plan = KM.teach(Q), BTN = 58;
   const split = plan.kind === "make10" || plan.kind === "back10", lastRow = plan.kind === "exact10" ? 2 : 3;
   const units = 1.25 + lastRow * 1.32 + 0.45 + (split ? 0.95 : 0);            // board height needed, in letter sizes
-  const fs = Math.max(18, Math.min(56, (H - BTN) / units, W / 8.5)), ink = css("--board-ink") || "#2b3a55";
+  const fs = Math.max(14, Math.min(56, (H - BTN) / units, W / 8.5)), ink = css("--board-ink") || "#2b3a55";
   const STEP = css("--board-step"), SPLIT = css("--board-split"), ANS = css("--board-answer"), HOP = css("--board-hop"), QM = css("--hop-label");
   const rowY = i => fs * 1.25 + i * fs * 1.32 + (split && i >= 1 ? fs * 0.95 : 0);
   g.lineCap = g.lineJoin = "round";
@@ -537,7 +536,7 @@ overlay(`<div class="panel"><h1>Maths practice</h1><p>Pick a world. Then 10 ques
   <button class="go" data-theme="castle"><span class="art">${art("wave", "castle")}</span>Knight Castle</button></div></div>`)
   .then(t => { setTheme(t); audioCtx(); sizeDraw(); say("Let's go!"); setTimeout(nextQuestion, 900 * FAST); });
 window.__demo = { get Q() { return Q; }, get QS() { return QS; }, skill, get n() { return n; },
-  lesson(kind, a, b) { closeBoard(); Q = KM.build(kind, a, b); QS = { tries: 1, phase: "ask", typed: "", pick: null, line: null, hops: [], lo: null, hi: null };   // for tests: show one lesson
+  lesson(kind, a, b) { closeBoard(); Q = KM.build(kind, a, b); if (!Q.typed) Q.opts = [Q.ans, Q.ans + 1, Q.ans - 2]; QS = { tries: 1, phase: "ask", typed: "", pick: null, line: null, hops: [], lo: null, hi: null };   // for tests: show one lesson
     $("#app").classList.toggle("nokeys", !Q.typed); renderBody(); return teach(); } };
 </script>
 </body>
