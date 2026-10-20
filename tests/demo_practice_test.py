@@ -6,6 +6,7 @@ from playwright.sync_api import sync_playwright
 
 URL = sys.argv[1]
 ENGINE = sys.argv[2] if len(sys.argv) > 2 else "chromium"
+THEME = sys.argv[3] if len(sys.argv) > 3 else "cafe"
 # speech is stubbed and recorded, so the test is silent and can check what would be spoken
 STUB = ("window.__demoFast=true;window.__noVoice=true;window.__spoken=[];window.speechSynthesis={speak(u){window.__spoken.push(u.text)},cancel(){},getVoices(){return[]},pause(){},resume(){}};"
         "window.SpeechSynthesisUtterance=function(t){this.text=t};window.AudioContext=window.webkitAudioContext=undefined;")
@@ -91,7 +92,8 @@ with sync_playwright() as p:
         pg.on("pageerror", lambda e: errs.append(str(e)))
         pg.goto(URL)
         pg.wait_for_timeout(400)
-        pg.click(".over .go")
+        pg.click(f'.over .go[data-theme="{THEME}"]')
+        ok(f"{tag} {THEME} theme on", pg.evaluate("()=>document.body.dataset.theme") == THEME)
         pg.wait_for_timeout(600)
         ok(f"{tag} 6 colour pencils and a rubber", pg.locator("#tools .pencil").count() == 6 and pg.locator("#tools .rubber").count() == 1)
         # tools make no sound
@@ -110,7 +112,7 @@ with sync_playwright() as p:
             pg.mouse.move(room["x"] + room["width"] * (0.2 + k * 0.06), y + k * 2)
         pg.mouse.up()
         ok(f"{tag} pen draws in the free space", pg.evaluate(INK) > 200, pg.evaluate(INK))
-        pg.screenshot(path=f"demo_{tag}_pen.png")
+        pg.screenshot(path=f"demo_{THEME}_{tag}_pen.png")
         pg.click('#tools [data-t="clear"]')
         ok(f"{tag} clear empties the drawing", pg.evaluate(INK) == 0)
         # number line: hopper on the first number, labels +1 +2
@@ -123,7 +125,7 @@ with sync_playwright() as p:
         size = pg.evaluate("()=>{const s=document.querySelector('.nlbox svg'),t=s.querySelectorAll('.tick');const a=t[0].getBoundingClientRect(),b=t[1].getBoundingClientRect();return Math.round(b.left-a.left)}")
         ok(f"{tag} number line is big (step {size}px)", size >= (28 if vw < 500 else 60 if vw >= 900 and vh >= 600 else 40))
         ok(f"{tag} everything fits", not pg.evaluate(FIT), pg.evaluate(FIT))
-        pg.screenshot(path=f"demo_{tag}_q.png")
+        pg.screenshot(path=f"demo_{THEME}_{tag}_q.png")
         pg.click('.hoprow button[data-h="0"]')
         widths = pg.evaluate("()=>[...document.querySelectorAll('#pad button')].map(b=>Math.round(b.getBoundingClientRect().width))")
         ok(f"{tag} keypad keys equal width", max(widths) - min(widths) <= 1, widths)
@@ -145,7 +147,7 @@ with sync_playwright() as p:
                 answer(pg, q, wrong(q))
                 teaching(pg, q, tag, i, again=True)
                 if tag in ("ipad", "phone2", "phone_side"):
-                    pg.screenshot(path=f"demo_{tag}_teach.png")
+                    pg.screenshot(path=f"demo_{THEME}_{tag}_teach.png")
                 answer(pg, q, q["ans"])
                 pg.wait_for_timeout(200)
                 ok(f"{tag} q{i} right after guidance", "correct" in pg.inner_text("#msg"))

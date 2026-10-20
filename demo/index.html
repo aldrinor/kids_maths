@@ -6,7 +6,7 @@
 <meta name="robots" content="noindex">
 <title>Maths Practice Demo</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Patrick+Hand&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Lexend:wght@400;500;600;700;800&family=Sniglet:wght@400;800&family=Germania+One&family=Patrick+Hand&display=swap">
 <!-- Practice demo for Kids Maths (20 Oct 2026). Question screen follows Prodigy Math's layout
      (prodigy_design_blueprint.md 2.12 to 2.20), without the battle. Aldrin's changes:
      - questions one after another; after a right answer the next one comes by itself;
@@ -16,169 +16,43 @@
        (make 10 first, back to 10 first, ones and keep the 10, or hops); "Watch again" replays it;
      - a natural recorded voice (voice/<hash>.mp3, made with the free Kokoro voice); tools make no sound.
      Questions, teaching steps and all sentences live in phrases.js. -->
-<style>
-:root {
-  --teal: #0aae90; --teal-dark: #0b6f59; --teal-soft: #e9f8f4; --blue: #027cbc; --blue-edge: #076a9c; --orange: #fb8405;
-  --amber: #eba647; --salmon: #dd9089; --key: #f9f9f9; --keypad: #c9cacd; --panel: #eeeeee;
-  --ink: #3f3f3f; --navy: #2c3e50; --green: #2fae5b; --red: #d9534f; --bg: #fbfefd; --paper: #fffdf6;
-}
-* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-html, body { margin: 0; height: 100%; overflow: hidden; overflow-x: clip; background: var(--bg); color: var(--ink);
-  font-family: "Nunito", "Trebuchet MS", system-ui, sans-serif; touch-action: manipulation; user-select: none; -webkit-user-select: none; }
-button { font: inherit; color: inherit; cursor: pointer; }
-[hidden] { display: none !important; }
-
-#app { position: fixed; inset: 0; display: grid; grid-template-columns: minmax(0, 1fr) clamp(76px, 10vw, 112px);
-  grid-template-rows: auto minmax(0, 1fr) auto auto; grid-template-areas: "top tools" "work tools" "msg msg" "keys keys"; }
-#top { grid-area: top; display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: center; gap: 12px; padding: 12px 16px 0; }
-#speak { width: clamp(46px, 6vw, 60px); height: clamp(46px, 6vw, 60px); border-radius: 50%; border: 0; background: var(--teal); display: grid; place-items: center; }
-#speak svg { width: 52%; height: 52%; }
-#dots { display: flex; justify-content: center; gap: clamp(4px, 1vw, 10px); padding-right: clamp(46px, 6vw, 60px); }
-#dots i { width: clamp(10px, 1.6vw, 16px); height: clamp(10px, 1.6vw, 16px); border-radius: 50%; background: #dfe5e3; }
-#dots i.done { background: var(--teal); } #dots i.now { box-shadow: 0 0 0 3px rgba(10, 174, 144, .35); background: #bfeee4; }
-
-#work { grid-area: work; position: relative; min-height: 0; overflow: hidden; }
-#draw { position: absolute; inset: 0; width: 100%; height: 100%; z-index: 3; touch-action: none; cursor: crosshair; }
-#qbody { position: absolute; inset: 6px 16px 10px; display: flex; flex-direction: column; align-items: center; pointer-events: none; }
-#qbody .box, #qbody .opt, #qbody .bulb, #qbody .nlbox, #qbody .hoprow { pointer-events: auto; position: relative; z-index: 4; }
-#qbody .bulb { position: absolute; z-index: 5; }
-.qtop { width: 100%; display: flex; flex-direction: column; align-items: center; gap: clamp(10px, 2vh, 18px); padding-top: clamp(4px, 2vh, 20px); text-align: center; }
-.room { flex: 1; width: 100%; min-height: 40px; }
-.qbottom { width: 100%; display: flex; flex-direction: column; align-items: center; gap: 10px; }
-.qline { font-weight: 800; font-size: clamp(20px, 2.8vw, 28px); color: #5f5f5f; }
-.qline .kw { color: var(--teal); }
-.story { font-size: clamp(17px, 2.4vw, 24px); font-weight: 600; max-width: 34em; line-height: 1.45; text-align: left; }
-.eq { display: flex; align-items: center; justify-content: center; flex-wrap: wrap; gap: clamp(10px, 2vw, 22px); font-size: clamp(32px, 5.4vw, 52px); color: #4a4a4a; font-weight: 800; }
-.box { min-width: 2.4em; height: 1.5em; border: 3px solid #98adcf; border-radius: 10px; background: #fff; display: grid; place-items: center; padding: 0 .25em; color: #333; }
-.box.active { border-color: #3a7bd5; box-shadow: 0 0 0 4px rgba(58, 123, 213, .18); }
-.box.right { border-color: var(--green); box-shadow: 0 0 0 4px rgba(47, 174, 91, .22); background: #f1fbf4; }
-.box.wrong { border-color: var(--red); box-shadow: 0 0 0 4px rgba(217, 83, 79, .18); }
-.bulb { top: -14px; right: -14px; width: 32px; height: 32px; border-radius: 50%; border: 0; background: var(--teal); display: grid; place-items: center; padding: 0; }
-.bulb svg { width: 62%; height: 62%; }
-.inbulb { position: relative; display: inline-block; width: 32px; height: 32px; vertical-align: middle; margin-left: 6px; }
-.inbulb .bulb { top: 0; right: 0; }
-.bars { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; width: min(560px, 100%); }
-.opt { min-height: 60px; border-radius: 14px; border: 3px solid #d5dbe3; background: #fff; font-size: clamp(24px, 3.4vw, 32px); font-weight: 800; color: #4a4a4a; display: flex; align-items: center; justify-content: center; gap: 8px; padding: 0 8px; }
-.opt small { font-size: 60%; color: #8a8a8a; }
-.opt.sel { background: var(--navy); color: #fff; border-color: var(--navy); } .opt.sel small { color: #cfd8e3; }
-.opt.right { background: #dff5e7; border-color: var(--green); color: #255e3a; } .opt.right small { color: #3b7a52; }
-.opt.wrong { border-color: var(--red); }
-
-/* number line */
-.nlbox { width: 100%; max-width: 1100px; touch-action: none; }
-.nlbox svg { display: block; width: 100%; }
-.nlbox .tick { cursor: pointer; }
-.nlbox .hop.new { stroke-dasharray: 400; stroke-dashoffset: 400; animation: draw .35s ease forwards; }
-.nlbox .hoplab.new { opacity: 0; animation: show .2s .25s ease forwards; }
-@keyframes draw { to { stroke-dashoffset: 0; } }
-@keyframes show { to { opacity: 1; } }
-.nlbox .hopper.land { animation: land .35s ease; transform-box: fill-box; transform-origin: 50% 100%; }
-@keyframes land { 0% { transform: translateY(-40%) scale(.9); } 70% { transform: translateY(4%) scale(1.06, .94); } 100% { transform: none; } }
-.hoprow { width: min(640px, 100%); display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
-.hoprow button { min-height: clamp(48px, 7vh, 62px); border-radius: 14px; border: 2px solid #c8d3d0; background: #fff; font-size: clamp(16px, 2.2vw, 22px); font-weight: 800; color: #3d5a55; white-space: nowrap; padding: 0 6px; box-shadow: 0 3px 0 rgba(0, 0, 0, .1); }
-.hoprow button.fwd { background: var(--teal-soft); border-color: var(--teal); color: var(--teal-dark); }
-.hoprow button:disabled { opacity: .35; }
-
-/* teaching board: hand-written working in the middle */
-#board { position: absolute; z-index: 6; background: var(--paper); border-radius: 18px; box-shadow: 0 0 0 2px #efe6cf, 0 8px 24px rgba(0, 0, 0, .08);
-  background-image: repeating-linear-gradient(transparent 0 calc(var(--rule) - 1px), #e9edf5 calc(var(--rule) - 1px) var(--rule)); }
-#board canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
-#board .bbtns { position: absolute; right: 10px; bottom: 8px; display: flex; gap: 8px; z-index: 2; }
-#board .bbtns button { min-height: 44px; border-radius: 12px; border: 2px solid #c8d3d0; background: #fff; font-weight: 800; font-size: clamp(14px, 1.8vw, 18px); padding: 0 14px; color: #3d5a55; }
-#board .bbtns button.x { width: 44px; padding: 0; font-size: 20px; }
-
-/* tools: real-looking colour pencils, a rubber, a bin */
-#tools { grid-area: tools; background: var(--panel); display: flex; flex-direction: column; align-items: stretch; gap: 6px; padding: 12px 0 12px 8px; }
-#tools .pencil { border: 0; background: transparent; padding: 0; width: 86%; height: clamp(30px, 4.6vh, 42px); transform: translateX(14%); transition: transform .18s ease; }
-#tools .pencil.on { transform: translateX(0); }
-#tools .pencil svg, #tools .rubber svg { width: 100%; height: 100%; display: block; filter: drop-shadow(0 2px 1px rgba(0, 0, 0, .18)); }
-#tools .rubber { border: 0; background: transparent; padding: 0; width: 80%; height: clamp(40px, 6vh, 54px); margin-top: 8px; transform: translateX(16%); transition: transform .18s ease; }
-#tools .rubber.on { transform: translateX(0); }
-#tools .grow { flex: 1; }
-#tools .bin { align-self: center; width: 52px; height: 52px; margin-right: 8px; border-radius: 14px; border: 2px solid #d4d4d4; background: #fff; display: grid; place-items: center; padding: 0; }
-#tools .bin svg { width: 56%; height: 56%; }
-
-#msg { grid-area: msg; display: flex; align-items: center; padding: 8px 16px; font-size: clamp(14px, 1.8vw, 18px); font-weight: 700; color: #fff; }
-#msg.try { background: var(--amber); } #msg.wrong { background: var(--salmon); } #msg.right { background: #18ba98; } #msg.shown { background: var(--teal-dark); }
-
-#keys { grid-area: keys; background: var(--keypad); padding: 12px 14px calc(12px + env(safe-area-inset-bottom)); display: grid; grid-template-columns: minmax(0, 1fr) clamp(120px, 15vw, 170px); gap: 12px; }
-#pad { display: grid; grid-template-columns: repeat(11, minmax(0, 1fr)); gap: 10px; }
-#pad button { min-height: clamp(54px, 9vh, 72px); border: 0; border-radius: 10px; background: var(--key); color: #444; font-size: clamp(22px, 3vw, 32px); box-shadow: 0 3px 0 rgba(0, 0, 0, .18); padding: 0; }
-#app.locked #pad button { opacity: .45; pointer-events: none; }
-#app.nokeys #pad { display: none; }
-#tile { border-radius: 12px; border: 4px solid var(--blue-edge); background: var(--blue); color: #fff; font-weight: 900; font-size: clamp(18px, 2.2vw, 24px); line-height: 1.1; padding: 6px; min-height: clamp(54px, 9vh, 72px); }
-#app.nokeys #keys { grid-template-columns: minmax(0, 1fr) clamp(140px, 22vw, 240px); }
-#tile.see { background: var(--orange); border-color: #c86400; }
-#tile.next { background: #00a985; border-color: #087a62; }
-#tile.dim { opacity: .5; pointer-events: none; }
-
-@media (max-width: 640px), (max-aspect-ratio: 3/4) and (max-width: 820px) {
-  #app { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto auto minmax(0, 1fr) auto auto; grid-template-areas: "top" "tools" "work" "msg" "keys"; }
-  #tools { flex-direction: row; justify-content: center; align-items: flex-start; gap: 4px; padding: 6px 10px 0; background: transparent; height: 74px; }
-  #tools .pencil { height: 68px; width: 30px; transform: translateY(-14px); }
-  #tools .pencil.on { transform: translateY(0); }
-  #tools .rubber { height: 64px; width: 34px; margin: 0 0 0 4px; transform: translateY(-10px); }
-  #tools .rubber.on { transform: translateY(0); }
-  #tools .grow { display: none; }
-  #tools .bin { width: 44px; height: 44px; margin: 6px 0 0 6px; }
-  #keys, #app.nokeys #keys { grid-template-columns: minmax(0, 1fr); }
-  #pad { grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 8px; }
-  #pad button { min-height: 50px; } #tile { min-height: 54px; }
-  .hoprow button { font-size: 15px; }
-  .bars { gap: 8px; }
-}
-@media (max-height: 520px) and (orientation: landscape) {
-  #top { padding: 6px 12px 0; } #speak { width: 40px; height: 40px; }
-  #tools { gap: 3px; padding: 6px 0 6px 6px; } #tools .pencil { height: 24px; } #tools .rubber { height: 30px; margin-top: 4px; } #tools .bin { width: 38px; height: 38px; }
-  #qbody { inset: 2px 12px 4px; } .qtop { padding-top: 0; gap: 6px; }
-  .eq { font-size: 28px; } .qline, .story { font-size: 17px; } .story { line-height: 1.3; }
-  .opt { min-height: 44px; } .room { min-height: 0; } .qbottom { gap: 4px; }
-  .hoprow button { min-height: 38px; } .nlbox { max-width: 700px; }
-  #keys { padding: 6px 10px calc(6px + env(safe-area-inset-bottom)); gap: 8px; } #pad { gap: 6px; }
-  #pad button, #tile { min-height: 42px; } #msg { padding: 4px 12px; }
-  #app.lesson .hoprow { display: none; }      /* short screen: hide the hop buttons while the lesson board is open */
-}
-
-.band { position: fixed; left: 0; right: 0; top: 40%; z-index: 30; display: flex; align-items: center; justify-content: center; gap: 18px; color: #fff; pointer-events: none; overflow: hidden; }
-.band.correct { height: clamp(80px, 16vh, 150px); background: #18ba98; animation: slidein 1.3s ease forwards; font-weight: 900; font-size: clamp(30px, 6vw, 56px); letter-spacing: .04em; }
-.band.correct svg { height: 90%; }
-@keyframes slidein { 0% { transform: translateX(100%); } 20% { transform: translateX(0); } 80% { transform: translateX(0); opacity: 1; } 100% { transform: scaleY(0); opacity: 0; } }
-.band.oops { height: clamp(90px, 22vh, 200px); background: #808080; animation: grow 2s ease forwards; font-size: clamp(30px, 6vw, 52px); }
-@keyframes grow { 0% { transform: scaleY(.02); } 12% { transform: scaleY(1); } 85% { opacity: 1; } 100% { opacity: 0; } }
-
-.bubble { position: absolute; z-index: 8; left: 50%; transform: translateX(-50%); top: 40%; width: min(480px, calc(100% - 24px)); background: #fff; border: 3px solid #14aa9b; border-radius: 14px; padding: 12px 16px; box-shadow: 0 6px 20px rgba(0, 0, 0, .12); text-align: left; }
-.bubble .bh { display: flex; gap: 10px; align-items: flex-start; }
-.bubble .bh button { flex: none; width: 34px; height: 34px; border-radius: 50%; border: 0; background: var(--teal); display: grid; place-items: center; padding: 0; }
-.bubble .bh button svg { width: 55%; height: 55%; }
-.bubble h4 { margin: 0; color: #13998b; font-size: clamp(16px, 2vw, 20px); line-height: 1.35; }
-
-.over { position: fixed; inset: 0; z-index: 40; background: rgba(20, 40, 40, .5); display: grid; place-items: center; padding: 16px; }
-.panel { background: #fffaf2; border-radius: 22px; padding: 26px 24px; width: min(560px, 100%); text-align: center; box-shadow: 0 10px 40px rgba(0, 0, 0, .25); }
-.panel h1 { margin: 0 0 8px; font-size: clamp(26px, 4vw, 36px); color: #2d4b47; }
-.panel p { margin: 8px 0; font-size: clamp(16px, 2.2vw, 20px); line-height: 1.45; }
-.panel svg.big { width: 110px; height: 110px; }
-.panel .go { margin-top: 16px; min-width: 220px; min-height: 60px; border: 0; border-radius: 16px; background: var(--teal); color: #fff; font-size: 24px; font-weight: 900; box-shadow: 0 5px 0 #087a62; }
-.skillcard { background: #3fb36b; color: #fff; border-radius: 20px; padding: 46px 28px 26px; width: min(440px, 100%); text-align: center; position: relative; }
-.skillcard .star { position: absolute; left: 50%; top: -42px; transform: translateX(-50%); width: 84px; }
-.skillcard h2 { margin: 0; font-size: clamp(26px, 4vw, 34px); } .skillcard p { font-size: 22px; font-weight: 800; }
-.skillcard button { border: 0; background: #2c7be5; color: #fff; font-weight: 900; font-size: 22px; border-radius: 12px; padding: 10px 44px; }
-@media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: .01s !important; animation-iteration-count: 1 !important; transition-duration: .01s !important; } }
-</style>
+<link rel="stylesheet" href="theme.css">
 </head>
 <body>
 <div id="app">
-  <div id="top"><button id="speak" aria-label="Read the question out loud"></button><div id="dots" aria-label="Progress"></div></div>
+  <div id="deco"></div>
+  <div id="top"><button id="speak" aria-label="Read the question out loud"></button><div id="dots" aria-label="Progress"></div><div id="mascot" aria-hidden="true"></div></div>
   <div id="tools"></div>
   <div id="work"><canvas id="draw"></canvas><div id="qbody"></div></div>
   <div id="msg" hidden></div>
-  <div id="keys"><div id="pad"></div><button id="tile">Check</button></div>
+  <div id="keys"><div id="pad"></div><button id="tile"><span>Check</span></button></div>
 </div>
+<script src="../modules/characters.js"></script>
+<script src="../modules/knight_art.js"></script>
 <script src="phrases.js"></script>
 <script>
 "use strict";
 const $ = s => document.querySelector(s);
 const FAST = window.__demoFast ? 0.2 : 1;            // tests run the teaching faster
 const wait = ms => new Promise(r => setTimeout(r, ms * FAST));
+
+/* ---------- themes: Kitty Cafe (Mimi) and Knight Castle (the knight); colours live in theme.css ---------- */
+const THEMES = { cafe: { name: "Kitty Café" }, castle: { name: "Knight Castle" } };
+let theme = "cafe";
+try { theme = new URLSearchParams(location.search).get("theme") || localStorage.getItem("kmDemoTheme") || "cafe"; } catch (e) {}
+if (!THEMES[theme]) theme = "cafe";
+document.body.dataset.theme = theme;
+if (window.KittyChars) KittyChars.injectCss();
+if (window.KnightArt) KnightArt.injectCss();
+const css = name => getComputedStyle(document.body).getPropertyValue(name).trim();
+const art = (pose, t = theme) => t === "cafe" ? KittyChars.full("kitty", pose) : KnightArt.full("knight", pose);
+const faceArt = () => theme === "cafe" ? KittyChars.face("kitty") : KnightArt.face("knight");
+function mascot(pose) { const m = $("#mascot"); if (m) m.innerHTML = art(pose); }
+function setTheme(t) {
+  theme = THEMES[t] ? t : "cafe"; document.body.dataset.theme = theme;
+  try { localStorage.setItem("kmDemoTheme", theme); } catch (e) {}
+  mascot("stand"); buildTools(); if (QS) renderBody();
+}
 
 /* ---------- voice: recorded natural voice (voice/<hash>.mp3); browser voice only if a sentence was not recorded ---------- */
 let actx = null, voiceList = null, playing = null, sayToken = 0;
@@ -253,7 +127,8 @@ const ICON = {
   speaker: `<svg viewBox="0 0 24 24"><path d="M4 9h4l5-4v14l-5-4H4z" fill="#fff"/><path d="M16 8.5a5 5 0 0 1 0 7M18.5 6a8.5 8.5 0 0 1 0 12" stroke="#fff" stroke-width="2" fill="none" stroke-linecap="round"/></svg>`,
   bulb: `<svg viewBox="0 0 24 24"><path d="M12 3a6 6 0 0 0-3.6 10.8c.6.5 1 1.2 1 2V17h5.2v-1.2c0-.8.4-1.5 1-2A6 6 0 0 0 12 3z" fill="#fff"/><rect x="9.4" y="18.2" width="5.2" height="2.4" rx="1" fill="#fff"/></svg>`,
   close: `<svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18" stroke="#fff" stroke-width="3" stroke-linecap="round"/></svg>`,
-  bin: `<svg viewBox="0 0 24 24" fill="#666"><rect x="6" y="7" width="12" height="14" rx="2"/><rect x="4" y="4" width="16" height="2.4" rx="1"/><rect x="9" y="2" width="6" height="2" rx="1"/></svg>`,
+  play: `<svg viewBox="0 0 24 24"><path d="M7 4l13 8-13 8z" fill="currentColor"/></svg>`,
+  bin: `<svg viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="7" width="12" height="14" rx="2"/><rect x="4" y="4" width="16" height="2.4" rx="1"/><rect x="9" y="2" width="6" height="2" rx="1"/></svg>`,
   star: `<svg viewBox="0 0 100 100"><path d="M50 6 L62 36 L94 38 L69 58 L78 90 L50 72 L22 90 L31 58 L6 38 L38 36 Z" fill="#ffd34d" stroke="#e0a800" stroke-width="3" stroke-linejoin="round"/><circle cx="41" cy="50" r="4" fill="#3a2a00"/><circle cx="59" cy="50" r="4" fill="#3a2a00"/><path d="M41 61 Q50 69 59 61" stroke="#3a2a00" stroke-width="3" fill="none" stroke-linecap="round"/></svg>`,
 };
 const PENS = [["#2c3e50", "#1c2833"], ["#2f80ed", "#1f5fb8"], ["#27ae60", "#1b7f45"], ["#e74c3c", "#b8382b"], ["#f39c12", "#c27a08"], ["#9b51e0", "#7438ad"]];
@@ -277,13 +152,14 @@ function pencilSVG(col, dark, down) {
 }
 /* a real-looking rubber: pink block with a blue paper sleeve */
 function rubberSVG(down) {
+  const sleeve = css("--primary") || "#2f6fd1";
   const L = 80, W = 40, P = (x, y) => down ? `${y},${L - x}` : `${x},${y}`;
   const poly = (pts, fill, extra = "") => `<polygon points="${pts.map(p => P(p[0], p[1])).join(" ")}" fill="${fill}" ${extra}/>`;
   return `<svg viewBox="${down ? `0 0 ${W} ${L}` : `0 0 ${L} ${W}`}" preserveAspectRatio="xMidYMid meet" aria-hidden="true">
     ${poly([[2, 8], [8, 3], [78, 3], [78, 37], [8, 37], [2, 32]], "#f6a5b8")}
     ${poly([[2, 26], [78, 26], [78, 37], [8, 37], [2, 32]], "#e48aa0")}
-    ${poly([[34, 1], [80, 1], [80, 39], [34, 39]], "#2f6fd1")}
-    ${poly([[34, 1], [80, 1], [80, 9], [34, 9]], "#4f8ae6")}
+    ${poly([[34, 1], [80, 1], [80, 39], [34, 39]], sleeve)}
+    ${poly([[34, 1], [80, 1], [80, 9], [34, 9]], "#ffffff", 'opacity=".25"')}
     ${poly([[40, 16], [74, 16], [74, 19], [40, 19]], "#ffffff", 'opacity=".85"')}
     ${poly([[40, 23], [66, 23], [66, 25], [40, 25]], "#ffffff", 'opacity=".6"')}
   </svg>`;
@@ -308,7 +184,7 @@ function nextQuestion() {
   Q = makeQuestion(n); QS = { tries: 0, phase: "ask", typed: "", pick: null, line: null, hops: [], lo: null, hi: null };
   $("#app").classList.toggle("nokeys", !Q.typed); $("#app").classList.remove("locked");
   $("#msg").hidden = true; tileTo("", "Check");
-  drawDots(); renderBody();
+  drawDots(); renderBody(); mascot("stand");
   setTimeout(() => say(Q.say), 250);
 }
 function boxCls() { return QS.mark === "right" ? "right" : QS.mark === "wrong" ? "wrong" : QS.phase === "ask" ? "active" : ""; }
@@ -344,26 +220,25 @@ function drawLine() {
   const lo = QS.lo, hi = QS.hi, Wd = Math.max(240, box.clientWidth), step = Wd / (hi - lo + 1), X = v => step / 2 + (v - lo) * step;
   const font = Math.max(18, Math.min(40, step * 0.42)), tick = font * 0.8, arcH = Math.min(step * 0.62, 58), r = Math.max(12, Math.min(24, step * 0.24));
   const lab = Math.max(16, Math.min(28, step * 0.32)), base = lab + arcH + 16, H = base + tick / 2 + font + 14;
-  let s = `<svg viewBox="0 0 ${Wd} ${H}" height="${H}" role="img" aria-label="Number line from ${lo} to ${hi}">`;
-  s += `<line x1="4" y1="${base}" x2="${Wd - 4}" y2="${base}" stroke="#4d4d4d" stroke-width="4" stroke-linecap="round"/>`;
+  const ink = css("--line-ink") || "#333", start = css("--line-start") || ink, hopC = css("--hop") || "#e07a2e", labC = css("--hop-label") || hopC;
+  let s = `<svg viewBox="0 0 ${Wd} ${H}" height="${H}" role="img" aria-label="Number line from ${lo} to ${hi}" font-family="Lexend, sans-serif">`;
+  s += `<line x1="4" y1="${base}" x2="${Wd - 4}" y2="${base}" stroke="${ink}" stroke-width="4" stroke-linecap="round"/>`;
   QS.hops.forEach(([a, c], i) => {
     const m = (X(a) + X(c)) / 2, h = arcH * Math.min(1.3, 0.75 + Math.abs(c - a) * 0.12), last = i === QS.hops.length - 1, fresh = last && QS.fresh ? " new" : "";
-    s += `<path class="hop${fresh}" d="M${X(a)} ${base - 4} Q${m} ${base - 4 - h * 1.5} ${X(c)} ${base - 4}" stroke="#f08a24" stroke-width="${Math.max(3, step * 0.055)}" fill="none" stroke-linecap="round" opacity="${last ? 1 : .55}"/>`;
+    s += `<path class="hop${fresh}" d="M${X(a)} ${base - 4} Q${m} ${base - 4 - h * 1.5} ${X(c)} ${base - 4}" stroke="${hopC}" stroke-width="${Math.max(3, step * 0.055)}" fill="none" stroke-linecap="round" opacity="${last ? 1 : .5}"/>`;
     if (last) {
       const d = c - Q.a, txt = d > 0 ? `+${d}` : d < 0 ? `−${-d}` : "0";
-      s += `<text class="hoplab${fresh}" x="${m}" y="${base - 4 - h * 0.75 - 8}" font-size="${lab}" font-weight="900" text-anchor="middle" fill="#c96a00">${txt}</text>`;
+      s += `<text class="hoplab${fresh}" x="${m}" y="${base - 4 - h * 0.75 - 8}" font-size="${lab}" font-weight="800" text-anchor="middle" fill="${labC}">${txt}</text>`;
     }
   });
   for (let v = lo; v <= hi; v++) {
     const five = v % 5 === 0;
     s += `<g class="tick" data-n="${v}"><rect x="${X(v) - step / 2}" y="${base - tick}" width="${step}" height="${H - base + tick}" fill="transparent"/>
-      <line x1="${X(v)}" y1="${base - tick / 2}" x2="${X(v)}" y2="${base + tick / 2}" stroke="#4d4d4d" stroke-width="${five ? 4 : 2.6}" stroke-linecap="round"/>
-      <text x="${X(v)}" y="${base + tick / 2 + font + 2}" font-size="${font}" font-weight="${v === Q.a || five ? 900 : 700}" text-anchor="middle" fill="${v === Q.a ? "#0b6f59" : "#3f3f3f"}">${v}</text></g>`;
+      <line x1="${X(v)}" y1="${base - tick / 2}" x2="${X(v)}" y2="${base + tick / 2}" stroke="${ink}" stroke-width="${five ? 4 : 2.6}" stroke-linecap="round"/>
+      <text x="${X(v)}" y="${base + tick / 2 + font + 2}" font-size="${font}" font-weight="${v === Q.a || five ? 800 : 600}" text-anchor="middle" fill="${v === Q.a ? start : ink}">${v}</text></g>`;
   }
-  const x = X(QS.line), y = base - r - 3;
-  s += `<g class="hopper${QS.fresh ? " land" : ""}" pointer-events="none"><circle cx="${x}" cy="${y}" r="${r}" fill="#0aae90" stroke="#fff" stroke-width="3"/>
-    <circle cx="${x - r * .32}" cy="${y - r * .12}" r="${r * .13}" fill="#fff"/><circle cx="${x + r * .32}" cy="${y - r * .12}" r="${r * .13}" fill="#fff"/>
-    <path d="M${x - r * .3} ${y + r * .28} Q${x} ${y + r * .52} ${x + r * .3} ${y + r * .28}" stroke="#fff" stroke-width="${Math.max(2, r * .1)}" fill="none" stroke-linecap="round"/></g>`;
+  const x = X(QS.line), fsz = r * 2.5;                     // the hopper is Mimi's or the knight's face
+  s += `<g class="hopper${QS.fresh ? " land" : ""}" pointer-events="none">${faceArt().replace("<svg ", `<svg x="${x - fsz / 2}" y="${base - fsz - 2}" width="${fsz}" height="${fsz}" `)}</g>`;
   box.innerHTML = s + "</svg>";
   QS.fresh = false;
   box.querySelectorAll(".tick").forEach(t => t.onclick = () => hopTo(+t.dataset.n));
@@ -394,15 +269,15 @@ async function teach() {
   let bd = $("#board");
   if (!bd) {
     bd = document.createElement("div"); bd.id = "board";
-    bd.innerHTML = `<canvas></canvas><div class="bbtns"><button class="again" hidden>▶ Watch again</button><button class="x" aria-label="Close" hidden>✕</button></div>`;
+    bd.innerHTML = `<canvas></canvas><button class="bx" aria-label="Close the lesson" hidden>✕</button><button class="again" hidden><span class="play">${ICON.play}</span>Watch again</button>`;
     $("#work").appendChild(bd);
     bd.querySelector(".again").onclick = () => teach();
-    bd.querySelector(".x").onclick = () => { closeBoard(); $("#app").classList.remove("locked"); };
+    bd.querySelector(".bx").onclick = () => { closeBoard(); $("#app").classList.remove("locked"); };
   }
   QS.board = true; $("#app").classList.add("lesson"); placeBoard();
   const run = QS.teachRun = (QS.teachRun || 0) + 1, me = QS;
   const live = () => QS === me && me.teachRun === run;
-  bd.querySelector(".again").hidden = true; bd.querySelector(".x").hidden = true;
+  bd.querySelector(".again").hidden = true; bd.querySelector(".bx").hidden = true;
   QS.teaching = true; $("#app").classList.add("locked");
   const cv = bd.querySelector("canvas"), r = bd.getBoundingClientRect(), dpr = window.devicePixelRatio || 1;
   cv.width = Math.round(r.width * dpr); cv.height = Math.round(r.height * dpr);
@@ -410,7 +285,8 @@ async function teach() {
   const W = r.width, H = r.height, plan = KM.teach(Q), BTN = 58;
   const split = plan.kind === "make10" || plan.kind === "back10", lastRow = plan.kind === "exact10" ? 2 : 3;
   const units = 1.25 + lastRow * 1.32 + 0.45 + (split ? 0.95 : 0);            // board height needed, in letter sizes
-  const fs = Math.max(18, Math.min(56, (H - BTN) / units, W / 8.5)), ink = "#2b3a55";
+  const fs = Math.max(18, Math.min(56, (H - BTN) / units, W / 8.5)), ink = css("--board-ink") || "#2b3a55";
+  const STEP = css("--board-step"), SPLIT = css("--board-split"), ANS = css("--board-answer"), HOP = css("--board-hop"), QM = css("--hop-label");
   const rowY = i => fs * 1.25 + i * fs * 1.32 + (split && i >= 1 ? fs * 0.95 : 0);
   g.lineCap = g.lineJoin = "round";
   const font = (size, w = 400) => `${w} ${size}px "Patrick Hand", "Comic Sans MS", "Chalkboard SE", cursive`;
@@ -450,7 +326,7 @@ async function teach() {
     const total = widths.reduce((a, b) => a + b, 0) + gap * (tokens.length - 1); let x = Math.max(14, (W - total) / 2);
     for (let j = 0; j < tokens.length; j++) {
       if (i === 0) tokenX[j] = [x, widths[j]];
-      await write(tokens[j], x, rowY(i), fs, tokens[j] === "?" ? "#c96a00" : color);
+      await write(tokens[j], x, rowY(i), fs, tokens[j] === "?" ? QM : color);
       x += widths[j] + gap;
     }
   }
@@ -463,17 +339,17 @@ async function teach() {
     for (let i = 1; i <= n; i++) {
       const a = X(i - 1), c = X(i), m = (a + c) / 2, top = y - Math.min(step * 0.7, fs * 0.85);
       const pts = Array.from({ length: 16 }, (_, k) => { const t = k / 15; return [(1 - t) * (1 - t) * a + 2 * (1 - t) * t * m + t * t * c, (1 - t) * (1 - t) * (y - 3) + 2 * (1 - t) * t * top + t * t * (y - 3)]; });
-      await stroke(pts, 260, "#f08a24", 3.4);
+      await stroke(pts, 260, HOP, 3.4);
       const v = String(h.from + h.dir * i);
-      await write(v, c - g.measureText(v).width / 2, y + fs * 0.75, fs * 0.62, i === n ? "#1d8a4f" : ink);
+      await write(v, c - g.measureText(v).width / 2, y + fs * 0.75, fs * 0.62, i === n ? ANS : ink);
     }
   }
   async function answerLine() {
     const y = rowY(lastRow), text = `${Q.a} ${KM.sym(Q.op)} ${Q.b} = ${Q.ans}`;
     g.font = font(fs, 400); const w = g.measureText(text).width, x = Math.max(14, (W - w) / 2);
-    await write(text, x, y, fs, "#1d8a4f");
+    await write(text, x, y, fs, ANS);
     const aw = g.measureText(String(Q.ans)).width, cx = x + w - aw / 2, cy = y - fs * 0.32, rx = aw / 2 + fs * 0.32, ry = fs * 0.58;
-    await stroke(Array.from({ length: 40 }, (_, k) => { const t = k / 39 * Math.PI * 2.15 - .4; return [cx + Math.cos(t) * rx, cy + Math.sin(t) * ry]; }), 520, "#1d8a4f", 3);
+    await stroke(Array.from({ length: 40 }, (_, k) => { const t = k / 39 * Math.PI * 2.15 - .4; return [cx + Math.cos(t) * rx, cy + Math.sin(t) * ry]; }), 520, ANS, 3);
   }
   QS.line = Q.a; QS.hops = []; drawLine();                 // the hopper waits on the first number
   /* move the hopper on the real number line, one hop at a time, and count each number out loud */
@@ -489,14 +365,14 @@ async function teach() {
     if (!live()) return;
     const speech = say(st.say), draws = (async () => {
       for (const d of st.draw) {
-        if (d.tokens) await writeRow(d.row, d.tokens, d.row === 0 ? ink : "#2f6fd1");
+        if (d.tokens) await writeRow(d.row, d.tokens, d.row === 0 ? ink : STEP);
         else if (d.split) {
           const [bx, bw] = tokenX[2] || [W / 2, fs]; const cx = bx + bw / 2, y0 = rowY(0) + fs * 0.22, y1 = y0 + fs * 0.5;
-          await stroke(wobble(cx, y0, cx - fs * 0.7, y1, 10), 300, "#0aae90", 3);
-          await stroke(wobble(cx, y0, cx + fs * 0.7, y1, 10), 300, "#0aae90", 3);
+          await stroke(wobble(cx, y0, cx - fs * 0.7, y1, 10), 300, SPLIT, 3);
+          await stroke(wobble(cx, y0, cx + fs * 0.7, y1, 10), 300, SPLIT, 3);
           g.font = font(fs * 0.7);
-          await write(String(d.split[0]), cx - fs * 0.7 - g.measureText(String(d.split[0])).width / 2, y1 + fs * 0.62, fs * 0.7, "#0b6f59");
-          await write(String(d.split[1]), cx + fs * 0.7 - g.measureText(String(d.split[1])).width / 2, y1 + fs * 0.62, fs * 0.7, "#0b6f59");
+          await write(String(d.split[0]), cx - fs * 0.7 - g.measureText(String(d.split[0])).width / 2, y1 + fs * 0.62, fs * 0.7, SPLIT);
+          await write(String(d.split[1]), cx + fs * 0.7 - g.measureText(String(d.split[1])).width / 2, y1 + fs * 0.62, fs * 0.7, SPLIT);
         } else if (d.hops) await hops(d.hops);
         else if (d.answer) await answerLine();
       }
@@ -509,7 +385,7 @@ async function teach() {
   }
   if (!live()) return;
   QS.teaching = false; $("#app").classList.remove("locked");
-  bd.querySelector(".again").hidden = false; bd.querySelector(".x").hidden = false;
+  bd.querySelector(".again").hidden = false; bd.querySelector(".bx").hidden = false;
 }
 
 /* ---------- keypad: digits only ---------- */
@@ -527,14 +403,14 @@ function key(k) {
 
 /* ---------- Check: right -> next by itself; 1st wrong -> hand-written teaching; 2nd wrong -> Oops, See The Answer ---------- */
 function msg(cls, text) { const m = $("#msg"); m.hidden = false; m.className = cls; m.textContent = text; }
-function tileTo(cls, text) { const t = $("#tile"); t.className = cls; t.textContent = text; }
+function tileTo(cls, text) { const t = $("#tile"); t.className = cls; t.innerHTML = `<span>${text}</span>`; }
 async function tile() {
   if (!QS || QS.teaching) return;
   if (QS.phase === "ask") {
     const a = Q.typed ? (QS.typed === "" ? null : +QS.typed) : QS.pick;
     if (a == null) { say(Q.typed ? "Type your answer first." : "Tap an answer first."); return; }
     if (a === Q.ans) {
-      QS.phase = "right"; QS.mark = "right"; skill.theta += .6; chime(); closeBoard(); renderBody(); $("#app").classList.add("locked");
+      QS.phase = "right"; QS.mark = "right"; skill.theta += .6; chime(); mascot("happy"); closeBoard(); renderBody(); $("#app").classList.add("locked");
       msg("right", "This is the correct answer!"); tileTo("next dim", "Correct!"); band("correct");
       say(Q.correct);
       const me = QS; await wait(AUTO_NEXT_MS / FAST); if (QS === me) goNext();
@@ -572,7 +448,7 @@ async function goNext() {
 }
 function band(kind) {
   const b = document.createElement("div"); b.className = "band " + kind;
-  b.innerHTML = kind === "correct" ? `${ICON.star}<span>CORRECT! ✓</span>` : `<span>Oops...</span>`;
+  b.innerHTML = kind === "correct" ? `${art("happy")}<span>Correct!</span>` : `<span>Oops…</span>`;
   document.body.appendChild(b); setTimeout(() => b.remove(), kind === "correct" ? 1350 : 2050);
 }
 function openHint() {
@@ -619,7 +495,7 @@ function setupDraw() {
 function overlay(html) {
   return new Promise(res => {
     const o = document.createElement("div"); o.className = "over"; o.innerHTML = html; document.body.appendChild(o);
-    o.querySelector("button").onclick = () => { o.remove(); res(); };
+    o.querySelectorAll("button").forEach(b => b.onclick = () => { o.remove(); res(b.dataset.theme); });
   });
 }
 function skillCard() {
@@ -629,7 +505,7 @@ function skillCard() {
 async function finish() {
   QS = null; drawDots();
   say(`Well done! You finished ${SET} questions.`);
-  await overlay(`<div class="panel">${ICON.star.replace("<svg", '<svg class="big"')}<h1>${SET} questions done!</h1><p>Skill score: ${skill.theta.toFixed(1)} of 3</p><button class="go">Play again</button></div>`);
+  await overlay(`<div class="panel"><div class="mascot-big">${art("happy")}</div><h1>${SET} questions done!</h1><p>Skill score: ${skill.theta.toFixed(1)} of 3</p><button class="go">Play again</button></div>`);
   n = 0; nextQuestion();
 }
 
@@ -644,10 +520,11 @@ addEventListener("resize", () => {
 });
 requestAnimationFrame(sizeDraw);
 drawDots();
-overlay(`<div class="panel">${ICON.star.replace("<svg", '<svg class="big"')}<h1>Maths practice demo</h1>
-  <p>${SET} questions, one after another. Hop on the number line, or draw in the empty space, to work it out.</p>
-  <p>Plain look for now. The kitty story and the knight story come later.</p><button class="go">Start</button></div>`)
-  .then(() => { audioCtx(); sizeDraw(); say("Let's go!"); setTimeout(nextQuestion, 900 * FAST); });
+mascot("stand");
+overlay(`<div class="panel"><h1>Maths practice</h1><p>Pick a world. Then 10 questions, one after another.</p>
+  <div class="pick"><button class="go" data-theme="cafe"><span class="art">${art("wave", "cafe")}</span>Kitty Café</button>
+  <button class="go" data-theme="castle"><span class="art">${art("wave", "castle")}</span>Knight Castle</button></div></div>`)
+  .then(t => { setTheme(t); audioCtx(); sizeDraw(); say("Let's go!"); setTimeout(nextQuestion, 900 * FAST); });
 window.__demo = { get Q() { return Q; }, get QS() { return QS; }, skill, get n() { return n; },
   lesson(kind, a, b) { closeBoard(); Q = KM.build(kind, a, b); QS = { tries: 1, phase: "ask", typed: "", pick: null, line: null, hops: [], lo: null, hi: null };   // for tests: show one lesson
     $("#app").classList.toggle("nokeys", !Q.typed); renderBody(); return teach(); } };
