@@ -42,7 +42,7 @@ button { font: inherit; color: inherit; cursor: pointer; }
 button:focus-visible { outline: 3px solid var(--accent-dark); outline-offset: 2px; }
 [hidden] { display: none !important; }
 
-#app { position: fixed; inset: 0; display: grid; grid-template-columns: minmax(0, 1fr) clamp(80px, 10vw, 116px);
+#app { position: fixed; inset: 0; display: grid; grid-template-columns: minmax(0, 1fr) clamp(88px, 12vw, 136px);
   grid-template-rows: auto minmax(0, 1fr) auto auto; grid-template-areas: "top tools" "work tools" "msg msg" "keys keys"; background: var(--bg); }
 
 /* signature strip along the top: cafe awning or castle battlements */
@@ -138,10 +138,10 @@ body[data-theme="castle"] #board .again { border-color: var(--accent-dark); box-
 #tools { grid-area: tools; display: flex; flex-direction: column; align-items: stretch; gap: 6px; padding: 26px 0 12px 10px; background: var(--panel); border-left: 3px solid var(--panel-edge); }
 body[data-theme="cafe"] #tools { background: repeating-linear-gradient(0deg, transparent 0 46px, var(--panel-line) 46px 48px), var(--panel); }
 body[data-theme="castle"] #tools { background: repeating-linear-gradient(0deg, transparent 0 30px, var(--panel-line) 30px 32px), repeating-linear-gradient(90deg, transparent 0 46px, var(--panel-line) 46px 48px), var(--panel); }
-#tools .pencil { border: 0; background: transparent; padding: 0; width: 86%; height: clamp(30px, 4.6vh, 42px); transform: translateX(14%); transition: transform .18s ease; }
+#tools .pencil { border: 0; background: transparent; padding: 0; width: 86%; height: clamp(34px, 6.4vh, 58px); transform: translateX(12%); transition: transform .18s ease; }
 #tools .pencil.on { transform: translateX(0); }
 #tools .pencil svg, #tools .rubber svg { width: 100%; height: 100%; display: block; filter: drop-shadow(0 2px 1px rgba(0, 0, 0, .22)); }
-#tools .rubber { border: 0; background: transparent; padding: 0; width: 80%; height: clamp(40px, 6vh, 54px); margin-top: 8px; transform: translateX(16%); transition: transform .18s ease; }
+#tools .rubber { border: 0; background: transparent; padding: 0; width: 84%; height: clamp(44px, 8vh, 72px); margin-top: 10px; transform: translateX(12%); transition: transform .18s ease; }
 #tools .rubber.on { transform: translateX(0); }
 #tools .grow { flex: 1; }
 #tools .bin { align-self: center; width: 54px; height: 54px; margin-right: 10px; border-radius: var(--r); border: 2px solid var(--panel-edge); background: var(--paper); display: grid; place-items: center; padding: 0; box-shadow: 0 3px 0 var(--panel-edge); }
@@ -176,9 +176,9 @@ body[data-theme="castle"] #tile.next span { background: var(--ok); }
   #app { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto auto minmax(0, 1fr) auto auto; grid-template-areas: "top" "tools" "work" "msg" "keys"; }
   #top { padding-top: 24px; }
   #tools { flex-direction: row; justify-content: center; align-items: flex-start; gap: 4px; padding: 6px 10px 0; height: 76px; border-left: 0; border-bottom: 3px solid var(--panel-edge); }
-  #tools .pencil { height: 68px; width: 30px; transform: translateY(-14px); }
+  #tools .pencil { height: 68px; width: 30px; transform: translateY(-8px); }
   #tools .pencil.on { transform: translateY(0); }
-  #tools .rubber { height: 64px; width: 34px; margin: 0 0 0 4px; transform: translateY(-10px); }
+  #tools .rubber { height: 64px; width: 34px; margin: 0 0 0 4px; transform: translateY(-6px); }
   #tools .rubber.on { transform: translateY(0); }
   #tools .grow { display: none; }
   #tools .bin { width: 44px; height: 44px; margin: 6px 0 0 6px; }
