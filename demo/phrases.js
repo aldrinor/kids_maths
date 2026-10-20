@@ -1,6 +1,7 @@
 /* phrases.js - questions, teaching steps and every sentence the demo can say (20 Oct 2026).
    Shared by the page (window.KM) and by the voice recorder (node: require("./phrases.js")).
    Every spoken sentence comes from here, so all of them can be recorded ahead of time with a natural voice.
+   Each teaching step can also move the hopper on the real number line (line: [from, to]); the voice counts each landing number.
    Teaching follows the usual Grade 2-3 ways to add and take away within 20:
    make 10 first, back to 10 first, add or take the ones and keep the 10, or count on / back with hops. */
 (function (root) {
@@ -37,36 +38,36 @@
         kind = "make10";
         steps.push({ say: `Make ${next} first. ${a} needs ${need} more to make ${next}.`, draw: [{ split: [need, b - need] }] });
         steps.push({ say: `So split ${b} into ${need} and ${b - need}.`, draw: [] });
-        steps.push({ say: `${a} plus ${need} is ${next}.`, draw: [{ row: 1, tokens: [String(a), "+", String(need), "=", String(next)] }] });
-        steps.push({ say: `Then ${next} plus ${b - need} is ${ans}.`, draw: [{ row: 2, tokens: [String(next), "+", String(b - need), "=", String(ans)] }] });
+        steps.push({ say: `${a} plus ${need} is ${next}.`, draw: [{ row: 1, tokens: [String(a), "+", String(need), "=", String(next)] }], line: [a, next] });
+        steps.push({ say: `Then ${next} plus ${b - need} is ${ans}.`, draw: [{ row: 2, tokens: [String(next), "+", String(b - need), "=", String(ans)] }], line: [next, ans] });
       } else if (b === need) {
         kind = "exact10";
-        steps.push({ say: `${a} and ${b} make ${next}.`, draw: [{ row: 1, tokens: [String(a), "+", String(b), "=", String(next)] }] });
+        steps.push({ say: `${a} and ${b} make ${next}.`, draw: [{ row: 1, tokens: [String(a), "+", String(b), "=", String(next)] }], line: [a, next] });
       } else if (a >= 10) {
         kind = "ones";
         steps.push({ say: `Look at the ones. ${ones} plus ${b} is ${ones + b}.`, draw: [{ row: 1, tokens: [String(ones), "+", String(b), "=", String(ones + b)] }] });
-        steps.push({ say: `Keep the ${tens}. ${tens} plus ${ones + b} is ${ans}.`, draw: [{ row: 2, tokens: [String(tens), "+", String(ones + b), "=", String(ans)] }] });
+        steps.push({ say: `Keep the ${tens}. ${tens} plus ${ones + b} is ${ans}.`, draw: [{ row: 2, tokens: [String(tens), "+", String(ones + b), "=", String(ans)] }], line: [a, ans] });
       } else {
         kind = "hops";
-        steps.push({ say: `Start at ${a}. Hop forward ${b}.`, draw: [{ hops: { from: a, n: b, dir: 1 } }] });
+        steps.push({ say: `Start at ${a}. Hop forward ${b}.`, draw: [{ hops: { from: a, n: b, dir: 1 } }], line: [a, ans] });
       }
     } else {
       if (ones > 0 && b > ones) {
         kind = "back10";
         steps.push({ say: `Go back to ${tens} first. Take away ${ones} to get to ${tens}.`, draw: [{ split: [ones, b - ones] }] });
         steps.push({ say: `So split ${b} into ${ones} and ${b - ones}.`, draw: [] });
-        steps.push({ say: `${a} minus ${ones} is ${tens}.`, draw: [{ row: 1, tokens: [String(a), "−", String(ones), "=", String(tens)] }] });
-        steps.push({ say: `Then ${tens} minus ${b - ones} is ${ans}.`, draw: [{ row: 2, tokens: [String(tens), "−", String(b - ones), "=", String(ans)] }] });
+        steps.push({ say: `${a} minus ${ones} is ${tens}.`, draw: [{ row: 1, tokens: [String(a), "−", String(ones), "=", String(tens)] }], line: [a, tens] });
+        steps.push({ say: `Then ${tens} minus ${b - ones} is ${ans}.`, draw: [{ row: 2, tokens: [String(tens), "−", String(b - ones), "=", String(ans)] }], line: [tens, ans] });
       } else if (ones > 0 && b === ones) {
         kind = "exact10";
-        steps.push({ say: `Take away the ${ones} ones. ${tens} is left.`, draw: [{ row: 1, tokens: [String(a), "−", String(b), "=", String(tens)] }] });
+        steps.push({ say: `Take away the ${ones} ones. ${tens} is left.`, draw: [{ row: 1, tokens: [String(a), "−", String(b), "=", String(tens)] }], line: [a, tens] });
       } else if (ones > 0) {
         kind = "ones";
         steps.push({ say: `Look at the ones. ${ones} minus ${b} is ${ones - b}.`, draw: [{ row: 1, tokens: [String(ones), "−", String(b), "=", String(ones - b)] }] });
-        steps.push({ say: `Keep the ${tens}. ${tens} plus ${ones - b} is ${ans}.`, draw: [{ row: 2, tokens: [String(tens), "+", String(ones - b), "=", String(ans)] }] });
+        steps.push({ say: `Keep the ${tens}. ${tens} plus ${ones - b} is ${ans}.`, draw: [{ row: 2, tokens: [String(tens), "+", String(ones - b), "=", String(ans)] }], line: [a, ans] });
       } else {
         kind = "hops";
-        steps.push({ say: `Start at ${a}. Hop back ${b}.`, draw: [{ hops: { from: a, n: b, dir: -1 } }] });
+        steps.push({ say: `Start at ${a}. Hop back ${b}.`, draw: [{ hops: { from: a, n: b, dir: -1 } }], line: [a, ans] });
       }
     }
     steps.push({ say: `So ${a} ${word(op)} ${b} is ${ans}. ${q.typed ? `Type ${ans}.` : `Tap ${ans}.`}`, draw: [{ answer: true }] });
@@ -81,6 +82,7 @@
     `Well done! You finished ${SET} questions.`,
     `Skill complete! ${SKILL}.`,
     "Let's go!",
+    ...Array.from({ length: 21 }, (_, i) => String(i)),     // the voice counts each hop on the number line
   ];
 
   function allPhrases() {

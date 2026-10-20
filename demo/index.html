@@ -136,6 +136,7 @@ button { font: inherit; color: inherit; cursor: pointer; }
   .hoprow button { min-height: 38px; } .nlbox { max-width: 700px; }
   #keys { padding: 6px 10px calc(6px + env(safe-area-inset-bottom)); gap: 8px; } #pad { gap: 6px; }
   #pad button, #tile { min-height: 42px; } #msg { padding: 4px 12px; }
+  #app.lesson .hoprow { display: none; }      /* short screen: hide the hop buttons while the lesson board is open */
 }
 
 .band { position: fixed; left: 0; right: 0; top: 40%; z-index: 30; display: flex; align-items: center; justify-content: center; gap: 18px; color: #fff; pointer-events: none; overflow: hidden; }
@@ -379,15 +380,15 @@ async function showHops() {
 
 /* ---------- teaching board: wipe the drawing, then hand-write the working step by step ---------- */
 function placeBoard() {
-  const bd = $("#board"), work = $("#work").getBoundingClientRect(), top = document.querySelector(".qtop"), row = document.querySelector(".hoprow");
+  const bd = $("#board"), work = $("#work").getBoundingClientRect(), top = document.querySelector(".qtop"), row = document.querySelector("#qbody .nlbox");   // stop above the number line, so it stays in view
   if (!bd || !top || !row) return;
   const t = top.getBoundingClientRect().bottom - work.top + 8, bt = row.getBoundingClientRect().top - work.top - 8;
   let y0 = t, h = bt - t;
-  if (h < 230) { y0 = 6; h = Math.max(160, bt - 6); }       // short screens: the board also covers the question (it is written on the board)
+  if (h < 230) { y0 = 6; h = Math.max(100, bt - 6); }       // short screens: the board also covers the question (it is written on the board)
   Object.assign(bd.style, { left: "12px", right: "12px", top: y0 + "px", height: h + "px" });
   bd.style.setProperty("--rule", Math.max(28, Math.round(h / 6)) + "px");
 }
-function closeBoard() { const bd = $("#board"); if (bd) bd.remove(); if (QS) { QS.board = false; QS.teachRun = (QS.teachRun || 0) + 1; QS.teaching = false; } }
+function closeBoard() { const bd = $("#board"); if (bd) bd.remove(); $("#app").classList.remove("lesson"); if (QS) { QS.board = false; QS.teachRun = (QS.teachRun || 0) + 1; QS.teaching = false; } }
 async function teach() {
   clearDraw(); closeHint();
   let bd = $("#board");
@@ -398,7 +399,7 @@ async function teach() {
     bd.querySelector(".again").onclick = () => teach();
     bd.querySelector(".x").onclick = () => { closeBoard(); $("#app").classList.remove("locked"); };
   }
-  QS.board = true; placeBoard();
+  QS.board = true; $("#app").classList.add("lesson"); placeBoard();
   const run = QS.teachRun = (QS.teachRun || 0) + 1, me = QS;
   const live = () => QS === me && me.teachRun === run;
   bd.querySelector(".again").hidden = true; bd.querySelector(".x").hidden = true;
@@ -474,6 +475,16 @@ async function teach() {
     const aw = g.measureText(String(Q.ans)).width, cx = x + w - aw / 2, cy = y - fs * 0.32, rx = aw / 2 + fs * 0.32, ry = fs * 0.58;
     await stroke(Array.from({ length: 40 }, (_, k) => { const t = k / 39 * Math.PI * 2.15 - .4; return [cx + Math.cos(t) * rx, cy + Math.sin(t) * ry]; }), 520, "#1d8a4f", 3);
   }
+  QS.line = Q.a; QS.hops = []; drawLine();                 // the hopper waits on the first number
+  /* move the hopper on the real number line, one hop at a time, and count each number out loud */
+  async function lineHops(from, to) {
+    const dir = to > from ? 1 : -1;
+    for (let v = from + dir; dir > 0 ? v <= to : v >= to; v += dir) {
+      if (!live()) return;
+      QS.hops.push([v - dir, v]); QS.line = v; QS.fresh = true; drawLine();
+      await Promise.all([say(String(v)), wait(450)]);
+    }
+  }
   for (const st of plan.steps) {
     if (!live()) return;
     const speech = say(st.say), draws = (async () => {
@@ -491,6 +502,8 @@ async function teach() {
       }
     })();
     await Promise.all([speech, draws]);
+    if (!live()) return;
+    if (st.line) await lineHops(st.line[0], st.line[1]);
     if (!live()) return;
     await wait(250);
   }
