@@ -7,7 +7,7 @@ from playwright.sync_api import sync_playwright
 URL = sys.argv[1]
 ENGINE = sys.argv[2] if len(sys.argv) > 2 else "chromium"
 # speech is stubbed and recorded, so the test is silent and can check what would be spoken
-STUB = ("window.__spoken=[];window.speechSynthesis={speak(u){window.__spoken.push(u.text)},cancel(){},getVoices(){return[]},pause(){},resume(){}};"
+STUB = ("window.__demoFast=true;window.__noVoice=true;window.__spoken=[];window.speechSynthesis={speak(u){window.__spoken.push(u.text)},cancel(){},getVoices(){return[]},pause(){},resume(){}};"
         "window.SpeechSynthesisUtterance=function(t){this.text=t};window.AudioContext=window.webkitAudioContext=undefined;")
 SIZES = [(360, 740, "phone"), (390, 844, "phone2"), (844, 390, "phone_side"), (768, 1024, "ipad_tall"),
          (1024, 768, "ipad"), (1366, 1024, "ipad_pro"), (1440, 900, "desktop")]
@@ -36,6 +36,11 @@ FIT = """() => {
 INK = "()=>{const c=document.getElementById('draw');const d=c.getContext('2d').getImageData(0,0,c.width,c.height).data;let n=0;for(let i=3;i<d.length;i+=4)if(d[i])n++;return n}"
 
 
+def mid(pg):
+    r = pg.locator(".room").bounding_box()
+    return (r["x"] + r["width"] * 0.3, r["y"] + r["height"] / 2)
+
+
 def q_now(pg):
     return pg.evaluate("()=>({...__demo.Q})")
 
@@ -53,20 +58,23 @@ def wrong(q):
     return next(o for o in q["opts"] if o != q["ans"]) if not q["typed"] else q["ans"] + 1
 
 
-def guided_hops(pg, q, tag, i):
-    """After the first miss: the guide says where to start, the right button glows, the child hops b times."""
-    pg.wait_for_timeout(1100)
-    g = pg.inner_text(".guide")
-    ok(f"{tag} q{i} wrong answer starts guided help", f"Start at {q['a']}" in g and pg.evaluate("()=>__demo.QS.line") == q["a"], g)
-    d = "1" if q["op"] == "+" else "-1"
-    ok(f"{tag} q{i} the right hop button glows", pg.locator(f'.hoprow button[data-h="{d}"].glow').count() == 1)
-    for _ in range(q["b"]):
-        pg.click(f'.hoprow button[data-h="{d}"]')
-        pg.wait_for_timeout(60)
-    labels = pg.evaluate("()=>[...document.querySelectorAll('.nlbox .hoplab')].map(t=>t.textContent)")
-    sign = "+" if q["op"] == "+" else "−"
-    ok(f"{tag} q{i} hops show {sign}1 to {sign}{q['b']}", labels == [f"{sign}{k}" for k in range(1, q["b"] + 1)], labels)
-    ok(f"{tag} q{i} guide asks where the hopper landed", "Where did the hopper land" in pg.inner_text(".guide"), pg.inner_text(".guide"))
+BOARD_INK = "()=>{const c=document.querySelector('#board canvas');if(!c)return 0;const d=c.getContext('2d').getImageData(0,0,c.width,c.height).data;let n=0;for(let i=3;i<d.length;i+=4)if(d[i])n++;return n}"
+
+
+def teaching(pg, q, tag, i, again=False):
+    """After the first miss: the drawing is wiped and the working is hand-written on the board, step by step."""
+    pg.wait_for_selector("#board", timeout=6000)
+    pg.wait_for_function("()=>__demo.QS && !__demo.QS.teaching && !document.querySelector('#board .again').hidden", timeout=40000)
+    ok(f"{tag} q{i} drawing wiped for the lesson", pg.evaluate(INK) == 0)
+    ok(f"{tag} q{i} working hand-written on the board", pg.evaluate(BOARD_INK) > 1500, pg.evaluate(BOARD_INK))
+    spoken = pg.evaluate("()=>__spoken")
+    last = f"So {q['a']} {'plus' if q['op'] == '+' else 'minus'} {q['b']} is {q['ans']}."
+    ok(f"{tag} q{i} the voice explains the steps and gives the answer", any(t.startswith(last) for t in spoken), spoken[-3:])
+    if again:
+        pg.click("#board .again")
+        pg.wait_for_timeout(300)
+        ok(f"{tag} q{i} Watch again replays", pg.evaluate("()=>__demo.QS.teaching"))
+        pg.wait_for_function("()=>!__demo.QS.teaching && !document.querySelector('#board .again').hidden", timeout=40000)
 
 
 with sync_playwright() as p:
@@ -80,12 +88,12 @@ with sync_playwright() as p:
         pg.wait_for_timeout(400)
         pg.click(".over .go")
         pg.wait_for_timeout(600)
-        ok(f"{tag} 6 pen colours", pg.locator("#tools .pen").count() == 6)
+        ok(f"{tag} 6 colour pencils and a rubber", pg.locator("#tools .pencil").count() == 6 and pg.locator("#tools .rubber").count() == 1)
         # tools make no sound
         before = pg.evaluate("()=>__spoken.length")
-        pg.click("#tools .pen >> nth=3")
-        pg.click('#tools [data-t="erase"]')
-        pg.click("#tools .pen >> nth=1")
+        pg.click("#tools .pencil >> nth=3")
+        pg.click("#tools .rubber")
+        pg.click("#tools .pencil >> nth=1")
         ok(f"{tag} tools make no sound", pg.evaluate("()=>__spoken.length") == before)
         # pen is ready; draw in the free space in the middle
         room = pg.locator(".room").bounding_box()
@@ -106,7 +114,7 @@ with sync_playwright() as p:
         pg.click('.hoprow button[data-h="1"]')
         pg.click('.hoprow button[data-h="1"]')
         pg.wait_for_timeout(300)
-        ok(f"{tag} forward hops show +1 +2", pg.evaluate("()=>[...document.querySelectorAll('.nlbox .hoplab')].map(t=>t.textContent)") == ["+1", "+2"], pg.evaluate("()=>[...document.querySelectorAll('.nlbox .hoplab')].map(t=>t.textContent)"))
+        ok(f"{tag} after 2 hops only +2 shows", pg.evaluate("()=>[...document.querySelectorAll('.nlbox .hoplab')].map(t=>t.textContent)") == ["+2"], pg.evaluate("()=>[...document.querySelectorAll('.nlbox .hoplab')].map(t=>t.textContent)"))
         size = pg.evaluate("()=>{const s=document.querySelector('.nlbox svg'),t=s.querySelectorAll('.tick');const a=t[0].getBoundingClientRect(),b=t[1].getBoundingClientRect();return Math.round(b.left-a.left)}")
         ok(f"{tag} number line is big (step {size}px)", size >= (28 if vw < 500 else 60 if vw >= 900 and vh >= 600 else 40))
         ok(f"{tag} everything fits", not pg.evaluate(FIT), pg.evaluate(FIT))
@@ -127,17 +135,19 @@ with sync_playwright() as p:
                 pg.wait_for_function(f"()=>__demo.n==={i} || document.querySelector('.over')", timeout=4000)
                 ok(f"{tag} q{i} next question came by itself", True)
             elif mode == "guided":
+                pg.mouse.move(*mid(pg))
+                pg.mouse.down(); pg.mouse.move(mid(pg)[0] + 80, mid(pg)[1] + 10); pg.mouse.up()
                 answer(pg, q, wrong(q))
-                guided_hops(pg, q, tag, i)
-                if tag == "ipad":
-                    pg.screenshot(path="demo_guided.png")
+                teaching(pg, q, tag, i, again=True)
+                if tag in ("ipad", "phone2", "phone_side"):
+                    pg.screenshot(path=f"demo_{tag}_teach.png")
                 answer(pg, q, q["ans"])
                 pg.wait_for_timeout(200)
                 ok(f"{tag} q{i} right after guidance", "correct" in pg.inner_text("#msg"))
                 pg.wait_for_function(f"()=>__demo.n==={i}", timeout=4000)
             else:
                 answer(pg, q, wrong(q))
-                pg.wait_for_timeout(1100)
+                teaching(pg, q, tag, i)
                 answer(pg, q, wrong(q))
                 pg.wait_for_timeout(300)
                 ok(f"{tag} q{i} second miss: Oops and See The Answer", pg.locator(".band.oops").count() == 1 and "See The Answer" in pg.inner_text("#tile"))
@@ -145,7 +155,9 @@ with sync_playwright() as p:
                 pg.click("#tile")
                 pg.wait_for_timeout(700 + 520 * q["b"])
                 shown_ok = pg.inner_text("#ansBox").strip() == str(q["ans"]) if q["typed"] else pg.locator(f'#qbody .opt.sel.right[data-v="{q["ans"]}"]').count() == 1
-                ok(f"{tag} q{i} answer shown with {q['b']} labelled hops", pg.locator(".nlbox .hoplab").count() == q["b"] and shown_ok and "correct" in pg.inner_text("#msg"))
+                sign = "+" if q["op"] == "+" else "−"
+                labs = pg.evaluate("()=>[...document.querySelectorAll('.nlbox .hoplab')].map(t=>t.textContent)")
+                ok(f"{tag} q{i} answer shown: {q['b']} hops, label {sign}{q['b']}", pg.locator(".nlbox .hop").count() == q["b"] and labs == [f"{sign}{q['b']}"] and shown_ok and "correct" in pg.inner_text("#msg"), labs)
                 if tag == "ipad":
                     pg.screenshot(path="demo_shown.png")
                 pg.click("#tile")
@@ -154,6 +166,8 @@ with sync_playwright() as p:
         pg.wait_for_selector(".over", timeout=4000)
         ok(f"{tag} all question screens fit", not fits, fits[:3])
         ok(f"{tag} set of 10 ends with the done card", "10 questions done" in pg.inner_text(".over"))
+        missing = pg.evaluate("()=>{const all=new Set(KM.allPhrases());return __spoken.filter(t=>!all.has(t))}")
+        ok(f"{tag} every spoken sentence is in the recorded list", not missing, missing[:3])
         ok(f"{tag} no page errors", not errs, errs[:3])
         pg.close()
     b.close()

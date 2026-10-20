@@ -5,19 +5,22 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="robots" content="noindex">
 <title>Maths Practice Demo</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Patrick+Hand&display=swap">
 <!-- Practice demo for Kids Maths (20 Oct 2026). Question screen follows Prodigy Math's layout
      (prodigy_design_blueprint.md 2.12 to 2.20), without the battle. Aldrin's changes:
-     - questions come one after another; after a right answer the next one comes by itself;
-     - the number line sits at the bottom, the middle is free drawing space, 6 pen colours;
-     - each hop shows +1, +2, +3 (or -1, -2) so the child sees how many she added;
-     - a wrong answer starts guided help: back to the start, the right button glows, "tap Forward 5 times",
-       then "where did the hopper land?"; a second wrong answer shows the answer step by step;
-     - tools make no sound; fits phone, iPad and computer. No story yet. -->
+     - questions one after another; after a right answer the next one comes by itself;
+     - number line at the bottom, free drawing space in the middle; real-looking colour pencils and a rubber;
+     - the newest hop shows how many so far (+1, then +2 ...);
+     - a wrong answer wipes the drawing and hand-writes the working in the middle, step by step with the voice
+       (make 10 first, back to 10 first, ones and keep the 10, or hops); "Watch again" replays it;
+     - a natural recorded voice (voice/<hash>.mp3, made with the free Kokoro voice); tools make no sound.
+     Questions, teaching steps and all sentences live in phrases.js. -->
 <style>
 :root {
   --teal: #0aae90; --teal-dark: #0b6f59; --teal-soft: #e9f8f4; --blue: #027cbc; --blue-edge: #076a9c; --orange: #fb8405;
-  --amber: #eba647; --amber-soft: #fff4dc; --salmon: #dd9089; --key: #f9f9f9; --keypad: #c9cacd; --panel: #eeeeee;
-  --ink: #3f3f3f; --navy: #2c3e50; --green: #2fae5b; --red: #d9534f; --bg: #fbfefd; --hop: #f08a24; --line: #4d4d4d;
+  --amber: #eba647; --salmon: #dd9089; --key: #f9f9f9; --keypad: #c9cacd; --panel: #eeeeee;
+  --ink: #3f3f3f; --navy: #2c3e50; --green: #2fae5b; --red: #d9534f; --bg: #fbfefd; --paper: #fffdf6;
 }
 * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
 html, body { margin: 0; height: 100%; overflow: hidden; overflow-x: clip; background: var(--bg); color: var(--ink);
@@ -25,8 +28,7 @@ html, body { margin: 0; height: 100%; overflow: hidden; overflow-x: clip; backgr
 button { font: inherit; color: inherit; cursor: pointer; }
 [hidden] { display: none !important; }
 
-/* ---------- layout: work area + tools, then message bar and keypad ---------- */
-#app { position: fixed; inset: 0; display: grid; grid-template-columns: minmax(0, 1fr) clamp(64px, 9vw, 100px);
+#app { position: fixed; inset: 0; display: grid; grid-template-columns: minmax(0, 1fr) clamp(76px, 10vw, 112px);
   grid-template-rows: auto minmax(0, 1fr) auto auto; grid-template-areas: "top tools" "work tools" "msg msg" "keys keys"; }
 #top { grid-area: top; display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: center; gap: 12px; padding: 12px 16px 0; }
 #speak { width: clamp(46px, 6vw, 60px); height: clamp(46px, 6vw, 60px); border-radius: 50%; border: 0; background: var(--teal); display: grid; place-items: center; }
@@ -41,7 +43,7 @@ button { font: inherit; color: inherit; cursor: pointer; }
 #qbody .box, #qbody .opt, #qbody .bulb, #qbody .nlbox, #qbody .hoprow { pointer-events: auto; position: relative; z-index: 4; }
 #qbody .bulb { position: absolute; z-index: 5; }
 .qtop { width: 100%; display: flex; flex-direction: column; align-items: center; gap: clamp(10px, 2vh, 18px); padding-top: clamp(4px, 2vh, 20px); text-align: center; }
-.room { flex: 1; width: 100%; min-height: 40px; }                       /* free drawing space */
+.room { flex: 1; width: 100%; min-height: 40px; }
 .qbottom { width: 100%; display: flex; flex-direction: column; align-items: center; gap: 10px; }
 .qline { font-weight: 800; font-size: clamp(20px, 2.8vw, 28px); color: #5f5f5f; }
 .qline .kw { color: var(--teal); }
@@ -62,11 +64,6 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .opt.right { background: #dff5e7; border-color: var(--green); color: #255e3a; } .opt.right small { color: #3b7a52; }
 .opt.wrong { border-color: var(--red); }
 
-/* guide line: the one next step, shown above the number line */
-.guide { min-height: 1.6em; font-size: clamp(17px, 2.3vw, 22px); font-weight: 800; color: var(--teal-dark); text-align: center; padding: 6px 16px; border-radius: 999px; }
-.guide.on { background: var(--amber-soft); color: #7a4b00; }
-.guide:empty { visibility: hidden; }
-
 /* number line */
 .nlbox { width: 100%; max-width: 1100px; touch-action: none; }
 .nlbox svg { display: block; width: 100%; }
@@ -81,17 +78,25 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .hoprow button { min-height: clamp(48px, 7vh, 62px); border-radius: 14px; border: 2px solid #c8d3d0; background: #fff; font-size: clamp(16px, 2.2vw, 22px); font-weight: 800; color: #3d5a55; white-space: nowrap; padding: 0 6px; box-shadow: 0 3px 0 rgba(0, 0, 0, .1); }
 .hoprow button.fwd { background: var(--teal-soft); border-color: var(--teal); color: var(--teal-dark); }
 .hoprow button:disabled { opacity: .35; }
-.hoprow button.glow { border-color: #f0a020; background: #fff1d6; color: #7a4b00; animation: glow 1.4s ease-in-out infinite; }
-@keyframes glow { 0%, 100% { box-shadow: 0 0 0 0 rgba(240, 160, 32, .55); } 50% { box-shadow: 0 0 0 8px rgba(240, 160, 32, 0); } }
 
-/* tools: 6 pen colours, eraser, clear */
-#tools { grid-area: tools; background: var(--panel); display: flex; flex-direction: column; align-items: center; gap: 10px; padding: 12px 8px; }
-#tools .pen { width: clamp(40px, 5.6vw, 54px); aspect-ratio: 1; border-radius: 50%; border: 3px solid #fff; box-shadow: 0 0 0 2px #d0d0d0; padding: 0; }
-#tools .pen.on { box-shadow: 0 0 0 3px #fff, 0 0 0 6px var(--ink); }
-#tools .tool { width: 100%; max-width: 64px; aspect-ratio: 1; border-radius: 14px; border: 2px solid #d4d4d4; background: #fff; display: grid; place-items: center; padding: 0; }
-#tools .tool svg { width: 56%; height: 56%; }
-#tools .tool.on { border-color: var(--ink); box-shadow: 0 0 0 2px var(--ink); }
+/* teaching board: hand-written working in the middle */
+#board { position: absolute; z-index: 6; background: var(--paper); border-radius: 18px; box-shadow: 0 0 0 2px #efe6cf, 0 8px 24px rgba(0, 0, 0, .08);
+  background-image: repeating-linear-gradient(transparent 0 calc(var(--rule) - 1px), #e9edf5 calc(var(--rule) - 1px) var(--rule)); }
+#board canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
+#board .bbtns { position: absolute; right: 10px; bottom: 8px; display: flex; gap: 8px; z-index: 2; }
+#board .bbtns button { min-height: 44px; border-radius: 12px; border: 2px solid #c8d3d0; background: #fff; font-weight: 800; font-size: clamp(14px, 1.8vw, 18px); padding: 0 14px; color: #3d5a55; }
+#board .bbtns button.x { width: 44px; padding: 0; font-size: 20px; }
+
+/* tools: real-looking colour pencils, a rubber, a bin */
+#tools { grid-area: tools; background: var(--panel); display: flex; flex-direction: column; align-items: stretch; gap: 6px; padding: 12px 0 12px 8px; }
+#tools .pencil { border: 0; background: transparent; padding: 0; width: 86%; height: clamp(30px, 4.6vh, 42px); transform: translateX(14%); transition: transform .18s ease; }
+#tools .pencil.on { transform: translateX(0); }
+#tools .pencil svg, #tools .rubber svg { width: 100%; height: 100%; display: block; filter: drop-shadow(0 2px 1px rgba(0, 0, 0, .18)); }
+#tools .rubber { border: 0; background: transparent; padding: 0; width: 80%; height: clamp(40px, 6vh, 54px); margin-top: 8px; transform: translateX(16%); transition: transform .18s ease; }
+#tools .rubber.on { transform: translateX(0); }
 #tools .grow { flex: 1; }
+#tools .bin { align-self: center; width: 52px; height: 52px; margin-right: 8px; border-radius: 14px; border: 2px solid #d4d4d4; background: #fff; display: grid; place-items: center; padding: 0; }
+#tools .bin svg { width: 56%; height: 56%; }
 
 #msg { grid-area: msg; display: flex; align-items: center; padding: 8px 16px; font-size: clamp(14px, 1.8vw, 18px); font-weight: 700; color: #fff; }
 #msg.try { background: var(--amber); } #msg.wrong { background: var(--salmon); } #msg.right { background: #18ba98; } #msg.shown { background: var(--teal-dark); }
@@ -107,25 +112,27 @@ button { font: inherit; color: inherit; cursor: pointer; }
 #tile.next { background: #00a985; border-color: #087a62; }
 #tile.dim { opacity: .5; pointer-events: none; }
 
-/* phones and narrow portrait */
 @media (max-width: 640px), (max-aspect-ratio: 3/4) and (max-width: 820px) {
   #app { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto auto minmax(0, 1fr) auto auto; grid-template-areas: "top" "tools" "work" "msg" "keys"; }
-  #tools { flex-direction: row; justify-content: center; gap: 8px; padding: 8px 10px 0; background: transparent; }
-  #tools .pen { width: 34px; } #tools .tool { width: 40px; max-width: none; border-radius: 10px; }
+  #tools { flex-direction: row; justify-content: center; align-items: flex-start; gap: 4px; padding: 6px 10px 0; background: transparent; height: 74px; }
+  #tools .pencil { height: 68px; width: 30px; transform: translateY(-14px); }
+  #tools .pencil.on { transform: translateY(0); }
+  #tools .rubber { height: 64px; width: 34px; margin: 0 0 0 4px; transform: translateY(-10px); }
+  #tools .rubber.on { transform: translateY(0); }
   #tools .grow { display: none; }
+  #tools .bin { width: 44px; height: 44px; margin: 6px 0 0 6px; }
   #keys, #app.nokeys #keys { grid-template-columns: minmax(0, 1fr); }
   #pad { grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 8px; }
   #pad button { min-height: 50px; } #tile { min-height: 54px; }
   .hoprow button { font-size: 15px; }
   .bars { gap: 8px; }
 }
-/* phone turned sideways: short screen */
 @media (max-height: 520px) and (orientation: landscape) {
   #top { padding: 6px 12px 0; } #speak { width: 40px; height: 40px; }
-  #tools { gap: 6px; padding: 6px; } #tools .pen { width: 30px; } #tools .tool { max-width: 40px; }
+  #tools { gap: 3px; padding: 6px 0 6px 6px; } #tools .pencil { height: 24px; } #tools .rubber { height: 30px; margin-top: 4px; } #tools .bin { width: 38px; height: 38px; }
   #qbody { inset: 2px 12px 4px; } .qtop { padding-top: 0; gap: 6px; }
   .eq { font-size: 28px; } .qline, .story { font-size: 17px; } .story { line-height: 1.3; }
-  .opt { min-height: 44px; } .room { min-height: 0; } .qbottom { gap: 4px; } .guide { font-size: 15px; padding: 2px 10px; min-height: 0; }
+  .opt { min-height: 44px; } .room { min-height: 0; } .qbottom { gap: 4px; }
   .hoprow button { min-height: 38px; } .nlbox { max-width: 700px; }
   #keys { padding: 6px 10px calc(6px + env(safe-area-inset-bottom)); gap: 8px; } #pad { gap: 6px; }
   #pad button, #tile { min-height: 42px; } #msg { padding: 4px 12px; }
@@ -165,109 +172,165 @@ button { font: inherit; color: inherit; cursor: pointer; }
   <div id="msg" hidden></div>
   <div id="keys"><div id="pad"></div><button id="tile">Check</button></div>
 </div>
-
+<script src="phrases.js"></script>
 <script>
 "use strict";
-/* ---------- voice (questions and maths guidance only) and one soft chime ---------- */
-function speak(t) {
-  try {
-    if (!window.speechSynthesis) return;
-    speechSynthesis.cancel();
-    const u = new SpeechSynthesisUtterance(t.replace(/−/g, " minus "));
-    u.lang = "en-US"; u.rate = .95; u.pitch = 1;
-    const v = speechSynthesis.getVoices().find(v => /^en/i.test(v.lang) && /Samantha|Ava|Karen|Daniel|Google/i.test(v.name));
-    if (v) u.voice = v;
-    speechSynthesis.speak(u);
-  } catch (e) {}
-}
-let actx = null;
-function chime() {
-  try {
-    const AC = window.AudioContext || window.webkitAudioContext; if (!AC) return;
-    actx = actx || new AC();
-    [[660, 0], [880, .14]].forEach(([f, t]) => {
-      const o = actx.createOscillator(), g = actx.createGain(); o.type = "sine"; o.frequency.value = f;
-      g.gain.setValueAtTime(0, actx.currentTime + t); g.gain.linearRampToValueAtTime(.12, actx.currentTime + t + .03);
-      g.gain.exponentialRampToValueAtTime(.001, actx.currentTime + t + .6);
-      o.connect(g); g.connect(actx.destination); o.start(actx.currentTime + t); o.stop(actx.currentTime + t + .65);
-    });
-  } catch (e) {}
-}
-const wait = ms => new Promise(r => setTimeout(r, ms));
 const $ = s => document.querySelector(s);
+const FAST = window.__demoFast ? 0.2 : 1;            // tests run the teaching faster
+const wait = ms => new Promise(r => setTimeout(r, ms * FAST));
 
-/* ---------- small drawings (our own) ---------- */
+/* ---------- voice: recorded natural voice (voice/<hash>.mp3); browser voice only if a sentence was not recorded ---------- */
+let actx = null, voiceList = null, playing = null, sayToken = 0;
+if (window.__noVoice) voiceList = {};      // tests: check the words, not the recordings
+else fetch("voice/manifest.json").then(r => r.ok ? r.json() : {}).then(m => voiceList = m).catch(() => voiceList = {});
+function audioCtx() {
+  const AC = window.AudioContext || window.webkitAudioContext; if (!AC) return null;
+  if (!actx) actx = new AC();
+  if (actx.state === "suspended") actx.resume();
+  return actx;
+}
+const buffers = {};
+async function clip(text) {
+  const h = KM.fnv(text), ctx = audioCtx();
+  if (!ctx || !voiceList || !voiceList[h]) return null;
+  if (!buffers[h]) buffers[h] = fetch(`voice/${h}.mp3`).then(r => r.arrayBuffer()).then(b => new Promise((ok, no) => ctx.decodeAudioData(b, ok, no)));
+  try { return await buffers[h]; } catch (e) { return null; }
+}
+/* plain audio player: used where Web Audio is missing; unlocked on the first tap (iPad needs a tap before sound) */
+const player = new Audio(); player.preload = "auto";
+let unlocked = false;
+document.addEventListener("pointerdown", () => {
+  audioCtx();
+  if (!unlocked && !(window.AudioContext || window.webkitAudioContext)) {
+    unlocked = true; player.muted = true; player.src = `voice/${KM.fnv(KM.FIXED[6])}.mp3`;
+    const p = player.play(); if (p) p.then(() => { player.pause(); player.muted = false; }).catch(() => { player.muted = false; });
+  }
+}, true);
+function stopVoice() { sayToken++; try { if (playing) playing.stop(); } catch (e) {} playing = null; try { player.pause(); } catch (e) {} try { speechSynthesis.cancel(); } catch (e) {} }
+/* say(): speaks and resolves when finished (or after a time estimate) */
+async function say(text) {
+  stopVoice(); const me = sayToken;
+  const est = 600 + text.length * 62;
+  const h = KM.fnv(text), recorded = voiceList && voiceList[h];
+  if (recorded && !(window.AudioContext || window.webkitAudioContext)) {
+    return new Promise(res => {
+      player.muted = false; player.src = `voice/${h}.mp3`; player.onended = () => res();
+      const p = player.play(); if (p) p.catch(() => res());
+      setTimeout(res, est * 2);
+    });
+  }
+  const buf = await clip(text);
+  if (me !== sayToken) return;
+  if (buf) {
+    return new Promise(res => {
+      const src = actx.createBufferSource(); src.buffer = buf; src.connect(actx.destination); playing = src;
+      src.onended = () => res(); src.start(); setTimeout(res, buf.duration * 1000 + 400);
+    });
+  }
+  try {
+    if (window.speechSynthesis) {
+      const u = new SpeechSynthesisUtterance(text.replace(/−/g, " minus "));
+      u.lang = "en-US"; u.rate = .95; u.pitch = 1;
+      const v = speechSynthesis.getVoices().find(v => /^en/i.test(v.lang) && /Samantha|Ava|Karen|Daniel|Google/i.test(v.name)); if (v) u.voice = v;
+      speechSynthesis.speak(u);
+    }
+  } catch (e) {}
+  return new Promise(r => setTimeout(r, est * FAST));
+}
+function chime() {
+  const ctx = audioCtx(); if (!ctx) return;
+  [[660, 0], [880, .14]].forEach(([f, t]) => {
+    const o = ctx.createOscillator(), g = ctx.createGain(); o.type = "sine"; o.frequency.value = f;
+    g.gain.setValueAtTime(0, ctx.currentTime + t); g.gain.linearRampToValueAtTime(.1, ctx.currentTime + t + .03);
+    g.gain.exponentialRampToValueAtTime(.001, ctx.currentTime + t + .6);
+    o.connect(g); g.connect(ctx.destination); o.start(ctx.currentTime + t); o.stop(ctx.currentTime + t + .65);
+  });
+}
+
+/* ---------- drawings (our own) ---------- */
 const ICON = {
   speaker: `<svg viewBox="0 0 24 24"><path d="M4 9h4l5-4v14l-5-4H4z" fill="#fff"/><path d="M16 8.5a5 5 0 0 1 0 7M18.5 6a8.5 8.5 0 0 1 0 12" stroke="#fff" stroke-width="2" fill="none" stroke-linecap="round"/></svg>`,
   bulb: `<svg viewBox="0 0 24 24"><path d="M12 3a6 6 0 0 0-3.6 10.8c.6.5 1 1.2 1 2V17h5.2v-1.2c0-.8.4-1.5 1-2A6 6 0 0 0 12 3z" fill="#fff"/><rect x="9.4" y="18.2" width="5.2" height="2.4" rx="1" fill="#fff"/></svg>`,
   close: `<svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18" stroke="#fff" stroke-width="3" stroke-linecap="round"/></svg>`,
-  erase: `<svg viewBox="0 0 24 24"><rect x="3" y="9" width="18" height="9" rx="2.5" fill="#ffc1cb" stroke="#d98a9a" stroke-width="1.4" transform="rotate(-30 12 13)"/></svg>`,
-  clear: `<svg viewBox="0 0 24 24" fill="#666"><rect x="6" y="7" width="12" height="14" rx="2"/><rect x="4" y="4" width="16" height="2.4" rx="1"/><rect x="9" y="2" width="6" height="2" rx="1"/></svg>`,
+  bin: `<svg viewBox="0 0 24 24" fill="#666"><rect x="6" y="7" width="12" height="14" rx="2"/><rect x="4" y="4" width="16" height="2.4" rx="1"/><rect x="9" y="2" width="6" height="2" rx="1"/></svg>`,
   star: `<svg viewBox="0 0 100 100"><path d="M50 6 L62 36 L94 38 L69 58 L78 90 L50 72 L22 90 L31 58 L6 38 L38 36 Z" fill="#ffd34d" stroke="#e0a800" stroke-width="3" stroke-linejoin="round"/><circle cx="41" cy="50" r="4" fill="#3a2a00"/><circle cx="59" cy="50" r="4" fill="#3a2a00"/><path d="M41 61 Q50 69 59 61" stroke="#3a2a00" stroke-width="3" fill="none" stroke-linecap="round"/></svg>`,
 };
-const PENS = ["#2c3e50", "#2f80ed", "#27ae60", "#e74c3c", "#f39c12", "#9b51e0"];
+const PENS = [["#2c3e50", "#1c2833"], ["#2f80ed", "#1f5fb8"], ["#27ae60", "#1b7f45"], ["#e74c3c", "#b8382b"], ["#f39c12", "#c27a08"], ["#9b51e0", "#7438ad"]];
+/* a real-looking colour pencil: coloured lead, sharpened wood, hexagon body with light and dark faces, end cap.
+   Drawn pointing left (side panel) or pointing down (phone row). */
+function pencilSVG(col, dark, down) {
+  const L = 140, W = 30, P = (x, y) => down ? `${y},${L - x}` : `${x},${y}`;
+  const poly = (pts, fill, extra = "") => `<polygon points="${pts.map(p => P(p[0], p[1])).join(" ")}" fill="${fill}" ${extra}/>`;
+  const vb = down ? `0 0 ${W} ${L}` : `0 0 ${L} ${W}`;
+  return `<svg viewBox="${vb}" preserveAspectRatio="xMidYMid meet" aria-hidden="true">
+    ${poly([[0, 15], [13, 11], [13, 19]], col)}
+    ${poly([[13, 11], [36, 3], [36, 27], [13, 19]], "#f4d7a8")}
+    ${poly([[13, 11], [36, 3], [36, 9]], "#e9c48c")}
+    ${poly([[36, 3], [42, 5], [36, 9], [42, 11], [36, 15], [42, 17], [36, 21], [42, 23], [36, 27]], "#f4d7a8")}
+    ${poly([[38, 3], [128, 3], [128, 11], [38, 11]], col)}
+    ${poly([[38, 11], [128, 11], [128, 19], [38, 19]], col, 'opacity=".92"')}
+    ${poly([[38, 19], [128, 19], [128, 27], [38, 27]], dark)}
+    ${poly([[40, 5], [126, 5], [126, 8], [40, 8]], "#ffffff", 'opacity=".35"')}
+    ${poly([[128, 3], [140, 4], [140, 26], [128, 27]], dark)}
+  </svg>`;
+}
+/* a real-looking rubber: pink block with a blue paper sleeve */
+function rubberSVG(down) {
+  const L = 80, W = 40, P = (x, y) => down ? `${y},${L - x}` : `${x},${y}`;
+  const poly = (pts, fill, extra = "") => `<polygon points="${pts.map(p => P(p[0], p[1])).join(" ")}" fill="${fill}" ${extra}/>`;
+  return `<svg viewBox="${down ? `0 0 ${W} ${L}` : `0 0 ${L} ${W}`}" preserveAspectRatio="xMidYMid meet" aria-hidden="true">
+    ${poly([[2, 8], [8, 3], [78, 3], [78, 37], [8, 37], [2, 32]], "#f6a5b8")}
+    ${poly([[2, 26], [78, 26], [78, 37], [8, 37], [2, 32]], "#e48aa0")}
+    ${poly([[34, 1], [80, 1], [80, 39], [34, 39]], "#2f6fd1")}
+    ${poly([[34, 1], [80, 1], [80, 9], [34, 9]], "#4f8ae6")}
+    ${poly([[40, 16], [74, 16], [74, 19], [40, 19]], "#ffffff", 'opacity=".85"')}
+    ${poly([[40, 23], [66, 23], [66, 25], [40, 25]], "#ffffff", 'opacity=".6"')}
+  </svg>`;
+}
 
-/* ---------- questions: adding and taking away within 20 ---------- */
-const SET = 10, AUTO_NEXT_MS = 1500;
+/* ---------- questions ---------- */
+const SET = KM.SET, AUTO_NEXT_MS = 1500;
 const R = (a, b) => a + Math.floor(Math.random() * (b - a + 1));
-const skill = { theta: -1, learned: false, name: "Adding and taking away to 20" };   // Prodigy: start -1, +0.6 right, -1.2 wrong, learned at 3
-let n = 0, Q = null, QS = null, pen = PENS[0];
+const skill = { theta: -1, learned: false, name: KM.SKILL };   // Prodigy: start -1, +0.6 right, -1.2 wrong, learned at 3
+let n = 0, Q = null, QS = null, pen = PENS[0][0];
 function makeQuestion(i) {
-  const kind = ["add", "sub", "word", "add", "choice", "sub"][i % 6];
-  if (kind === "add") { const a = R(5, 12), b = R(2, 8); return { kind, typed: true, a, b, op: "+", ans: a + b, say: `${a} plus ${b} equals what?` }; }
-  if (kind === "sub") { const a = R(10, 19), b = R(2, 8); return { kind, typed: true, a, b, op: "−", ans: a - b, say: `${a} minus ${b} equals what?` }; }
-  if (kind === "word") { const a = R(11, 18), b = R(3, 8); return { kind, typed: true, word: true, a, b, op: "−", ans: a - b, story: `There are ${a} apples in a basket. You eat ${b} of them.`, ask: "How many are left?", say: `There are ${a} apples in a basket. You eat ${b} of them. How many are left?` }; }
-  const a = R(4, 9), b = R(3, 9), ans = a + b, opts = [ans, ans + 1, ans - 2].sort(() => Math.random() - .5);
-  return { kind, typed: false, a, b, op: "+", ans, opts, say: `What is ${a} plus ${b}? Is it ${opts[0]}, ${opts[1]}, or ${opts[2]}?` };
+  const kind = KM.KINDS[i % KM.KINDS.length], r = KM.RANGES[kind], q = KM.build(kind, R(...r.a), R(...r.b));
+  if (!q.typed) q.opts = [q.ans, q.ans + 1, q.ans - 2].sort(() => Math.random() - .5);
+  return q;
 }
 const fwd = () => Q.op === "+";
-const stepWord = () => fwd() ? "Forward" : "Back";
-const hint = () => `Start at ${Q.a}. Tap ${stepWord()} ${Q.b} times.`;
 
 /* ---------- screen ---------- */
 function drawDots() { $("#dots").innerHTML = Array.from({ length: SET }, (_, i) => `<i class="${i < n ? "done" : i === n ? "now" : ""}"></i>`).join(""); }
 function nextQuestion() {
-  closeHint(); clearDraw();
-  Q = makeQuestion(n); QS = { tries: 0, phase: "ask", typed: "", pick: null, line: null, hops: [], lo: null, hi: null, guide: false };
+  closeHint(); closeBoard(); clearDraw(); stopVoice();
+  Q = makeQuestion(n); QS = { tries: 0, phase: "ask", typed: "", pick: null, line: null, hops: [], lo: null, hi: null };
   $("#app").classList.toggle("nokeys", !Q.typed); $("#app").classList.remove("locked");
   $("#msg").hidden = true; tileTo("", "Check");
   drawDots(); renderBody();
-  setTimeout(() => speak(Q.say), 250);
+  setTimeout(() => say(Q.say), 250);
 }
 function boxCls() { return QS.mark === "right" ? "right" : QS.mark === "wrong" ? "wrong" : QS.phase === "ask" ? "active" : ""; }
 function renderBody() {
   const b = $("#qbody"), bulb = `<button class="bulb" aria-label="Hint">${ICON.bulb}</button>`;
   let top;
   if (Q.word) top = `<div class="story">${Q.story}<br><b>${Q.ask}</b><span class="inbulb">${bulb}</span></div><div class="eq"><span class="box ${boxCls()}" id="ansBox">${QS.typed || "&nbsp;"}</span></div>`;
-  else if (Q.typed) top = `<div class="eq"><span>${Q.a}</span><span>${Q.op}</span><span>${Q.b}</span><span>=</span><span class="box ${boxCls()}" id="ansBox">${QS.typed || "&nbsp;"}${bulb}</span></div>`;
+  else if (Q.typed) top = `<div class="eq"><span>${Q.a}</span><span>${KM.sym(Q.op)}</span><span>${Q.b}</span><span>=</span><span class="box ${boxCls()}" id="ansBox">${QS.typed || "&nbsp;"}${bulb}</span></div>`;
   else top = `<div class="qline">What is <span class="kw">${Q.a} + ${Q.b}</span>?<span class="inbulb">${bulb}</span></div><div class="bars">${Q.opts.map((o, i) => `<button class="opt" data-v="${o}"><small>${"abc"[i]})</small>${o}</button>`).join("")}</div>`;
   const off = QS.phase === "shown" || QS.phase === "right" ? " disabled" : "";
-  const g = QS.guide && QS.phase === "ask";
-  const back = g && fwd() ? " disabled" : "", forward = g && !fwd() ? " disabled" : "";
-  const glowF = g && fwd() && QS.hops.length < Q.b ? " glow" : "", glowB = g && !fwd() && QS.hops.length < Q.b ? " glow" : "";
   b.innerHTML = `<div class="qtop">${top}</div><div class="room"></div>
-    <div class="qbottom"><div class="guide${g ? " on" : ""}" aria-live="polite">${guideText()}</div><div class="nlbox" aria-label="Number line"></div>
-    <div class="hoprow"><button data-h="-1"${off || back} class="${glowB}" aria-label="Hop back one">◀ Back</button><button data-h="1" class="fwd${glowF}"${off || forward} aria-label="Hop forward one">Forward ▶</button><button data-h="0"${off} aria-label="Start again">↺ Restart</button></div></div>`;
+    <div class="qbottom"><div class="nlbox" aria-label="Number line"></div>
+    <div class="hoprow"><button data-h="-1"${off} aria-label="Hop back one">◀ Back</button><button data-h="1" class="fwd"${off} aria-label="Hop forward one">Forward ▶</button><button data-h="0"${off} aria-label="Start again">↺ Restart</button></div></div>`;
   drawLine();
   b.querySelectorAll(".bulb").forEach(x => x.onclick = e => { e.stopPropagation(); document.querySelector(".bubble") ? closeHint() : openHint(); });
-  b.querySelectorAll(".opt").forEach(x => x.onclick = () => { if (QS.phase !== "ask") return; QS.pick = +x.dataset.v; QS.mark = null; renderBody(); });
+  b.querySelectorAll(".opt").forEach(x => x.onclick = () => { if (QS.phase !== "ask" || QS.teaching) return; QS.pick = +x.dataset.v; QS.mark = null; renderBody(); });
   if (QS.pick != null) b.querySelectorAll(`.opt[data-v="${QS.pick}"]`).forEach(x => x.classList.add("sel", ...(QS.mark ? [QS.mark] : [])));
   b.querySelectorAll(".hoprow button").forEach(x => x.onclick = () => { const h = +x.dataset.h; if (h) hopTo(QS.line + h); else restart(); });
-}
-function guideText() {
-  if (QS.phase === "shown") return `${Q.a} ${Q.op} ${Q.b} = ${Q.ans}`;
-  if (!QS.guide || QS.phase !== "ask") return "";
-  const moved = (QS.line - Q.a) * (fwd() ? 1 : -1);
-  if (!QS.hops.length) return hint();
-  if (moved === Q.b) return Q.typed ? "Where did the hopper land? Type that number." : "Where did the hopper land? Tap that answer.";
-  if (moved > Q.b) return `That is more than ${Q.b} hops. Tap Restart.`;
-  if (moved < 0) return `Wrong way. Tap Restart, then ${stepWord()}.`;
-  return `Keep going: ${Q.b} hops ${fwd() ? "forward" : "back"}.`;
+  if (QS.board) placeBoard();
 }
 function restart() { if (!QS || QS.phase === "shown") return; QS.line = Q.a; QS.hops = []; renderBody(); }
 
-/* The number line: about 11 numbers around the question, sized from the real screen width.
-   The hopper starts on the first number. Each hop shows +1, +2, +3 (or −1, −2) counted from the start. */
+/* ---------- number line: the newest hop shows how many so far ---------- */
 function lineRange() {
   const span = 10, extra = span - Q.b, left = 1 + Math.floor(Math.random() * Math.max(1, extra - 1));
   let lo = Math.min(Q.a, Q.ans) - left; lo = Math.max(0, Math.min(lo, 20 - span));
@@ -279,20 +342,22 @@ function drawLine() {
   if (QS.line == null) QS.line = Q.a;
   const lo = QS.lo, hi = QS.hi, Wd = Math.max(240, box.clientWidth), step = Wd / (hi - lo + 1), X = v => step / 2 + (v - lo) * step;
   const font = Math.max(18, Math.min(40, step * 0.42)), tick = font * 0.8, arcH = Math.min(step * 0.62, 58), r = Math.max(12, Math.min(24, step * 0.24));
-  const lab = Math.max(15, Math.min(26, step * 0.3)), base = lab + arcH + 14, H = base + tick / 2 + font + 14;
+  const lab = Math.max(16, Math.min(28, step * 0.32)), base = lab + arcH + 16, H = base + tick / 2 + font + 14;
   let s = `<svg viewBox="0 0 ${Wd} ${H}" height="${H}" role="img" aria-label="Number line from ${lo} to ${hi}">`;
   s += `<line x1="4" y1="${base}" x2="${Wd - 4}" y2="${base}" stroke="#4d4d4d" stroke-width="4" stroke-linecap="round"/>`;
   QS.hops.forEach(([a, c], i) => {
-    const m = (X(a) + X(c)) / 2, h = arcH * Math.min(1.3, 0.75 + Math.abs(c - a) * 0.12), fresh = i === QS.hops.length - 1 && QS.fresh ? " new" : "";
-    const d = c - Q.a, txt = d > 0 ? `+${d}` : d < 0 ? `−${-d}` : "0";
-    s += `<path class="hop${fresh}" d="M${X(a)} ${base - 4} Q${m} ${base - 4 - h * 1.5} ${X(c)} ${base - 4}" stroke="#f08a24" stroke-width="${Math.max(3, step * 0.055)}" fill="none" stroke-linecap="round"/>
-      <text class="hoplab${fresh}" x="${m}" y="${base - 4 - h * 0.75 - 6}" font-size="${lab}" font-weight="900" text-anchor="middle" fill="#c96a00">${txt}</text>`;
+    const m = (X(a) + X(c)) / 2, h = arcH * Math.min(1.3, 0.75 + Math.abs(c - a) * 0.12), last = i === QS.hops.length - 1, fresh = last && QS.fresh ? " new" : "";
+    s += `<path class="hop${fresh}" d="M${X(a)} ${base - 4} Q${m} ${base - 4 - h * 1.5} ${X(c)} ${base - 4}" stroke="#f08a24" stroke-width="${Math.max(3, step * 0.055)}" fill="none" stroke-linecap="round" opacity="${last ? 1 : .55}"/>`;
+    if (last) {
+      const d = c - Q.a, txt = d > 0 ? `+${d}` : d < 0 ? `−${-d}` : "0";
+      s += `<text class="hoplab${fresh}" x="${m}" y="${base - 4 - h * 0.75 - 8}" font-size="${lab}" font-weight="900" text-anchor="middle" fill="#c96a00">${txt}</text>`;
+    }
   });
   for (let v = lo; v <= hi; v++) {
     const five = v % 5 === 0;
     s += `<g class="tick" data-n="${v}"><rect x="${X(v) - step / 2}" y="${base - tick}" width="${step}" height="${H - base + tick}" fill="transparent"/>
       <line x1="${X(v)}" y1="${base - tick / 2}" x2="${X(v)}" y2="${base + tick / 2}" stroke="#4d4d4d" stroke-width="${five ? 4 : 2.6}" stroke-linecap="round"/>
-      <text x="${X(v)}" y="${base + tick / 2 + font + 2}" font-size="${font}" font-weight="${v === Q.a ? 900 : five ? 900 : 700}" text-anchor="middle" fill="${v === Q.a ? "#0b6f59" : "#3f3f3f"}">${v}</text></g>`;
+      <text x="${X(v)}" y="${base + tick / 2 + font + 2}" font-size="${font}" font-weight="${v === Q.a || five ? 900 : 700}" text-anchor="middle" fill="${v === Q.a ? "#0b6f59" : "#3f3f3f"}">${v}</text></g>`;
   }
   const x = X(QS.line), y = base - r - 3;
   s += `<g class="hopper${QS.fresh ? " land" : ""}" pointer-events="none"><circle cx="${x}" cy="${y}" r="${r}" fill="#0aae90" stroke="#fff" stroke-width="3"/>
@@ -304,14 +369,134 @@ function drawLine() {
 }
 function hopTo(v) {
   if (!QS || QS.phase === "shown" || QS.phase === "right" || v < QS.lo || v > QS.hi || v === QS.line) return;
-  QS.hops.push([QS.line, v]); QS.line = v; QS.fresh = true;
-  renderBody();
-  if (QS.guide && QS.phase === "ask" && QS.line === Q.ans) speak(guideText());
+  QS.hops.push([QS.line, v]); QS.line = v; QS.fresh = true; renderBody();
 }
-async function showHops() {                 // after "See The Answer": back to the start, then slow hops
+async function showHops() {
   const me = QS; QS.line = Q.a; QS.hops = []; renderBody(); await wait(500);
   const dir = fwd() ? 1 : -1;
   for (let i = 0; i < Q.b; i++) { if (QS !== me) return; QS.hops.push([QS.line, QS.line + dir]); QS.line += dir; QS.fresh = true; renderBody(); await wait(520); }
+}
+
+/* ---------- teaching board: wipe the drawing, then hand-write the working step by step ---------- */
+function placeBoard() {
+  const bd = $("#board"), work = $("#work").getBoundingClientRect(), top = document.querySelector(".qtop"), row = document.querySelector(".hoprow");
+  if (!bd || !top || !row) return;
+  const t = top.getBoundingClientRect().bottom - work.top + 8, bt = row.getBoundingClientRect().top - work.top - 8;
+  let y0 = t, h = bt - t;
+  if (h < 230) { y0 = 6; h = Math.max(160, bt - 6); }       // short screens: the board also covers the question (it is written on the board)
+  Object.assign(bd.style, { left: "12px", right: "12px", top: y0 + "px", height: h + "px" });
+  bd.style.setProperty("--rule", Math.max(28, Math.round(h / 6)) + "px");
+}
+function closeBoard() { const bd = $("#board"); if (bd) bd.remove(); if (QS) { QS.board = false; QS.teachRun = (QS.teachRun || 0) + 1; QS.teaching = false; } }
+async function teach() {
+  clearDraw(); closeHint();
+  let bd = $("#board");
+  if (!bd) {
+    bd = document.createElement("div"); bd.id = "board";
+    bd.innerHTML = `<canvas></canvas><div class="bbtns"><button class="again" hidden>▶ Watch again</button><button class="x" aria-label="Close" hidden>✕</button></div>`;
+    $("#work").appendChild(bd);
+    bd.querySelector(".again").onclick = () => teach();
+    bd.querySelector(".x").onclick = () => { closeBoard(); $("#app").classList.remove("locked"); };
+  }
+  QS.board = true; placeBoard();
+  const run = QS.teachRun = (QS.teachRun || 0) + 1, me = QS;
+  const live = () => QS === me && me.teachRun === run;
+  bd.querySelector(".again").hidden = true; bd.querySelector(".x").hidden = true;
+  QS.teaching = true; $("#app").classList.add("locked");
+  const cv = bd.querySelector("canvas"), r = bd.getBoundingClientRect(), dpr = window.devicePixelRatio || 1;
+  cv.width = Math.round(r.width * dpr); cv.height = Math.round(r.height * dpr);
+  const g = cv.getContext("2d"); g.setTransform(dpr, 0, 0, dpr, 0, 0);
+  const W = r.width, H = r.height, plan = KM.teach(Q), BTN = 58;
+  const split = plan.kind === "make10" || plan.kind === "back10", lastRow = plan.kind === "exact10" ? 2 : 3;
+  const units = 1.25 + lastRow * 1.32 + 0.45 + (split ? 0.95 : 0);            // board height needed, in letter sizes
+  const fs = Math.max(18, Math.min(56, (H - BTN) / units, W / 8.5)), ink = "#2b3a55";
+  const rowY = i => fs * 1.25 + i * fs * 1.32 + (split && i >= 1 ? fs * 0.95 : 0);
+  g.lineCap = g.lineJoin = "round";
+  const font = (size, w = 400) => `${w} ${size}px "Patrick Hand", "Comic Sans MS", "Chalkboard SE", cursive`;
+  const tokenX = {};                                          // where each token of row 0 sits, for the split lines
+  /* write text left to right, as if by hand */
+  async function write(text, x, y, size, color) {
+    g.font = font(size); const w = g.measureText(text).width, dur = Math.max(260, text.length * 150);
+    const t0 = performance.now();
+    await new Promise(res => {
+      const frame = now => {
+        if (!live()) return res();
+        const p = Math.min(1, (now - t0) / (dur * FAST));
+        g.save(); g.beginPath(); g.rect(x - 4, y - size, (w + 8) * p, size * 1.4); g.clip();
+        g.fillStyle = color; g.font = font(size); g.fillText(text, x, y); g.restore();
+        p < 1 ? requestAnimationFrame(frame) : res();
+      };
+      requestAnimationFrame(frame);
+    });
+  }
+  async function stroke(path, dur, color, width) {          // path: list of points, drawn bit by bit
+    const t0 = performance.now(); let k = 1;
+    await new Promise(res => {
+      const frame = now => {
+        if (!live()) return res();
+        const p = Math.min(1, (now - t0) / (dur * FAST)), upto = Math.max(1, Math.round(p * (path.length - 1)));
+        g.strokeStyle = color; g.lineWidth = width; g.beginPath(); g.moveTo(...path[k - 1]);
+        for (; k <= upto; k++) g.lineTo(...path[k]);
+        g.stroke(); k = upto;
+        p < 1 ? requestAnimationFrame(frame) : res();
+      };
+      requestAnimationFrame(frame);
+    });
+  }
+  const wobble = (x1, y1, x2, y2, n = 18) => Array.from({ length: n + 1 }, (_, i) => { const t = i / n; return [x1 + (x2 - x1) * t + Math.sin(t * 7) * 1.2, y1 + (y2 - y1) * t + Math.cos(t * 5) * 1.2]; });
+  async function writeRow(i, tokens, color) {
+    g.font = font(fs); const gap = fs * 0.32, widths = tokens.map(t => g.measureText(t).width);
+    const total = widths.reduce((a, b) => a + b, 0) + gap * (tokens.length - 1); let x = Math.max(14, (W - total) / 2);
+    for (let j = 0; j < tokens.length; j++) {
+      if (i === 0) tokenX[j] = [x, widths[j]];
+      await write(tokens[j], x, rowY(i), fs, tokens[j] === "?" ? "#c96a00" : color);
+      x += widths[j] + gap;
+    }
+  }
+  async function hops(h) {
+    const y = rowY(1) + fs * 0.1, x0 = W * 0.1, x1 = W * 0.9, n = h.n, step = (x1 - x0) / n;
+    await stroke(wobble(x0 - 10, y, x1 + 10, y, 30), 500, ink, 3);
+    const X = i => h.dir > 0 ? x0 + i * step : x1 - i * step;
+    g.font = font(fs * 0.62);
+    await write(String(h.from), X(0) - g.measureText(String(h.from)).width / 2, y + fs * 0.75, fs * 0.62, ink);
+    for (let i = 1; i <= n; i++) {
+      const a = X(i - 1), c = X(i), m = (a + c) / 2, top = y - Math.min(step * 0.7, fs * 0.85);
+      const pts = Array.from({ length: 16 }, (_, k) => { const t = k / 15; return [(1 - t) * (1 - t) * a + 2 * (1 - t) * t * m + t * t * c, (1 - t) * (1 - t) * (y - 3) + 2 * (1 - t) * t * top + t * t * (y - 3)]; });
+      await stroke(pts, 260, "#f08a24", 3.4);
+      const v = String(h.from + h.dir * i);
+      await write(v, c - g.measureText(v).width / 2, y + fs * 0.75, fs * 0.62, i === n ? "#1d8a4f" : ink);
+    }
+  }
+  async function answerLine() {
+    const y = rowY(lastRow), text = `${Q.a} ${KM.sym(Q.op)} ${Q.b} = ${Q.ans}`;
+    g.font = font(fs, 400); const w = g.measureText(text).width, x = Math.max(14, (W - w) / 2);
+    await write(text, x, y, fs, "#1d8a4f");
+    const aw = g.measureText(String(Q.ans)).width, cx = x + w - aw / 2, cy = y - fs * 0.32, rx = aw / 2 + fs * 0.32, ry = fs * 0.58;
+    await stroke(Array.from({ length: 40 }, (_, k) => { const t = k / 39 * Math.PI * 2.15 - .4; return [cx + Math.cos(t) * rx, cy + Math.sin(t) * ry]; }), 520, "#1d8a4f", 3);
+  }
+  for (const st of plan.steps) {
+    if (!live()) return;
+    const speech = say(st.say), draws = (async () => {
+      for (const d of st.draw) {
+        if (d.tokens) await writeRow(d.row, d.tokens, d.row === 0 ? ink : "#2f6fd1");
+        else if (d.split) {
+          const [bx, bw] = tokenX[2] || [W / 2, fs]; const cx = bx + bw / 2, y0 = rowY(0) + fs * 0.22, y1 = y0 + fs * 0.5;
+          await stroke(wobble(cx, y0, cx - fs * 0.7, y1, 10), 300, "#0aae90", 3);
+          await stroke(wobble(cx, y0, cx + fs * 0.7, y1, 10), 300, "#0aae90", 3);
+          g.font = font(fs * 0.7);
+          await write(String(d.split[0]), cx - fs * 0.7 - g.measureText(String(d.split[0])).width / 2, y1 + fs * 0.62, fs * 0.7, "#0b6f59");
+          await write(String(d.split[1]), cx + fs * 0.7 - g.measureText(String(d.split[1])).width / 2, y1 + fs * 0.62, fs * 0.7, "#0b6f59");
+        } else if (d.hops) await hops(d.hops);
+        else if (d.answer) await answerLine();
+      }
+    })();
+    await Promise.all([speech, draws]);
+    if (!live()) return;
+    await wait(250);
+  }
+  if (!live()) return;
+  QS.teaching = false; $("#app").classList.remove("locked");
+  bd.querySelector(".again").hidden = false; bd.querySelector(".x").hidden = false;
 }
 
 /* ---------- keypad: digits only ---------- */
@@ -322,39 +507,38 @@ function buildPad() {
   $("#pad").querySelectorAll("button").forEach(b => b.onclick = () => key(b.dataset.k));
 }
 function key(k) {
-  if (!QS || QS.phase !== "ask" || !Q.typed) return;
+  if (!QS || QS.phase !== "ask" || !Q.typed || QS.teaching) return;
   if (k === "⌫") QS.typed = QS.typed.slice(0, -1); else if (QS.typed.length < 3) QS.typed += k;
   QS.mark = null; renderBody();
 }
 
-/* ---------- Check: right -> next by itself; 1st wrong -> guided hops; 2nd wrong -> Oops, See The Answer ---------- */
+/* ---------- Check: right -> next by itself; 1st wrong -> hand-written teaching; 2nd wrong -> Oops, See The Answer ---------- */
 function msg(cls, text) { const m = $("#msg"); m.hidden = false; m.className = cls; m.textContent = text; }
 function tileTo(cls, text) { const t = $("#tile"); t.className = cls; t.textContent = text; }
 async function tile() {
-  if (!QS) return;
+  if (!QS || QS.teaching) return;
   if (QS.phase === "ask") {
     const a = Q.typed ? (QS.typed === "" ? null : +QS.typed) : QS.pick;
-    if (a == null) { speak(Q.typed ? "Type your answer first." : "Tap an answer first."); return; }
+    if (a == null) { say(Q.typed ? "Type your answer first." : "Tap an answer first."); return; }
     if (a === Q.ans) {
-      QS.phase = "right"; QS.mark = "right"; skill.theta += .6; chime(); renderBody(); $("#app").classList.add("locked");
+      QS.phase = "right"; QS.mark = "right"; skill.theta += .6; chime(); closeBoard(); renderBody(); $("#app").classList.add("locked");
       msg("right", "This is the correct answer!"); tileTo("next dim", "Correct!"); band("correct");
-      speak(`Correct! ${Q.a} ${Q.op === "+" ? "plus" : "minus"} ${Q.b} is ${Q.ans}.`);
-      const me = QS; await wait(AUTO_NEXT_MS); if (QS === me) goNext();
+      say(Q.correct);
+      const me = QS; await wait(AUTO_NEXT_MS / FAST); if (QS === me) goNext();
       return;
     }
     QS.tries++; QS.mark = "wrong"; renderBody();
-    if (QS.tries === 1) {                                    // guided help: work it out together on the number line
-      skill.theta -= 1.2;
-      msg("try", "Not yet. Let's work it out together on the number line.");
-      const me = QS;
-      await wait(900); if (QS !== me) return;
-      QS.typed = ""; QS.pick = null; QS.mark = null; QS.guide = true; QS.line = Q.a; QS.hops = []; renderBody();
-      speak(`Not yet. Let's work it out together. ${hint()}`);
+    if (QS.tries === 1) {
+      skill.theta -= 1.2; QS.teaching = true;
+      msg("try", "Not yet. Watch how to work it out.");
+      const me = QS; await say("Not yet. Watch how to work it out."); if (QS !== me) return;
+      QS.typed = ""; QS.pick = null; QS.mark = null; renderBody();
+      teach();
       return;
     }
-    QS.phase = "final"; $("#app").classList.add("locked");
+    QS.phase = "final"; closeBoard(); renderBody(); $("#app").classList.add("locked");
     msg("wrong", "That answer was incorrect."); tileTo("see dim", "See The Answer"); band("oops");
-    speak("Oops. Let's see the answer.");
+    say("Oops. Let's see the answer.");
     const me = QS; await wait(2000); if (QS === me) $("#tile").classList.remove("dim");
     return;
   }
@@ -362,8 +546,7 @@ async function tile() {
     QS.phase = "shown"; QS.mark = "right";
     if (Q.typed) QS.typed = String(Q.ans); else QS.pick = Q.ans;
     msg("shown", "This is the correct answer!"); tileTo("next", "Next ➜");
-    speak(`Watch. ${hint()} ${Q.a} ${Q.op === "+" ? "plus" : "minus"} ${Q.b} is ${Q.ans}.`);
-    showHops();
+    say(Q.fact); showHops();
     return;
   }
   if (QS.phase === "shown") goNext();
@@ -382,18 +565,19 @@ function band(kind) {
 function openHint() {
   closeHint();
   const h = document.createElement("div"); h.className = "bubble";
-  h.innerHTML = `<div class="bh"><button aria-label="Read the hint">${ICON.speaker}</button><h4>${hint()}</h4></div>`;
-  h.querySelector("button").onclick = () => speak(hint());
+  h.innerHTML = `<div class="bh"><button aria-label="Read the hint">${ICON.speaker}</button><h4>${Q.hint}</h4></div>`;
+  h.querySelector("button").onclick = () => say(Q.hint);
   $("#work").appendChild(h);
   document.querySelectorAll("#qbody .bulb").forEach(b => b.innerHTML = ICON.close);
-  speak(hint());
+  say(Q.hint);
 }
 function closeHint() { document.querySelectorAll(".bubble").forEach(b => b.remove()); document.querySelectorAll("#qbody .bulb").forEach(b => b.innerHTML = ICON.bulb); }
 
-/* ---------- drawing: pen always ready, 6 colours, eraser, clear (no sounds) ---------- */
+/* ---------- drawing: pencil always ready, 6 colours, rubber, bin (no sounds) ---------- */
 function buildTools() {
-  $("#tools").innerHTML = PENS.map(c => `<button class="pen" data-c="${c}" style="background:${c}" aria-label="Pen colour"></button>`).join("")
-    + `<button class="tool" data-t="erase" aria-label="Eraser">${ICON.erase}</button><div class="grow"></div><button class="tool" data-t="clear" aria-label="Clear the drawing">${ICON.clear}</button>`;
+  const down = matchMedia(NARROW).matches;
+  $("#tools").innerHTML = PENS.map(([c, d]) => `<button class="pencil" data-c="${c}" aria-label="Colour pencil">${pencilSVG(c, d, down)}</button>`).join("")
+    + `<button class="rubber" data-t="erase" aria-label="Rubber">${rubberSVG(down)}</button><div class="grow"></div><button class="bin" data-t="clear" aria-label="Clear the drawing">${ICON.bin}</button>`;
   $("#tools").querySelectorAll("button").forEach(b => b.onclick = () => {
     if (b.dataset.t === "clear") return clearDraw();
     pen = b.dataset.c || "erase"; markTools();
@@ -401,22 +585,20 @@ function buildTools() {
   markTools();
 }
 function markTools() { $("#tools").querySelectorAll("button").forEach(b => b.classList.toggle("on", (b.dataset.c || b.dataset.t) === pen)); }
-let g = null;
+let gd = null;
 function sizeDraw() {
   const c = $("#draw"), r = c.getBoundingClientRect(), dpr = window.devicePixelRatio || 1;
-  const keep = g && c.width > 1 ? c.toDataURL() : null;
   c.width = Math.max(1, Math.round(r.width * dpr)); c.height = Math.max(1, Math.round(r.height * dpr));
-  g = c.getContext("2d"); g.setTransform(dpr, 0, 0, dpr, 0, 0);
-  if (keep) { const im = new Image(); im.onload = () => g.drawImage(im, 0, 0, r.width, r.height); im.src = keep; }
+  gd = c.getContext("2d"); gd.setTransform(dpr, 0, 0, dpr, 0, 0);
 }
-function clearDraw() { const c = $("#draw"); if (g) { g.save(); g.setTransform(1, 0, 0, 1, 0, 0); g.clearRect(0, 0, c.width, c.height); g.restore(); } }
+function clearDraw() { const c = $("#draw"); if (gd) { gd.save(); gd.setTransform(1, 0, 0, 1, 0, 0); gd.clearRect(0, 0, c.width, c.height); gd.restore(); } }
 function setupDraw() {
   const c = $("#draw"); let last = null;
   const at = e => { const b = c.getBoundingClientRect(); return [e.clientX - b.left, e.clientY - b.top]; };
-  const style = () => { const er = pen === "erase"; g.globalCompositeOperation = er ? "destination-out" : "source-over";
-    g.strokeStyle = er ? "#000" : pen; g.fillStyle = g.strokeStyle; g.lineWidth = er ? 30 : 5; g.lineCap = g.lineJoin = "round"; };
-  c.onpointerdown = e => { if (!g) return; e.preventDefault(); c.setPointerCapture(e.pointerId); last = at(e); style(); g.beginPath(); g.arc(last[0], last[1], g.lineWidth / 2, 0, 7); g.fill(); };
-  c.onpointermove = e => { if (!last) return; e.preventDefault(); const p = at(e); style(); g.beginPath(); g.moveTo(last[0], last[1]); g.lineTo(p[0], p[1]); g.stroke(); last = p; };
+  const style = () => { const er = pen === "erase"; gd.globalCompositeOperation = er ? "destination-out" : "source-over";
+    gd.strokeStyle = er ? "#000" : pen; gd.fillStyle = gd.strokeStyle; gd.lineWidth = er ? 30 : 5; gd.lineCap = gd.lineJoin = "round"; };
+  c.onpointerdown = e => { if (!gd) return; e.preventDefault(); c.setPointerCapture(e.pointerId); last = at(e); style(); gd.beginPath(); gd.arc(last[0], last[1], gd.lineWidth / 2, 0, 7); gd.fill(); };
+  c.onpointermove = e => { if (!last) return; e.preventDefault(); const p = at(e); style(); gd.beginPath(); gd.moveTo(last[0], last[1]); gd.lineTo(p[0], p[1]); gd.stroke(); last = p; };
   c.onpointerup = c.onpointercancel = () => last = null;
 }
 
@@ -428,28 +610,34 @@ function overlay(html) {
   });
 }
 function skillCard() {
-  speak(`Skill complete! ${skill.name}.`);
+  say(`Skill complete! ${skill.name}.`);
   return overlay(`<div class="skillcard"><svg class="star" viewBox="0 0 24 24"><path d="M12 2l3 7 7.5.6-5.7 4.9 1.8 7.3L12 17.9 5.4 21.8l1.8-7.3L1.5 9.6 9 9z" fill="#ffd34d" stroke="#d89b00"/><text x="12" y="15" font-size="6" text-anchor="middle" font-weight="900" fill="#7a5600">+1</text></svg><h2>SKILL COMPLETE!</h2><p>${skill.name}</p><button>OK!</button></div>`);
 }
 async function finish() {
   QS = null; drawDots();
-  speak(`Well done! You finished ${SET} questions.`);
+  say(`Well done! You finished ${SET} questions.`);
   await overlay(`<div class="panel">${ICON.star.replace("<svg", '<svg class="big"')}<h1>${SET} questions done!</h1><p>Skill score: ${skill.theta.toFixed(1)} of 3</p><button class="go">Play again</button></div>`);
   n = 0; nextQuestion();
 }
 
 /* ---------- start ---------- */
-$("#speak").innerHTML = ICON.speaker; $("#speak").onclick = () => QS && speak(Q.say);
+$("#speak").innerHTML = ICON.speaker; $("#speak").onclick = () => QS && say(Q.say);
 $("#tile").onclick = tile;
 buildTools(); buildPad(); setupDraw();
-addEventListener("resize", () => { buildPad(); sizeDraw(); if (QS) renderBody(); });
+let wasNarrow = matchMedia(NARROW).matches;
+addEventListener("resize", () => {
+  const nw = matchMedia(NARROW).matches; if (nw !== wasNarrow) { wasNarrow = nw; buildTools(); }
+  buildPad(); sizeDraw(); if (QS) renderBody();
+});
 requestAnimationFrame(sizeDraw);
 drawDots();
 overlay(`<div class="panel">${ICON.star.replace("<svg", '<svg class="big"')}<h1>Maths practice demo</h1>
   <p>${SET} questions, one after another. Hop on the number line, or draw in the empty space, to work it out.</p>
   <p>Plain look for now. The kitty story and the knight story come later.</p><button class="go">Start</button></div>`)
-  .then(() => { sizeDraw(); nextQuestion(); });
-window.__demo = { get Q() { return Q; }, get QS() { return QS; }, skill, get n() { return n; } };
+  .then(() => { audioCtx(); sizeDraw(); say("Let's go!"); setTimeout(nextQuestion, 900 * FAST); });
+window.__demo = { get Q() { return Q; }, get QS() { return QS; }, skill, get n() { return n; },
+  lesson(kind, a, b) { closeBoard(); Q = KM.build(kind, a, b); QS = { tries: 1, phase: "ask", typed: "", pick: null, line: null, hops: [], lo: null, hi: null };   // for tests: show one lesson
+    $("#app").classList.toggle("nokeys", !Q.typed); renderBody(); return teach(); } };
 </script>
 </body>
 </html>
