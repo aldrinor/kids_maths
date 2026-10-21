@@ -38,6 +38,12 @@ CHECK = r"""(state) => {
     }
     if (hidden >= 2) out.push(name(e) + ' covered by ' + by);
   }
+  // the Check word must sit inside its button, and inside the straight part of the castle shield
+  const tile = document.querySelector('#tile'), sp = tile && tile.querySelector('span');
+  if (sp && sp.firstChild) { const rg = document.createRange(); rg.selectNodeContents(sp); const tr = rg.getBoundingClientRect(), br = tile.getBoundingClientRect();
+    const shield = document.body.dataset.theme === 'castle' && getComputedStyle(tile).clipPath !== 'none';
+    const limit = shield ? br.top + br.height * 0.66 : br.bottom;
+    if (tr.left < br.left + 4 || tr.right > br.right - 4 || tr.top < br.top + 2 || tr.bottom > limit) out.push('Check word does not fit its button'); }
   // number line must not sit under the lesson board
   const b = document.querySelector('#board'), n = document.querySelector('#qbody .nlbox');
   if (b && n && b.getBoundingClientRect().bottom > n.getBoundingClientRect().top + 1) out.push('board overlaps number line');
