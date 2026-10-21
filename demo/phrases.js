@@ -26,7 +26,7 @@
 
   /* Teaching plan. Each step: say (one sentence) and draw (what to hand-write on the board).
      Draw items: {row, text, color} | {split: [x, y], under: token} | {hops: {from, n, dir}} | {circle: true} */
-  function teach(q) {
+  function teach(q, right) {
     const { a, b, op, ans } = q, s = sym(op), steps = [];
     const head = { row: 0, tokens: [String(a), s, String(b), "=", "?"] };
     steps.push({ say: q.word ? `Eating takes apples away. So it is ${a} minus ${b}.` : `Let's work it out. ${a} ${word(op)} ${b}.`, draw: [head] });
@@ -70,7 +70,7 @@
         steps.push({ say: `Start at ${a}. Hop back ${b}.`, draw: [{ hops: { from: a, n: b, dir: -1 } }], line: [a, ans] });
       }
     }
-    steps.push({ say: `So ${a} ${word(op)} ${b} is ${ans}. ${q.typed ? `Type ${ans}.` : `Tap ${ans}.`}`, draw: [{ answer: true }] });
+    steps.push({ say: right ? q.fact : `So ${a} ${word(op)} ${b} is ${ans}. ${q.typed ? `Type ${ans}.` : `Tap ${ans}.`}`, draw: [{ answer: true }] });
     return { kind, steps };
   }
 
@@ -93,6 +93,7 @@
         const q = build(kind, a, b);
         [q.say, q.correct, q.fact, q.hint].forEach(t => out.add(t));
         teach(q).steps.forEach(st => out.add(st.say));
+        teach(q, true).steps.forEach(st => out.add(st.say));
       }
     }
     return [...out];

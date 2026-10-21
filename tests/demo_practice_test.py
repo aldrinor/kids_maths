@@ -138,9 +138,11 @@ with sync_playwright() as p:
             if mode == "right":
                 answer(pg, q, q["ans"])
                 pg.wait_for_timeout(200)
-                ok(f"{tag} q{i} right answer shows correct", "correct" in pg.inner_text("#msg"))
-                pg.wait_for_function(f"()=>__demo.n==={i} || document.querySelector('.over')", timeout=4000)
-                ok(f"{tag} q{i} next question came by itself", True)
+                ok(f"{tag} q{i} right answer shows correct", "correct" in pg.inner_text("#msg").lower())
+                pg.wait_for_selector("#board", timeout=8000)
+                ok(f"{tag} q{i} lesson plays after a right answer", True)
+                pg.wait_for_function(f"()=>__demo.n==={i} || document.querySelector('.over')", timeout=40000)
+                ok(f"{tag} q{i} next question came by itself after the lesson", True)
             elif mode == "guided":
                 pg.mouse.move(*mid(pg))
                 pg.mouse.down(); pg.mouse.move(mid(pg)[0] + 80, mid(pg)[1] + 10); pg.mouse.up()
@@ -150,8 +152,8 @@ with sync_playwright() as p:
                     pg.screenshot(path=f"demo_{THEME}_{tag}_teach.png")
                 answer(pg, q, q["ans"])
                 pg.wait_for_timeout(200)
-                ok(f"{tag} q{i} right after guidance", "correct" in pg.inner_text("#msg"))
-                pg.wait_for_function(f"()=>__demo.n==={i}", timeout=4000)
+                ok(f"{tag} q{i} right after guidance", "correct" in pg.inner_text("#msg").lower())
+                pg.wait_for_function(f"()=>__demo.n==={i}", timeout=40000)
             else:
                 answer(pg, q, wrong(q))
                 teaching(pg, q, tag, i)
@@ -164,7 +166,7 @@ with sync_playwright() as p:
                 shown_ok = pg.inner_text("#ansBox").strip() == str(q["ans"]) if q["typed"] else pg.locator(f'#qbody .opt.sel.right[data-v="{q["ans"]}"]').count() == 1
                 sign = "+" if q["op"] == "+" else "−"
                 labs = pg.evaluate("()=>[...document.querySelectorAll('.nlbox .hoplab')].map(t=>t.textContent)")
-                ok(f"{tag} q{i} answer shown: {q['b']} hops, label {sign}{q['b']}", pg.locator(".nlbox .hop").count() == q["b"] and labs == [f"{sign}{q['b']}"] and shown_ok and "correct" in pg.inner_text("#msg"), labs)
+                ok(f"{tag} q{i} answer shown: {q['b']} hops, label {sign}{q['b']}", pg.locator(".nlbox .hop").count() == q["b"] and labs == [f"{sign}{q['b']}"] and shown_ok and "correct" in pg.inner_text("#msg").lower(), labs)
                 if tag == "ipad":
                     pg.screenshot(path="demo_shown.png")
                 pg.click("#tile")
