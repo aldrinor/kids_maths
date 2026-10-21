@@ -26,7 +26,7 @@
   <div id="tools"></div>
   <div id="work"><canvas id="draw"></canvas><div id="qbody"></div></div>
   <div id="keys"><div id="pad"></div></div>
-  <button id="tile"><span>Check</span></button>
+  <button id="tile" hidden><span>Check</span></button>
 </div>
 <script src="../modules/characters.js"></script>
 <script src="../modules/knight_art.js"></script>
@@ -552,7 +552,7 @@ mascot("stand");
 overlay(`<div class="panel"><h1>Maths practice</h1><p>Pick a world. Then 10 questions, one after another.</p>
   <div class="pick"><button class="go" data-theme="cafe"><span class="art">${art("wave", "cafe")}</span>Kitty Café</button>
   <button class="go" data-theme="castle"><span class="art">${art("wave", "castle")}</span>Knight Castle</button></div></div>`, "start")
-  .then(t => { setTheme(t); audioCtx(); sizeDraw(); say("Let's go!"); setTimeout(nextQuestion, 900 * FAST); });
+  .then(t => { setTheme(t); audioCtx(); sizeDraw(); nextQuestion(); });   // the first question shows at once: no empty frame in between
 window.__demo = { get Q() { return Q; }, get QS() { return QS; }, skill, get n() { return n; },
   lesson(kind, a, b) { closeBoard(); Q = KM.build(kind, a, b); if (!Q.typed) Q.opts = [Q.ans, Q.ans + 1, Q.ans - 2]; QS = { tries: 1, phase: "ask", typed: "", pick: null, line: null, hops: [], lo: null, hi: null };   // for tests: show one lesson
     $("#app").classList.toggle("nokeys", !Q.typed); renderBody(); return teach(); } };
