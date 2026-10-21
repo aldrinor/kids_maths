@@ -268,24 +268,31 @@ function placeBoard() {
   const bd = $("#board"), work = $("#work").getBoundingClientRect(), top = document.querySelector(".qtop"), row = document.querySelector("#qbody .nlbox");   // stop above the number line, so it stays in view
   if (!bd || !top || !row) return;
   const y0 = top.getBoundingClientRect().bottom - work.top + 6, h = Math.max(60, row.getBoundingClientRect().top - work.top - 6 - y0);
-  Object.assign(bd.style, { left: "12px", right: "12px", top: y0 + "px", height: h + "px" });
+  const box = { left: "12px", right: "12px", top: y0 + "px", height: h + "px" };
+  Object.assign(bd.style, box); const bb = $("#boardbtns"); if (bb) Object.assign(bb.style, box);
   bd.style.setProperty("--rule", Math.max(28, Math.round(h / 6)) + "px");
 }
-function closeBoard() { const bd = $("#board"); if (bd) bd.remove(); $("#app").classList.remove("lesson"); if (QS) { QS.board = false; QS.teachRun = (QS.teachRun || 0) + 1; QS.teaching = false; } }
+function closeBoard() { const bd = $("#board"); if (bd) bd.remove(); const bb = $("#boardbtns"); if (bb) bb.remove(); $("#app").classList.remove("lesson"); if (QS) { QS.board = false; QS.teachRun = (QS.teachRun || 0) + 1; QS.teaching = false; } }
 async function teach() {
   clearDraw(); closeHint();
   let bd = $("#board");
   if (!bd) {
     bd = document.createElement("div"); bd.id = "board";
-    bd.innerHTML = `<canvas></canvas><button class="bx" aria-label="Close the lesson" hidden>✕</button><button class="again" hidden><span class="play">${ICON.play}</span>Watch again</button>`;
+    bd.innerHTML = `<canvas></canvas>`;
     $("#work").appendChild(bd);
-    bd.querySelector(".again").onclick = () => teach();
-    bd.querySelector(".bx").onclick = () => { closeBoard(); $("#app").classList.remove("locked"); };
+    /* the buttons sit on their own layer above the drawing layer; the board sits below it, so the child can draw on the lesson */
+    const bb = document.createElement("div"); bb.id = "boardbtns";
+    bb.innerHTML = `<button class="bx" aria-label="Close the lesson" hidden>✕</button><div class="brow"><button class="again" hidden><span class="play">${ICON.play}</span>Watch again</button><button class="bnext" hidden>Next ➜</button></div>`;
+    $("#work").appendChild(bb);
+    bb.querySelector(".again").onclick = () => teach();
+    bb.querySelector(".bnext").onclick = () => { if (QS && (QS.phase === "right" || QS.phase === "shown")) goNext(); };
+    bb.querySelector(".bx").onclick = () => { closeBoard(); $("#app").classList.remove("locked"); };
   }
+  const bb = $("#boardbtns");
   QS.board = true; $("#app").classList.add("lesson"); placeBoard();
   const run = QS.teachRun = (QS.teachRun || 0) + 1, me = QS;
   const live = () => QS === me && me.teachRun === run;
-  bd.querySelector(".again").hidden = true; bd.querySelector(".bx").hidden = true;
+  bb.querySelector(".again").hidden = true; bb.querySelector(".bx").hidden = true; bb.querySelector(".bnext").hidden = true;
   QS.teaching = true; $("#app").classList.add("locked");
   const cv = bd.querySelector("canvas"), r = bd.getBoundingClientRect(), dpr = window.devicePixelRatio || 1;
   cv.width = Math.round(r.width * dpr); cv.height = Math.round(r.height * dpr);
@@ -394,7 +401,7 @@ async function teach() {
   }
   if (!live()) return;
   QS.teaching = false; $("#app").classList.remove("locked");
-  bd.querySelector(".again").hidden = false; bd.querySelector(".bx").hidden = false;
+  bb.querySelector(".again").hidden = false; bb.querySelector(".bx").hidden = false; bb.querySelector(".bnext").hidden = QS.phase !== "right";
   if (QS.phase === "right") afterRightLesson();
 }
 

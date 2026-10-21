@@ -9,14 +9,14 @@ ENGINE = sys.argv[2] if len(sys.argv) > 2 else "chromium"
 STUB = ("window.__demoFast=true;window.__noVoice=true;window.speechSynthesis={speak(){},cancel(){},getVoices(){return[]}};"
         "window.SpeechSynthesisUtterance=function(){};window.AudioContext=window.webkitAudioContext=undefined;")
 # real devices; the "safari" sizes are what is left once Safari's toolbars show
-SIZES = [("iphone_se", 375, 667), ("iphone_se_safari", 375, 553), ("iphone_14", 390, 844), ("iphone_14_safari", 390, 664),
+SIZES = [("android", 360, 740), ("iphone_se", 375, 667), ("iphone_se_safari", 375, 553), ("iphone_14", 390, 844), ("iphone_14_safari", 390, 664),
          ("iphone_max", 430, 932), ("iphone_side", 844, 390), ("iphone_side_safari", 750, 340),
          ("ipad_mini", 744, 1133), ("ipad_mini_side", 1133, 744), ("ipad", 820, 1180), ("ipad_safari", 820, 1100),
          ("ipad_side", 1180, 820), ("ipad_side_safari", 1180, 740), ("ipad_pro_side", 1366, 1024),
          ("laptop", 1280, 720), ("desktop", 1920, 1080)]
 CHECK = r"""(state) => {
   const vw = innerWidth, vh = innerHeight, out = [];
-  const els = [...document.querySelectorAll('#speak,#dots,#mascot,#tools .pencil,#tools .rubber,#tools .bin,#ansBox,#qbody .opt,#qbody .bulb,.eq,.story,.qline,.nlbox,.hoprow button,#pad button,#tile,#msg:not([hidden]),#board,#board .again:not([hidden]),#board .bx:not([hidden])')]
+  const els = [...document.querySelectorAll('#speak,#dots,#mascot,#tools .pencil,#tools .rubber,#tools .bin,#ansBox,#qbody .opt,#qbody .bulb,.eq,.story,.qline,.nlbox,.hoprow button,#pad button,#tile,#msg:not([hidden]),#board,#boardbtns .again:not([hidden]),#boardbtns .bnext:not([hidden]),#boardbtns .bx:not([hidden])')]
     .filter(e => { const r = e.getBoundingClientRect(); return r.width > 0 && r.height > 0 && getComputedStyle(e).visibility !== 'hidden'; });
   const name = e => (e.id ? '#' + e.id : e.className && typeof e.className === 'string' ? '.' + e.className.split(' ')[0] : e.tagName) + (e.dataset.k ? '[' + e.dataset.k + ']' : e.dataset.h ? '[' + e.dataset.h + ']' : '');
   for (const e of els) {
@@ -30,10 +30,10 @@ CHECK = r"""(state) => {
       const x = r.left + r.width * fx, y = r.top + r.height * fy;
       if (x < 0 || y < 0 || x >= vw || y >= vh) continue;
       const t = document.elementFromPoint(x, y);
-      if (!t || t === e || e.contains(t) || t.contains(e) || t.closest('#draw') || t.id === 'draw' || (e.id === 'board' && t.closest('#board'))) continue;
-      if (e.closest('#board') && t.closest('#board')) continue;
+      if (!t || t === e || e.contains(t) || t.contains(e) || t.closest('#draw') || t.id === 'draw' || (e.id === 'board' && (t.closest('#board') || t.closest('#boardbtns')))) continue;
+      if ((e.closest('#board') || e.closest('#boardbtns')) && (t.closest('#board') || t.closest('#boardbtns'))) continue;
       if (t.closest('.band') || t.closest('.over')) continue;
-      if (e.id === 'board' || e.classList.contains('nlbox')) { if (t.closest('#board') || t.closest('.nlbox')) continue; }
+      if (e.id === 'board' || e.classList.contains('nlbox')) { if (t.closest('#board') || t.closest('#boardbtns') || t.closest('.nlbox')) continue; }
       hidden++; var by = name(t.closest('button,#board,.nlbox,#tools,#keys,#top,.qtop,.hoprow') || t);
     }
     if (hidden >= 2) out.push(name(e) + ' covered by ' + by);
@@ -66,7 +66,7 @@ with sync_playwright() as p:
             probs = pg.evaluate(CHECK, "start")
             pg.click(f'.over .go[data-theme="{theme}"]'); pg.wait_for_timeout(600)
             for kind, a, b in [("add", 7, 5), ("word", 15, 7), ("choice", 6, 7)]:
-                pg.evaluate(f"()=>{{__demo.lesson('{kind}',{a},{b}); __demo.QS.teaching=false; document.getElementById('board').remove(); document.getElementById('app').classList.remove('locked','lesson'); __demo.QS.board=false;}}")
+                pg.evaluate(f"()=>{{__demo.lesson('{kind}',{a},{b}); __demo.QS.teaching=false; document.getElementById('board').remove(); document.getElementById('boardbtns').remove(); document.getElementById('app').classList.remove('locked','lesson'); __demo.QS.board=false;}}")
                 pg.wait_for_timeout(250)
                 probs += pg.evaluate(CHECK, kind + " question")
                 pg.evaluate(f"()=>__demo.lesson('{kind}',{a},{b})"); pg.wait_for_function("()=>!__demo.QS.teaching", timeout=40000)

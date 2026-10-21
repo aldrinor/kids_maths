@@ -117,7 +117,8 @@ body[data-theme="castle"] .hoprow button.fwd { background: var(--primary); borde
 .hoprow button:disabled { opacity: .35; }
 
 /* lesson board: cafe recipe card with tape, castle parchment scroll */
-#board { position: absolute; z-index: 6; background-color: var(--paper); border-radius: var(--r);
+#board { position: absolute; z-index: 2;   /* below #draw (3): the child can draw on the lesson */
+  background-color: var(--paper); border-radius: var(--r);
   box-shadow: 0 0 0 2px var(--paper-edge), 0 8px 24px rgba(0, 0, 0, .08);
   background-image: repeating-linear-gradient(transparent 0 calc(var(--rule) - 1px), var(--paper-rule) calc(var(--rule) - 1px) var(--rule)); }
 body[data-theme="cafe"] #board::before, body[data-theme="cafe"] #board::after { content: ""; position: absolute; top: -9px; width: 74px; height: 22px; background: color-mix(in srgb, var(--accent) 60%, transparent); border-radius: 3px; }
@@ -127,12 +128,17 @@ body[data-theme="castle"] #board { border-radius: 4px; }
 body[data-theme="castle"] #board::before, body[data-theme="castle"] #board::after { content: ""; position: absolute; left: -6px; right: -6px; height: 14px; border-radius: 7px; background: linear-gradient(#d9c08a, #b8975a 60%, #9c7b40); }
 body[data-theme="castle"] #board::before { top: -7px; } body[data-theme="castle"] #board::after { bottom: -7px; }
 #board canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
-#board .bx { position: absolute; right: 10px; top: 10px; z-index: 2; width: 46px; height: 46px; border-radius: 50%; border: 2px solid var(--paper-edge); background: var(--strip); color: var(--ink-soft); font-size: 20px; display: grid; place-items: center; padding: 0; }
-#board .again { position: absolute; left: 50%; bottom: 10px; transform: translateX(-50%); z-index: 2; min-height: 52px; min-width: 210px; display: flex; align-items: center; justify-content: center; gap: 10px;
+#boardbtns .bx { position: absolute; right: 10px; top: 10px; z-index: 2; width: 46px; height: 46px; border-radius: 50%; border: 2px solid var(--paper-edge); background: var(--strip); color: var(--ink-soft); font-size: 20px; display: grid; place-items: center; padding: 0; }
+#boardbtns { position: absolute; z-index: 7; pointer-events: none; }
+#boardbtns button { pointer-events: auto; }
+#boardbtns .brow { position: absolute; left: 0; right: 0; bottom: 10px; display: flex; justify-content: center; gap: 14px; }
+#boardbtns .bnext { min-height: 52px; min-width: 150px; padding: 0 24px; border-radius: 999px; border: 3px solid color-mix(in srgb, var(--ok) 70%, black); background: var(--ok); color: #fff;
+  font-weight: 800; font-size: clamp(16px, 2vw, 20px); white-space: nowrap; box-shadow: 0 4px 0 color-mix(in srgb, var(--ok) 70%, black); }
+#boardbtns .again { min-height: 52px; min-width: 210px; display: flex; align-items: center; justify-content: center; gap: 10px;
   border-radius: 999px; border: 3px solid var(--primary-dark); background: var(--primary); color: var(--on-primary); font-weight: 800; font-size: clamp(16px, 2vw, 20px); padding: 0 22px 0 8px; white-space: nowrap; box-shadow: 0 4px 0 var(--primary-dark); }
-#board .again .play { width: 36px; height: 36px; border-radius: 50%; background: var(--on-primary); color: var(--primary); display: grid; place-items: center; flex: none; }
-#board .again .play svg { width: 54%; height: 54%; margin-left: 3px; }
-body[data-theme="castle"] #board .again { border-color: var(--accent-dark); box-shadow: 0 4px 0 var(--accent-dark); }
+#boardbtns .again .play { width: 36px; height: 36px; border-radius: 50%; background: var(--on-primary); color: var(--primary); display: grid; place-items: center; flex: none; }
+#boardbtns .again .play svg { width: 54%; height: 54%; margin-left: 3px; }
+body[data-theme="castle"] #boardbtns .again { border-color: var(--accent-dark); box-shadow: 0 4px 0 var(--accent-dark); }
 
 /* tools: realistic pencils on a cafe shelf or castle stone wall */
 #tools { grid-area: tools; display: flex; flex-direction: column; align-items: stretch; gap: 6px; padding: 26px 0 12px 10px; background: var(--panel); border-left: 3px solid var(--panel-edge); }
@@ -195,7 +201,7 @@ body[data-theme="castle"] #tile { border: 3px solid var(--accent); box-shadow: 0
   #pad button { min-height: 50px; } #tile { min-height: 56px; }
   .hoprow button { font-size: 15px; }
   .bars { gap: 8px; }
-  #board .again { min-width: 0; }
+  #boardbtns .again { min-width: 0; }
 }
 @media (max-height: 520px) and (orientation: landscape) {
   #deco { height: 10px; } #top { padding: 10px 12px 0; } #speak { width: 38px; height: 38px; border-width: 2px; } #mascot { display: none; }
@@ -210,7 +216,7 @@ body[data-theme="castle"] #tile { border: 3px solid var(--accent); box-shadow: 0
   #keys { padding: 6px 10px calc(6px + env(safe-area-inset-bottom)); gap: 8px; } #pad { gap: 6px; }
   #pad button, #tile { min-height: 42px; } #msg { padding: 6px 14px 6px 8px; font-size: 17px; min-height: 44px; gap: 8px; }
   #app.lesson .hoprow { display: none; }
-  #board .again { min-height: 40px; bottom: 6px; } #board .again .play { width: 28px; height: 28px; } #board .bx { width: 38px; height: 38px; top: 6px; }
+  #boardbtns .again, #boardbtns .bnext { min-height: 40px; } #boardbtns .brow { bottom: 6px; gap: 10px; } #boardbtns .bnext { min-width: 0; padding: 0 16px; } #boardbtns .again .play { width: 28px; height: 28px; } #boardbtns .bx { width: 38px; height: 38px; top: 6px; }
 }
 
 /* bands, hint, cards */
@@ -279,6 +285,6 @@ body[data-theme="castle"] #tile { border: 3px solid var(--accent); box-shadow: 0
   .nlbox svg { max-height: 16vh; } #app.lesson .nlbox svg { max-height: 12vh; } .hoprow button { min-height: 38px; }
   #pad button { min-height: 38px; } #tile { min-height: 42px; }
 }
-/* small phones: during a lesson the word story steps aside (the board writes it as a sum); the answer box stays */
-@media (max-height: 700px) and (orientation: portrait) { #app.lesson .story { display: none; } }
+/* phones: during a lesson the word story steps aside, so the board is big enough to draw on (the board writes it as a sum); the answer box stays */
+@media (max-height: 700px) and (orientation: portrait), (max-width: 640px) and (orientation: portrait) { #app.lesson .story { display: none; } }
 /* short wide screens: give the castle shield enough height for the word Check above its point */

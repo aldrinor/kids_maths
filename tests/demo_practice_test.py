@@ -65,9 +65,10 @@ BOARD_INK = "()=>{const c=document.querySelector('#board canvas');if(!c)return 0
 def teaching(pg, q, tag, i, again=False):
     """After the first miss: the drawing is wiped and the working is hand-written on the board, step by step."""
     pg.wait_for_selector("#board", timeout=6000)
-    pg.wait_for_function("()=>__demo.QS && !__demo.QS.teaching && !document.querySelector('#board .again').hidden", timeout=40000)
+    pg.wait_for_function("()=>__demo.QS && !__demo.QS.teaching && !document.querySelector('#boardbtns .again').hidden", timeout=40000)
     ok(f"{tag} q{i} drawing wiped for the lesson", pg.evaluate(INK) == 0)
     ok(f"{tag} q{i} working hand-written on the board", pg.evaluate(BOARD_INK) > 400, pg.evaluate(BOARD_INK))
+    ok(f"{tag} q{i} the child can draw on top of the lesson", pg.evaluate("()=>{const r=document.querySelector('#board').getBoundingClientRect();const t=document.elementFromPoint(r.left+r.width*.3,r.top+r.height*.4);return !!t&&t.id==='draw'}"))
     line = pg.evaluate("()=>({at:__demo.QS.line, hops:__demo.QS.hops.length, nl:document.querySelector('#qbody .nlbox').getBoundingClientRect().top, board:document.querySelector('#board').getBoundingClientRect().bottom})")
     ok(f"{tag} q{i} the hopper hopped {q['b']} times on the number line to {q['ans']}", line["at"] == q["ans"] and line["hops"] == q["b"], line)
     ok(f"{tag} q{i} the number line stays in view during the lesson", line["board"] <= line["nl"] + 1, line)
@@ -77,10 +78,10 @@ def teaching(pg, q, tag, i, again=False):
     last = f"So {q['a']} {'plus' if q['op'] == '+' else 'minus'} {q['b']} is {q['ans']}."
     ok(f"{tag} q{i} the voice explains the steps and gives the answer", any(t.startswith(last) for t in spoken), spoken[-3:])
     if again:
-        pg.click("#board .again")
+        pg.click("#boardbtns .again")
         pg.wait_for_timeout(300)
         ok(f"{tag} q{i} Watch again replays", pg.evaluate("()=>__demo.QS.teaching"))
-        pg.wait_for_function("()=>!__demo.QS.teaching && !document.querySelector('#board .again').hidden", timeout=40000)
+        pg.wait_for_function("()=>!__demo.QS.teaching && !document.querySelector('#boardbtns .again').hidden", timeout=40000)
 
 
 with sync_playwright() as p:
@@ -141,6 +142,10 @@ with sync_playwright() as p:
                 ok(f"{tag} q{i} right answer shows correct", "correct" in pg.inner_text("#msg").lower())
                 pg.wait_for_selector("#board", timeout=8000)
                 ok(f"{tag} q{i} lesson plays after a right answer", True)
+                if i == 1:
+                    pg.wait_for_selector("#boardbtns .bnext:not([hidden])", timeout=40000)
+                    c = pg.evaluate("()=>{const b=document.querySelector('#board').getBoundingClientRect(),a=document.querySelector('#boardbtns .again').getBoundingClientRect(),n=document.querySelector('#boardbtns .bnext').getBoundingClientRect();return [Math.round((a.left+n.right)/2-(b.left+b.right)/2), Math.round(a.top-n.top)]}")
+                    ok(f"{tag} q{i} Watch again and Next sit together in the centre", abs(c[0]) <= 3 and abs(c[1]) <= 6, c)
                 pg.wait_for_function(f"()=>__demo.n==={i} || document.querySelector('.over')", timeout=40000)
                 ok(f"{tag} q{i} next question came by itself after the lesson", True)
             elif mode == "guided":
