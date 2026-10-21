@@ -109,11 +109,17 @@ body[data-theme="castle"] #dots i { border-radius: 3px; transform: rotate(45deg)
 .nlbox .hopper.land { animation: land .35s ease; transform-box: fill-box; transform-origin: 50% 100%; }
 @keyframes land { 0% { transform: translateY(-30%); } 70% { transform: translateY(4%); } 100% { transform: none; } }
 
-.hoprow { width: min(640px, 100%); display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+.hoprow { width: min(760px, 100%); display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)) minmax(0, 1.35fr); gap: 10px; }
+/* Check lives in this row, beside Restart; the keypad holds only numbers and Delete */
+#qbody .hoprow #tile { min-height: 44px; padding: 2px 6px; font-size: clamp(16px, 2.2vw, 23px); white-space: normal; }
+#app.lesson .hoprow button[data-h] { display: none; }
+.hoprow .ar { font-style: normal; }
+@media (max-width: 640px) { .hoprow { gap: 6px; grid-template-columns: repeat(4, minmax(0, 1fr)); } .hoprow button, #qbody .hoprow #tile { font-size: 15px; padding: 0 2px; } .hoprow .ar { display: none; } }
+#app.lesson .hoprow { grid-template-columns: minmax(0, 1fr); width: min(360px, 100%); }
 .hoprow button { min-height: clamp(48px, 7vh, 62px); border-radius: var(--r); border: 2px solid var(--paper-edge); background: var(--paper); font-size: clamp(16px, 2.1vw, 21px); font-weight: 700; color: var(--ink); white-space: nowrap; padding: 0 6px; box-shadow: 0 3px 0 var(--paper-edge); }
 .hoprow button.fwd { background: var(--accent-soft); border-color: var(--accent-dark); color: var(--accent-dark); box-shadow: 0 3px 0 var(--accent-dark); }
 body[data-theme="castle"] .hoprow button { background: linear-gradient(#a8784f, #8a5e3b); color: #fff8ea; border-color: #5a3b22; box-shadow: 0 3px 0 #5a3b22; }
-body[data-theme="castle"] .hoprow button.fwd { background: var(--primary); border-color: var(--primary-dark); color: #fff; box-shadow: 0 3px 0 var(--primary-dark); }
+body[data-theme="castle"] .hoprow button.fwd { background: var(--accent); border-color: var(--accent-dark); color: var(--ink); box-shadow: 0 3px 0 var(--accent-dark); }   /* gold, so it never looks like the blue Check */
 .hoprow button:disabled { opacity: .35; }
 
 /* lesson board: cafe recipe card with tape, castle parchment scroll */
@@ -170,7 +176,7 @@ body[data-theme="castle"] #tools { background: repeating-linear-gradient(0deg, t
 @media (prefers-reduced-motion: reduce) { #msg { animation: none; } }
 
 /* keypad: cafe counter or castle oak board */
-#keys { grid-area: keys; background: var(--keypad); padding: 12px 14px calc(12px + env(safe-area-inset-bottom)); display: grid; grid-template-columns: minmax(0, 1fr) clamp(124px, 15vw, 176px); gap: 12px; }
+#keys { grid-area: keys; background: var(--keypad); padding: 12px 14px calc(12px + env(safe-area-inset-bottom)); display: grid; grid-template-columns: minmax(0, 1fr); gap: 12px; }
 body[data-theme="castle"] #keys { background: repeating-linear-gradient(90deg, rgba(0, 0, 0, .05) 0 2px, transparent 2px 90px), linear-gradient(#94653f, #7d5332); border-top: 4px solid #5a3b22; }
 #pad { display: grid; grid-template-columns: repeat(11, minmax(0, 1fr)); gap: 10px; }
 #pad button { min-height: clamp(54px, 9vh, 72px); border: 0; border-radius: var(--r-small); background: var(--key); color: var(--key-ink); font-size: clamp(22px, 3vw, 32px); font-weight: 600; box-shadow: 0 4px 0 var(--key-shadow); padding: 0; }
@@ -178,7 +184,7 @@ body[data-theme="castle"] #keys { background: repeating-linear-gradient(90deg, r
 #app.locked #pad button { opacity: .45; pointer-events: none; }
 #app.nokeys #pad { display: none; }
 #tile { border-radius: var(--r); border: 3px solid var(--primary-dark); background: var(--primary); color: var(--on-primary); font-weight: 800; font-size: clamp(19px, 2.3vw, 25px); line-height: 1.1; padding: 6px; min-height: clamp(54px, 9vh, 72px); box-shadow: 0 4px 0 var(--primary-dark); }
-#app.nokeys #keys { grid-template-columns: minmax(0, 1fr) clamp(140px, 22vw, 240px); }
+#app.nokeys #keys { display: none; }
 #tile.see { background: var(--note); color: var(--ink); border-color: var(--accent-dark); box-shadow: 0 4px 0 var(--accent-dark); }
 #tile.next { background: var(--ok); border-color: color-mix(in srgb, var(--ok) 70%, black); box-shadow: 0 4px 0 color-mix(in srgb, var(--ok) 70%, black); }
 #tile.dim { opacity: .55; pointer-events: none; }
@@ -215,7 +221,6 @@ body[data-theme="castle"] #tile { border: 3px solid var(--accent); box-shadow: 0
   .hoprow button { min-height: 38px; } .nlbox { max-width: 700px; }
   #keys { padding: 6px 10px calc(6px + env(safe-area-inset-bottom)); gap: 8px; } #pad { gap: 6px; }
   #pad button, #tile { min-height: 42px; } #msg { padding: 6px 14px 6px 8px; font-size: 17px; min-height: 44px; gap: 8px; }
-  #app.lesson .hoprow { display: none; }
   #boardbtns .again, #boardbtns .bnext { min-height: 40px; } #boardbtns .brow { bottom: 6px; gap: 10px; } #boardbtns .bnext { min-width: 0; padding: 0 16px; } #boardbtns .again .play { width: 28px; height: 28px; } #boardbtns .bx { width: 38px; height: 38px; top: 6px; }
 }
 
@@ -255,7 +260,6 @@ body[data-theme="castle"] #tile { border: 3px solid var(--accent); box-shadow: 0
 
 /* ---------------- layout fixes (20 Oct 2026, from tests/demo_layout_test.py) ---------------- */
 /* during a lesson: the hop buttons hide and the number line gets a little smaller, so the board has room */
-#app.lesson .hoprow { display: none; }
 #app.lesson .nlbox svg { max-height: 22vh; }
 /* short phones held upright (small iPhones, or Safari's bars showing) */
 @media (max-height: 700px) and (orientation: portrait) {

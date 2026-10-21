@@ -25,7 +25,8 @@
   <div id="top"><button id="speak" aria-label="Read the question out loud"></button><div id="dots" aria-label="Progress"></div><div id="mascot" aria-hidden="true"></div><div id="msg" role="status" hidden></div></div>
   <div id="tools"></div>
   <div id="work"><canvas id="draw"></canvas><div id="qbody"></div></div>
-  <div id="keys"><div id="pad"></div><button id="tile"><span>Check</span></button></div>
+  <div id="keys"><div id="pad"></div></div>
+  <button id="tile"><span>Check</span></button>
 </div>
 <script src="../modules/characters.js"></script>
 <script src="../modules/knight_art.js"></script>
@@ -193,7 +194,7 @@ function nextQuestion() {
   closeHint(); closeBoard(); clearDraw(); stopVoice();
   Q = makeQuestion(n); QS = { tries: 0, phase: "ask", typed: "", pick: null, line: null, hops: [], lo: null, hi: null };
   $("#app").classList.toggle("nokeys", !Q.typed); $("#app").classList.remove("locked");
-  hideMsg(); tileTo("", "Check");
+  hideMsg(); tileTo("", "Check"); $("#tile").hidden = false;
   drawDots(); renderBody(); mascot("stand");
   setTimeout(() => say(Q.say), 250);
 }
@@ -205,14 +206,16 @@ function renderBody() {
   else if (Q.typed) top = `<div class="eq"><span>${Q.a}</span><span>${KM.sym(Q.op)}</span><span>${Q.b}</span><span>=</span><span class="box ${boxCls()}" id="ansBox">${QS.typed || "&nbsp;"}${bulb}</span></div>`;
   else top = `<div class="qline">What is <span class="kw">${Q.a} + ${Q.b}</span>?<span class="inbulb">${bulb}</span></div><div class="bars">${Q.opts.map((o, i) => `<button class="opt" data-v="${o}"><small>${"abc"[i]})</small>${o}</button>`).join("")}</div>`;
   const off = QS.phase === "shown" || QS.phase === "right" ? " disabled" : "";
+  const tileEl = $("#tile"); tileEl.remove();             // Check sits in the row beside Restart; keep it while the body is rebuilt
   b.innerHTML = `<div class="qtop">${top}</div><div class="room"></div>
     <div class="qbottom"><div class="nlbox" aria-label="Number line"></div>
-    <div class="hoprow"><button data-h="-1"${off} aria-label="Hop back one">◀ Back</button><button data-h="1" class="fwd"${off} aria-label="Hop forward one">Forward ▶</button><button data-h="0"${off} aria-label="Start again">↺ Restart</button></div></div>`;
+    <div class="hoprow"><button data-h="-1"${off} aria-label="Hop back one"><i class="ar">◀ </i>Back</button><button data-h="1" class="fwd"${off} aria-label="Hop forward one">Forward<i class="ar"> ▶</i></button><button data-h="0"${off} aria-label="Start again"><i class="ar">↺ </i>Restart</button></div></div>`;
+  b.querySelector(".hoprow").appendChild(tileEl);
   drawLine();
   b.querySelectorAll(".bulb").forEach(x => x.onclick = e => { e.stopPropagation(); document.querySelector(".bubble") ? closeHint() : openHint(); });
   b.querySelectorAll(".opt").forEach(x => x.onclick = () => { if (QS.phase !== "ask" || QS.teaching) return; QS.pick = +x.dataset.v; QS.mark = null; renderBody(); });
   if (QS.pick != null) b.querySelectorAll(`.opt[data-v="${QS.pick}"]`).forEach(x => x.classList.add("sel", ...(QS.mark ? [QS.mark] : [])));
-  b.querySelectorAll(".hoprow button").forEach(x => x.onclick = () => { const h = +x.dataset.h; if (h) hopTo(QS.line + h); else restart(); });
+  b.querySelectorAll(".hoprow button[data-h]").forEach(x => x.onclick = () => { const h = +x.dataset.h; if (h) hopTo(QS.line + h); else restart(); });
   if (QS.board) placeBoard();
 }
 function restart() { if (!QS || QS.phase === "shown") return; QS.line = Q.a; QS.hops = []; renderBody(); }
@@ -425,7 +428,7 @@ function hideMsg() { $("#msg").hidden = true; $("#top").classList.remove("talkin
 /* after a right answer the lesson plays too; when it ends, Next lights up and the next question comes by itself.
    Watch again or closing the lesson stops the timer, so the child can look as long as needed. */
 async function afterRightLesson() {
-  const me = QS, run = QS.teachRun; $("#tile").classList.remove("dim");
+  const me = QS, run = QS.teachRun;
   await wait(AUTO_NEXT_MS); if (QS === me && me.teachRun === run && !me.teaching) goNext();
 }
 function tileTo(cls, text) { const t = $("#tile"); t.className = cls; t.innerHTML = `<span>${text}</span>`; }
@@ -436,7 +439,7 @@ async function tile() {
     if (a == null) { say(Q.typed ? "Type your answer first." : "Tap an answer first."); return; }
     if (a === Q.ans) {
       QS.phase = "right"; QS.mark = "right"; skill.theta += .6; chime(); mascot("happy"); closeBoard(); renderBody(); $("#app").classList.add("locked");
-      msg("right", "Correct! Watch how it works."); tileTo("next dim", "Next ➜"); band("correct");
+      msg("right", "Correct! Watch how it works."); $("#tile").hidden = true; band("correct");   // the only Next is on the lesson card
       const me = QS; await say(Q.correct); if (QS !== me) return;
       await wait(400); if (QS === me) teach();
       return;
