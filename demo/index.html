@@ -520,9 +520,9 @@ function setupDraw() {
 }
 
 /* ---------- cards ---------- */
-function overlay(html) {
+function overlay(html, cls = "") {
   return new Promise(res => {
-    const o = document.createElement("div"); o.className = "over"; o.innerHTML = html; document.body.appendChild(o);
+    const o = document.createElement("div"); o.className = ("over " + cls).trim(); o.innerHTML = html; document.body.appendChild(o);
     o.querySelectorAll("button").forEach(b => b.onclick = () => { o.remove(); res(b.dataset.theme); });
   });
 }
@@ -551,7 +551,7 @@ drawDots();
 mascot("stand");
 overlay(`<div class="panel"><h1>Maths practice</h1><p>Pick a world. Then 10 questions, one after another.</p>
   <div class="pick"><button class="go" data-theme="cafe"><span class="art">${art("wave", "cafe")}</span>Kitty Café</button>
-  <button class="go" data-theme="castle"><span class="art">${art("wave", "castle")}</span>Knight Castle</button></div></div>`)
+  <button class="go" data-theme="castle"><span class="art">${art("wave", "castle")}</span>Knight Castle</button></div></div>`, "start")
   .then(t => { setTheme(t); audioCtx(); sizeDraw(); say("Let's go!"); setTimeout(nextQuestion, 900 * FAST); });
 window.__demo = { get Q() { return Q; }, get QS() { return QS; }, skill, get n() { return n; },
   lesson(kind, a, b) { closeBoard(); Q = KM.build(kind, a, b); if (!Q.typed) Q.opts = [Q.ans, Q.ans + 1, Q.ans - 2]; QS = { tries: 1, phase: "ask", typed: "", pick: null, line: null, hops: [], lo: null, hi: null };   // for tests: show one lesson
