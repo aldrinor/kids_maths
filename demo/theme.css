@@ -304,3 +304,6 @@ body[data-theme="castle"] #tile { border: 3px solid var(--accent); box-shadow: 0
 /* phones: during a lesson the word story steps aside, so the board is big enough to draw on (the board writes it as a sum); the answer box stays */
 @media (max-height: 700px) and (orientation: portrait), (max-width: 640px) and (orientation: portrait) { #app.lesson .story { display: none; } }
 /* short wide screens: give the castle shield enough height for the word Check above its point */
+
+/* Watch again and Next: always the same width */
+#boardbtns .again, #boardbtns .bnext { width: clamp(150px, 30vw, 230px); min-width: 0; flex: none; justify-content: center; }
