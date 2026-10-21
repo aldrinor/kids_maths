@@ -1,0 +1,671 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex">
+<title>Kids Maths</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Lexend:wght@400;500;600;700;800&family=Sniglet:wght@400;800&family=Germania+One&family=Patrick+Hand&display=swap">
+<!-- Kids Maths game (21 Oct 2026). Plan: 16_kids_maths/kids_maths_game_plan_2026-10-21.md.
+     - Two doors: Marie (Kitty Cafe) and Kennedy (Knight Castle). No topic choosing: the learning engine
+       (../modules/engine.js) picks every question, finds the level, moves up when secure, practises again on a slip.
+     - Every question is a story (stories.js). The question screen is the agreed demo screen (../demo).
+     - Coins for right answers. Every 5 answers a short reward game (rewards.js). Every 25 answers: play world (stage 2).
+     - Own save per child (kidsMaths.game.<child>); the old app's save is read once and never written. -->
+<link rel="stylesheet" href="theme.css">
+</head>
+<body>
+<div id="app">
+  <div id="deco"></div>
+  <div id="rotate" role="alert"><div><svg viewBox="0 0 48 48" aria-hidden="true"><rect x="15" y="6" width="18" height="32" rx="4" fill="none" stroke="currentColor" stroke-width="3"/><path d="M8 30a16 16 0 0 0 10 12M40 18A16 16 0 0 0 30 6" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"/></svg><p>Please turn the phone upright.</p></div></div>
+  <div id="top"><button id="speak" aria-label="Read the question out loud"></button><div id="dots" aria-label="Questions until the next game"></div><div id="msg" role="status" hidden></div><div id="coins" aria-label="Coins"></div><div id="mascot" aria-hidden="true"></div></div>
+  <div id="tools"></div>
+  <div id="work"><canvas id="draw"></canvas><div id="qbody"></div></div>
+  <div id="keys"><div id="pad"></div></div>
+  <button id="tile" hidden><span>Check</span></button>
+</div>
+<script src="../modules/characters.js"></script>
+<script src="../modules/knight_art.js"></script>
+<script src="../modules/engine.js"></script>
+<script src="../topics/kinder.js"></script>
+<script src="stories.js"></script>
+<script src="rewards.js"></script>
+<script>
+"use strict";
+const $ = s => document.querySelector(s);
+const FAST = window.__demoFast ? 0.2 : 1;            // tests run the teaching faster
+const wait = ms => new Promise(r => setTimeout(r, ms * FAST));
+const DAY_LIMIT_MIN = 25, REWARD_EVERY = 5, PLAY_EVERY = 25, AUTO_NEXT_MS = 4000;
+
+/* ---------- the children: each has a door, a world and a save ---------- */
+const PROFILES = {
+  marie: { name: "Marie", theme: "cafe", world: "Kitty Café", old: "kittyBlocks.progress" },
+  kennedy: { name: "Kennedy", theme: "castle", world: "Knight Castle", old: "kidsMaths.kennedy" }
+};
+const SAVE_KEY = w => "kidsMaths.game." + w;
+let who = null, P = null, theme = "cafe";
+/* first time: copy the old app's save (engine progress, house, coins), then keep our own key; the old key is never written */
+function loadSave(w) {
+  let p = null;
+  try { p = JSON.parse(localStorage.getItem(SAVE_KEY(w)) || "null"); } catch (e) {}
+  if (!p) {
+    let old = null; try { old = JSON.parse(localStorage.getItem(PROFILES[w].old) || "null"); } catch (e) {}
+    p = Object.assign({}, old || {});
+    p.importedFrom = old ? PROFILES[w].old : "";
+    p.coins = w === "marie" ? Number(old && old.stars) || 0 : Number(old && old.coins) || 0;   // Marie's stars become her coins
+  }
+  p.game = Object.assign({ answered: 0, sinceReward: 0, sincePlay: 0, rewardTurn: 0 }, p.game || {});
+  if (!p.engine || p.engine.profile !== w) p.engine = KidsEngine.createState(w);
+  if (!p.days || typeof p.days !== "object") p.days = {};
+  if (!Number.isFinite(p.coins)) p.coins = 0;
+  return p;
+}
+function save() { if (!who) return; try { localStorage.setItem(SAVE_KEY(who), JSON.stringify(P)); } catch (e) {} }
+const dayKey = t => KidsEngine.dayKey(t);
+function dayLog() {
+  const d = dayKey(Date.now());
+  const k = Object.keys(P.days); if (k.length > 60) delete P.days[k.sort()[0]];   // keep 60 days
+  return P.days[d] || (P.days[d] = { n: 0, clean: 0, ms: 0, sets: 0, skills: {} });
+}
+let lastAct = Date.now();
+function addTime() { const t = Date.now(); dayLog().ms += Math.min(120000, Math.max(0, t - lastAct)); lastAct = t; }
+const overLimit = () => dayLog().ms >= (P.limitMin || DAY_LIMIT_MIN) * 60000;
+
+/* ---------- skills: only those with a story question are played; the engine skips the rest ---------- */
+const M = KidsEngine.buildSkillMap((window.MathTopics || []).filter(t => t.id === "kinder"));
+M.order.forEach(id => { M.map[id].ready = KS.SKILLS.includes(id); });
+M.order.forEach(id => { M.map[id].needs = M.map[id].needs.filter(n => M.map[n] && M.map[n].ready); });   // a need with no game cannot lock a skill
+
+/* ---------- themes: colours live in theme.css ---------- */
+document.body.dataset.theme = theme;
+if (window.KittyChars) KittyChars.injectCss();
+if (window.KnightArt) KnightArt.injectCss();
+const css = name => getComputedStyle(document.body).getPropertyValue(name).trim();
+const art = (pose, t = theme) => t === "cafe" ? KittyChars.full("kitty", pose) : KnightArt.full("knight", pose);
+const faceArt = () => theme === "cafe" ? KittyChars.face("kitty") : KnightArt.face("knight");
+function mascot(pose) { const m = $("#mascot"); if (m) m.innerHTML = art(pose); }
+function setTheme(t) { theme = t === "castle" ? "castle" : "cafe"; document.body.dataset.theme = theme; mascot("stand"); buildTools(); }
+
+/* ---------- voice: recorded natural voice (voice/<hash>.mp3). A sentence is played whole when recorded;
+   otherwise it is played in pieces (text around the numbers, and each number), all recorded with the same voice. ---------- */
+function fnv(text) {
+  const bytes = new TextEncoder().encode(text); let h = 0x811c9dc5;
+  for (const by of bytes) { h ^= by; h = Math.imul(h, 0x01000193) >>> 0; }
+  return h.toString(16).padStart(8, "0");
+}
+let actx = null, voiceList = null, playing = null, sayToken = 0;
+if (window.__noVoice) voiceList = {};      // tests: check the words, not the recordings
+else fetch("voice/manifest.json").then(r => r.ok ? r.json() : {}).then(m => voiceList = m).catch(() => voiceList = {});
+function audioCtx() {
+  const AC = window.AudioContext || window.webkitAudioContext; if (!AC) return null;
+  if (!actx) actx = new AC();
+  if (actx.state === "suspended") actx.resume();
+  return actx;
+}
+const has = text => !!(voiceList && voiceList[fnv(text)]);
+const buffers = {};
+async function clip(text) {
+  const h = fnv(text), ctx = audioCtx();
+  if (!ctx || !has(text)) return null;
+  if (!buffers[h]) buffers[h] = fetch(`voice/${h}.mp3`).then(r => r.arrayBuffer()).then(b => new Promise((ok, no) => ctx.decodeAudioData(b, ok, no)));
+  try { return await buffers[h]; } catch (e) { return null; }
+}
+const player = new Audio(); player.preload = "auto";   // where Web Audio is missing; unlocked on the first tap
+let unlocked = false;
+document.addEventListener("pointerdown", () => {
+  audioCtx();
+  if (!unlocked && !(window.AudioContext || window.webkitAudioContext)) {
+    unlocked = true; player.muted = true; player.src = `voice/${fnv("0")}.mp3`;
+    const p = player.play(); if (p) p.then(() => { player.pause(); player.muted = false; }).catch(() => { player.muted = false; });
+  }
+}, true);
+function stopVoice() { sayToken++; try { if (playing) playing.stop(); } catch (e) {} playing = null; try { player.pause(); } catch (e) {} try { speechSynthesis.cancel(); } catch (e) {} }
+async function playOne(text, me) {             // one recorded clip; resolves when it ends
+  if (!(window.AudioContext || window.webkitAudioContext)) {
+    return new Promise(res => {
+      player.muted = false; player.src = `voice/${fnv(text)}.mp3`; player.onended = () => res();
+      const p = player.play(); if (p) p.catch(() => res());
+      setTimeout(res, (600 + text.length * 62) * 2);
+    });
+  }
+  const buf = await clip(text);
+  if (me !== sayToken || !buf) return;
+  return new Promise(res => {
+    const src = actx.createBufferSource(); src.buffer = buf; src.connect(actx.destination); playing = src;
+    src.onended = () => res(); src.start(); setTimeout(res, buf.duration * 1000 + 300);
+  });
+}
+const piecesOf = text => text.split(/(\d+)/).map(s => s.trim()).filter(s => /[a-z0-9]/i.test(s));   // a lone full stop is not spoken
+async function say(text) {
+  text = String(text); stopVoice(); const me = sayToken;
+  const est = 600 + text.length * 62;
+  if (has(text)) return playOne(text, me);
+  const parts = piecesOf(text);
+  if (parts.length > 1 && parts.every(has)) { for (const p of parts) { if (me !== sayToken) return; await playOne(p, me); } return; }
+  try {
+    if (window.speechSynthesis) {
+      const u = new SpeechSynthesisUtterance(text.replace(/−/g, " minus "));
+      u.lang = "en-US"; u.rate = .95;
+      const v = speechSynthesis.getVoices().find(v => /^en/i.test(v.lang) && /Samantha|Ava|Karen|Daniel|Google/i.test(v.name)); if (v) u.voice = v;
+      speechSynthesis.speak(u);
+    }
+  } catch (e) {}
+  return new Promise(r => setTimeout(r, est * FAST));
+}
+function chime() {
+  const ctx = audioCtx(); if (!ctx) return;
+  [[660, 0], [880, .14]].forEach(([f, t]) => {
+    const o = ctx.createOscillator(), g = ctx.createGain(); o.type = "sine"; o.frequency.value = f;
+    g.gain.setValueAtTime(0, ctx.currentTime + t); g.gain.linearRampToValueAtTime(.1, ctx.currentTime + t + .03);
+    g.gain.exponentialRampToValueAtTime(.001, ctx.currentTime + t + .6);
+    o.connect(g); g.connect(ctx.destination); o.start(ctx.currentTime + t); o.stop(ctx.currentTime + t + .65);
+  });
+}
+
+/* ---------- drawings (our own) ---------- */
+const ICON = {
+  speaker: `<svg viewBox="0 0 24 24"><path d="M4 9h4l5-4v14l-5-4H4z" fill="#fff"/><path d="M16 8.5a5 5 0 0 1 0 7M18.5 6a8.5 8.5 0 0 1 0 12" stroke="#fff" stroke-width="2" fill="none" stroke-linecap="round"/></svg>`,
+  bulb: `<svg viewBox="0 0 24 24"><path d="M12 3a6 6 0 0 0-3.6 10.8c.6.5 1 1.2 1 2V17h5.2v-1.2c0-.8.4-1.5 1-2A6 6 0 0 0 12 3z" fill="#fff"/><rect x="9.4" y="18.2" width="5.2" height="2.4" rx="1" fill="#fff"/></svg>`,
+  close: `<svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18" stroke="#fff" stroke-width="3" stroke-linecap="round"/></svg>`,
+  play: `<svg viewBox="0 0 24 24"><path d="M7 4l13 8-13 8z" fill="currentColor"/></svg>`,
+  bin: `<svg viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="7" width="12" height="14" rx="2"/><rect x="4" y="4" width="16" height="2.4" rx="1"/><rect x="9" y="2" width="6" height="2" rx="1"/></svg>`,
+  home: `<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 3 2.5 11h2.8v9h5v-6h3.4v6h5v-9h2.8z"/></svg>`,
+  coin: `<svg viewBox="0 0 32 32" aria-hidden="true"><circle cx="16" cy="16" r="14" fill="#f6c945" stroke="#c99a1e" stroke-width="2.5"/><circle cx="16" cy="16" r="9.5" fill="none" stroke="#e3ad25" stroke-width="2"/><path d="M11 12.5 L16 8.5 L21 12.5 L19.2 20.5 H12.8 Z" fill="#fff3c4" opacity=".9"/></svg>`,
+};
+const PENS = [["#2c3e50", "#1c2833"], ["#2f80ed", "#1f5fb8"], ["#27ae60", "#1b7f45"], ["#e74c3c", "#b8382b"], ["#f39c12", "#c27a08"], ["#9b51e0", "#7438ad"]];
+let svgId = 0;
+const heart = (x, y, r, fill) => `<path d="M${x} ${y + r * .9} C${x - r * 1.6} ${y - r * .2} ${x - r * .7} ${y - r * 1.3} ${x} ${y - r * .45} C${x + r * .7} ${y - r * 1.3} ${x + r * 1.6} ${y - r * .2} ${x} ${y + r * .9}Z" fill="${fill}"/>`;
+const star = (x, y, r, fill) => `<path d="${Array.from({ length: 10 }, (_, k) => { const a = -Math.PI / 2 + k * Math.PI / 5, rr = k % 2 ? r * .45 : r; return `${k ? "L" : "M"}${(x + Math.cos(a) * rr).toFixed(1)} ${(y + Math.sin(a) * rr).toFixed(1)}`; }).join("")}Z" fill="${fill}"/>`;
+function pencilSVG(col, dark, down) {
+  const L = 112, W = 34, id = "pg" + (++svgId);
+  const cx = down ? 17 : 62, cy = down ? L - 62 : 17;
+  const charm = theme === "castle" ? star(cx, cy, 6, "#ffe08a") : heart(cx, cy, 5.5, "#ffffff");
+  return `<svg viewBox="${down ? `0 0 ${W} ${L}` : `0 0 ${L} ${W}`}" preserveAspectRatio="xMidYMid meet" aria-hidden="true">
+    <defs><linearGradient id="${id}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${col}" stop-opacity=".72"/><stop offset=".35" stop-color="${col}"/><stop offset="1" stop-color="${dark}"/></linearGradient>
+    <linearGradient id="${id}m" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#f4f6f8"/><stop offset=".5" stop-color="#b9c1ca"/><stop offset="1" stop-color="#8d96a1"/></linearGradient></defs>
+    <g ${down ? `transform="translate(0 ${L}) rotate(-90)"` : ""}>
+      <path d="M1 17 L12 13 L12 21 Z" fill="${col}"/>
+      <path d="M12 12.5 Q22 6 32 3 L32 31 Q22 28 12 21.5 Z" fill="#f8dcae"/>
+      <path d="M32 3 q-3 4 0 7 q-3 3.5 0 7 q-3 3.5 0 7 q-3 3.5 0 7" fill="none" stroke="#e7bf86" stroke-width="1.4"/>
+      <rect x="31" y="2" width="62" height="30" rx="10" fill="url(#${id})"/>
+      <rect x="36" y="6" width="52" height="4.5" rx="2.2" fill="#ffffff" opacity=".5"/>
+      <rect x="91" y="2.5" width="9" height="29" rx="2" fill="url(#${id}m)"/>
+      <path d="M94 3 V31 M97 3 V31" stroke="#ffffff" stroke-opacity=".6" stroke-width="1"/>
+      <rect x="99" y="3.5" width="12" height="27" rx="6" fill="#f7a8bc"/>
+      <rect x="101.5" y="6" width="6" height="4" rx="2" fill="#ffffff" opacity=".55"/>
+    </g>${charm}
+  </svg>`;
+}
+function rubberSVG(down) {
+  const sleeve = css("--primary") || "#d9536f", cafe = theme !== "castle";
+  const body = cafe ? "#f9b4c6" : "#fbf4e6", edge = cafe ? "#e48aa3" : "#d9ccb1", mark = cafe ? heart : star, markC = cafe ? "#ffffff" : "#ffe08a";
+  const face = (x, y) => `<circle cx="${x - 7}" cy="${y}" r="2.6" fill="#4a3434"/><circle cx="${x + 7}" cy="${y}" r="2.6" fill="#4a3434"/>
+      <path d="M${x - 4} ${y + 6} Q${x} ${y + 10} ${x + 4} ${y + 6}" stroke="#4a3434" stroke-width="2" fill="none" stroke-linecap="round"/>
+      <ellipse cx="${x - 11}" cy="${y + 7}" rx="3.2" ry="2" fill="#ff7f9c" opacity=".55"/><ellipse cx="${x + 11}" cy="${y + 7}" rx="3.2" ry="2" fill="#ff7f9c" opacity=".55"/>`;
+  if (down) return `<svg viewBox="0 0 44 84" preserveAspectRatio="xMidYMid meet" aria-hidden="true">
+      <rect x="4" y="2" width="36" height="80" rx="12" fill="${body}" stroke="${edge}" stroke-width="2"/>
+      <rect x="2" y="2" width="40" height="40" rx="7" fill="${sleeve}"/><rect x="2" y="2" width="40" height="8" rx="4" fill="#ffffff" opacity=".22"/>
+      ${mark(22, 22, cafe ? 6.5 : 8, markC)}${face(22, 56)}</svg>`;
+  return `<svg viewBox="0 0 84 44" preserveAspectRatio="xMidYMid meet" aria-hidden="true">
+      <rect x="2" y="4" width="78" height="36" rx="12" fill="${body}" stroke="${edge}" stroke-width="2"/>
+      ${face(21, 17)}
+      <rect x="40" y="2" width="42" height="40" rx="7" fill="${sleeve}"/><rect x="40" y="2" width="42" height="9" rx="4" fill="#ffffff" opacity=".22"/>
+      ${mark(61, 23, cafe ? 6.5 : 8, markC)}</svg>`;
+}
+
+/* ---------- which question comes next: the engine picks a set of skills; each skill becomes a story ---------- */
+let set = null, si = 0, Q = null, QS = null, pen = PENS[0][0], prevKey = "";
+function nextQ() {
+  for (let guard = 0; guard < 40; guard++) {
+    if (!set || si >= set.items.length) {
+      set = KidsEngine.nextSet(P.engine, M, Date.now(), Math.random); si = 0;
+      if (!set.items.length) return null;                 // paused, or nothing to play
+    }
+    const item = set.items[si];
+    if (item && typeof item === "object") {                // a parent's own question: "question = answer"
+      const ans = Number(String(item.a).trim());
+      if (Number.isFinite(ans) && ans >= 0 && ans < 1000 && Number.isInteger(ans)) return { parent: item, kind: "typed", story: item.q, ask: "", say: item.q, ans, correct: `Correct! The answer is ${ans}.`, fact: `The answer is ${ans}.`, hint: "Take your time. You can draw to help." };
+      si++; continue;                                    // an answer the keypad cannot type is skipped
+    }
+    const q = KS.make(item, theme, Math.random, prevKey);
+    if (q) { prevKey = q.key; return q; }
+    si++;                                                // no story for this skill yet
+  }
+  return null;
+}
+
+/* ---------- screen ---------- */
+function drawDots() { const k = P ? P.game.sinceReward : 0; $("#dots").innerHTML = Array.from({ length: REWARD_EVERY }, (_, i) => `<i class="${i < k ? "done" : i === k ? "now" : ""}"></i>`).join(""); }
+function drawCoins(pop) { const c = $("#coins"); c.innerHTML = `${ICON.coin}<b>${P ? P.coins : 0}</b>`; if (pop) { c.classList.remove("pop"); void c.offsetWidth; c.classList.add("pop"); } }
+function nextQuestion() {
+  closeHint(); closeBoard(); clearDraw(); stopVoice();
+  Q = nextQ();
+  if (!Q) return showEnd("All done for now!", "There are no more questions today. See you tomorrow!");
+  let L = Q.line || { lo: 0, hi: 10, step: 1 };
+  if (L.step > 1 && Number.isFinite(Q.a)) {      // tens or hundreds: put the marks on the start number (94: 4, 14 ... 104)
+    let lo = Q.a - (Q.op === "-" ? 10 * L.step : 0); while (lo < 0) lo += L.step;
+    L = { lo, hi: lo + 10 * L.step, step: L.step };
+  }
+  QS = { tries: 0, phase: "ask", typed: "", pick: null, lo: L.lo, hi: L.hi, step: L.step || 1, line: null, hops: [], t0: Date.now(), hinted: false };
+  $("#app").classList.toggle("nokeys", Q.kind === "choice"); $("#app").classList.remove("locked");
+  hideMsg(); tileTo("", "Check"); $("#tile").hidden = false;
+  drawDots(); drawCoins(); renderBody(); mascot("stand");
+  setTimeout(() => say(Q.say), 250);
+}
+function boxCls() { return QS.mark === "right" ? "right" : QS.mark === "wrong" ? "wrong" : QS.phase === "ask" ? "active" : ""; }
+const startOf = () => Number.isFinite(Q.a) ? Q.a : QS.lo;
+const endOf = () => Number.isFinite(Q.result) ? Q.result : Q.ans;     // a missing part ends on the total, not on the answer
+function renderBody() {
+  const b = $("#qbody"), bulb = `<button class="bulb" aria-label="Hint">${ICON.bulb}</button>`;
+  const story = `<div class="story">${Q.story}${Q.ask ? `<br><b>${Q.ask}</b>` : ""}<span class="inbulb">${bulb}</span></div>`;
+  const top = Q.kind === "choice"
+    ? `${story}<div class="bars">${Q.opts.map((o, i) => `<button class="opt" data-v="${o}"><small>${"abc"[i]})</small>${o}</button>`).join("")}</div>`
+    : `${story}<div class="eq"><span class="box ${boxCls()}" id="ansBox">${QS.typed || "&nbsp;"}</span></div>`;
+  const off = QS.phase === "shown" || QS.phase === "right" ? " disabled" : "";
+  const tileEl = $("#tile"); tileEl.remove();             // Check sits in the row beside Restart; keep it while the body is rebuilt
+  b.innerHTML = `<div class="qtop">${top}</div><div class="room"></div>
+    <div class="qbottom"><div class="nlbox" aria-label="Number line"></div>
+    <div class="hoprow"><button data-h="-1"${off} aria-label="Hop back"><i class="ar">◀ </i>Back</button><button data-h="1" class="fwd"${off} aria-label="Hop forward">Forward<i class="ar"> ▶</i></button><button data-h="0"${off} aria-label="Start again"><i class="ar">↺ </i>Restart</button></div></div>`;
+  b.querySelector(".hoprow").appendChild(tileEl);
+  drawLine();
+  b.querySelectorAll(".bulb").forEach(x => x.onclick = e => { e.stopPropagation(); document.querySelector(".bubble") ? closeHint() : openHint(); });
+  b.querySelectorAll(".opt").forEach(x => x.onclick = () => { if (QS.phase !== "ask" || QS.teaching) return; QS.pick = +x.dataset.v; QS.mark = null; renderBody(); });
+  if (QS.pick != null) b.querySelectorAll(`.opt[data-v="${QS.pick}"]`).forEach(x => x.classList.add("sel", ...(QS.mark ? [QS.mark] : [])));
+  b.querySelectorAll(".hoprow button[data-h]").forEach(x => x.onclick = () => { const h = +x.dataset.h; if (h) hopTo(QS.line + h * QS.step); else restart(); });
+  if (QS.board) placeBoard();
+}
+function restart() { if (!QS || QS.phase === "shown") return; QS.line = startOf(); QS.hops = []; renderBody(); }
+
+/* ---------- number line: 11 marks, in ones, tens or hundreds; the newest hop shows how many so far ---------- */
+const onGrid = v => v >= QS.lo && v <= QS.hi && (v - QS.lo) % QS.step === 0;
+function fitLine(from, to, step) {              // move the window so a lesson hop fits, keeping the marks on the hop's grid
+  if (QS.step === step && onGrid(from) && onGrid(to)) return;
+  const lo0 = Math.min(from, to), span = 10 * step, pad = Math.max(0, Math.floor((span - Math.abs(to - from)) / step / 2)) * step;
+  let lo = lo0 - pad; if (lo < 0) lo = lo0 - Math.floor(lo0 / step) * step;
+  QS.lo = lo; QS.hi = lo + span; QS.step = step;
+}
+function drawLine() {
+  const box = document.querySelector("#qbody .nlbox"); if (!box) return;
+  if (QS.line == null) QS.line = startOf();
+  const lo = QS.lo, hi = QS.hi, st = QS.step, n = Math.round((hi - lo) / st) + 1;
+  const Wd = Math.max(240, box.clientWidth), cell = Wd / n, X = v => cell / 2 + (v - lo) / st * cell;
+  const digits = String(hi).length, font = Math.max(14, Math.min(40, cell * (digits > 2 ? 0.3 : 0.42))), tick = Math.max(14, Math.min(32, cell * .34));
+  const arcH = Math.min(cell * 0.62, 58), r = Math.max(12, Math.min(24, cell * 0.24));
+  const lab = Math.max(16, Math.min(28, cell * 0.32)), base = lab + arcH + 16, H = base + tick / 2 + font + 14;
+  const ink = css("--line-ink") || "#333", startC = css("--line-start") || ink, hopC = css("--hop") || "#e07a2e", labC = css("--hop-label") || hopC;
+  const s0 = startOf();
+  let s = `<svg viewBox="0 0 ${Wd} ${H}" height="${H}" role="img" aria-label="Number line from ${lo} to ${hi}" font-family="Lexend, sans-serif">`;
+  s += `<line x1="4" y1="${base}" x2="${Wd - 4}" y2="${base}" stroke="${ink}" stroke-width="4" stroke-linecap="round"/>`;
+  QS.hops.forEach(([a, c], i) => {
+    if (a < lo || c < lo || a > hi || c > hi) return;
+    const m = (X(a) + X(c)) / 2, h = arcH * Math.min(1.3, 0.75 + Math.abs(c - a) / st * 0.12), last = i === QS.hops.length - 1, fresh = last && QS.fresh ? " new" : "";
+    s += `<path class="hop${fresh}" d="M${X(a)} ${base - 4} Q${m} ${base - 4 - h * 1.5} ${X(c)} ${base - 4}" stroke="${hopC}" stroke-width="${Math.max(3, cell * 0.055)}" fill="none" stroke-linecap="round" opacity="${last ? 1 : .5}"/>`;
+    if (last) {
+      const d = c - (QS.hopFrom != null ? QS.hopFrom : s0), txt = d > 0 ? `+${d}` : d < 0 ? `−${-d}` : "0";
+      s += `<text class="hoplab${fresh}" x="${m}" y="${base - 4 - h * 0.75 - 8}" font-size="${lab}" font-weight="800" text-anchor="middle" fill="${labC}">${txt}</text>`;
+    }
+  });
+  for (let v = lo; v <= hi; v += st) {
+    const five = (v / st) % 5 === 0;
+    s += `<g class="tick" data-n="${v}"><rect x="${X(v) - cell / 2}" y="${base - tick}" width="${cell}" height="${H - base + tick}" fill="transparent"/>
+      <line x1="${X(v)}" y1="${base - tick / 2}" x2="${X(v)}" y2="${base + tick / 2}" stroke="${ink}" stroke-width="${five ? 4 : 2.6}" stroke-linecap="round"/>
+      <text x="${X(v)}" y="${base + tick / 2 + font + 2}" font-size="${font}" font-weight="${v === s0 || five ? 800 : 600}" text-anchor="middle" fill="${v === s0 ? startC : ink}">${v}</text></g>`;
+  }
+  if (onGrid(QS.line)) {
+    const x = X(QS.line), fsz = r * 2.5;                   // the hopper is Mimi's or the knight's face
+    s += `<g class="hopper${QS.fresh ? " land" : ""}" pointer-events="none">${faceArt().replace("<svg ", `<svg x="${x - fsz / 2}" y="${base - fsz - 2}" width="${fsz}" height="${fsz}" `)}</g>`;
+  }
+  box.innerHTML = s + "</svg>";
+  QS.fresh = false;
+  box.querySelectorAll(".tick").forEach(t => t.onclick = () => hopTo(+t.dataset.n));
+}
+function hopTo(v) {
+  if (!QS || QS.phase === "shown" || QS.phase === "right" || QS.teaching || !onGrid(v) || v === QS.line) return;
+  QS.hopFrom = null; QS.hops.push([QS.line, v]); QS.line = v; QS.fresh = true; renderBody();
+}
+async function showHops() {                    // "See The Answer": hop from the start to the answer when both are on the line
+  const me = QS, s0 = startOf(), target = endOf();
+  QS.line = s0; QS.hops = []; QS.hopFrom = null; renderBody(); await wait(500);
+  if (!onGrid(s0) || !onGrid(target) || s0 === target) return;
+  const dir = target > s0 ? 1 : -1, n = Math.abs(target - s0) / QS.step;
+  for (let i = 0; i < n && n <= 12; i++) { if (QS !== me) return; QS.hops.push([QS.line, QS.line + dir * QS.step]); QS.line += dir * QS.step; QS.fresh = true; renderBody(); await wait(520); }
+}
+
+/* ---------- teaching board: wipe the drawing, then hand-write the working step by step ---------- */
+function placeBoard() {
+  const bd = $("#board"), work = $("#work").getBoundingClientRect(), top = document.querySelector(".qtop"), row = document.querySelector("#qbody .nlbox");
+  if (!bd || !top || !row) return;
+  const y0 = top.getBoundingClientRect().bottom - work.top + 6, h = Math.max(60, row.getBoundingClientRect().top - work.top - 6 - y0);
+  const box = { left: "12px", right: "12px", top: y0 + "px", height: h + "px" };
+  Object.assign(bd.style, box); const bb = $("#boardbtns"); if (bb) Object.assign(bb.style, box);
+  bd.style.setProperty("--rule", Math.max(28, Math.round(h / 6)) + "px");
+}
+function closeBoard() { const bd = $("#board"); if (bd) bd.remove(); const bb = $("#boardbtns"); if (bb) bb.remove(); $("#app").classList.remove("lesson"); if (QS) { QS.board = false; QS.teachRun = (QS.teachRun || 0) + 1; QS.teaching = false; } }
+async function teach() {
+  if (Q.parent) return;                          // a parent's own question has no lesson
+  clearDraw(); closeHint();
+  let bd = $("#board");
+  if (!bd) {
+    bd = document.createElement("div"); bd.id = "board";
+    bd.innerHTML = `<canvas></canvas>`;
+    $("#work").appendChild(bd);
+    const bb = document.createElement("div"); bb.id = "boardbtns";    // buttons above the drawing layer; the board below it
+    bb.innerHTML = `<button class="bx" aria-label="Close the lesson" hidden>✕</button><div class="brow"><button class="again" hidden><span class="play">${ICON.play}</span>Watch again</button><button class="bnext" hidden>Next ➜</button></div>`;
+    $("#work").appendChild(bb);
+    bb.querySelector(".again").onclick = () => teach();
+    bb.querySelector(".bnext").onclick = () => { if (QS && (QS.phase === "right" || QS.phase === "shown")) goNext(); };
+    bb.querySelector(".bx").onclick = () => { closeBoard(); $("#app").classList.remove("locked"); };
+  }
+  const bb = $("#boardbtns");
+  QS.board = true; $("#app").classList.add("lesson"); placeBoard();
+  const run = QS.teachRun = (QS.teachRun || 0) + 1, me = QS;
+  const live = () => QS === me && me.teachRun === run;
+  bb.querySelector(".again").hidden = true; bb.querySelector(".bx").hidden = true; bb.querySelector(".bnext").hidden = true;
+  QS.teaching = true; $("#app").classList.add("locked");
+  const cv = bd.querySelector("canvas"), r = bd.getBoundingClientRect(), dpr = window.devicePixelRatio || 1;
+  cv.width = Math.round(r.width * dpr); cv.height = Math.round(r.height * dpr);
+  const g = cv.getContext("2d"); g.setTransform(dpr, 0, 0, dpr, 0, 0);
+  const W = r.width, H = r.height, plan = KS.teach(Q, QS.phase === "right"), BTN = 58;
+  const draws = plan.steps.flatMap(s => s.draw || []);
+  const split = draws.some(d => d.split), maxRow = Math.max(0, ...draws.filter(d => d.tokens).map(d => d.row));
+  const lastRow = draws.some(d => d.answer) ? maxRow + 1 : maxRow;
+  const units = 1.25 + lastRow * 1.32 + 0.45 + (split ? 0.95 : 0);            // board height needed, in letter sizes
+  const fs = Math.max(14, Math.min(56, (H - BTN) / units, W / 9.5)), ink = css("--board-ink") || "#2b3a55";
+  const STEP = css("--board-step"), SPLIT = css("--board-split"), ANS = css("--board-answer"), HOP = css("--board-hop"), QM = css("--hop-label");
+  const rowY = i => fs * 1.25 + i * fs * 1.32 + (split && i >= 1 ? fs * 0.95 : 0);
+  g.lineCap = g.lineJoin = "round";
+  const font = (size, w = 400) => `${w} ${size}px "Patrick Hand", "Comic Sans MS", "Chalkboard SE", cursive`;
+  const tokenX = {};
+  async function write(text, x, y, size, color) {             // write text left to right, as if by hand
+    g.font = font(size); const w = g.measureText(text).width, dur = Math.max(260, text.length * 150);
+    const t0 = performance.now();
+    await new Promise(res => {
+      const frame = now => {
+        if (!live()) return res();
+        const p = Math.min(1, (now - t0) / (dur * FAST));
+        g.save(); g.beginPath(); g.rect(x - 4, y - size, (w + 8) * p, size * 1.4); g.clip();
+        g.fillStyle = color; g.font = font(size); g.fillText(text, x, y); g.restore();
+        p < 1 ? requestAnimationFrame(frame) : res();
+      };
+      requestAnimationFrame(frame);
+    });
+  }
+  async function stroke(path, dur, color, width) {
+    const t0 = performance.now(); let k = 1;
+    await new Promise(res => {
+      const frame = now => {
+        if (!live()) return res();
+        const p = Math.min(1, (now - t0) / (dur * FAST)), upto = Math.max(1, Math.round(p * (path.length - 1)));
+        g.strokeStyle = color; g.lineWidth = width; g.beginPath(); g.moveTo(...path[k - 1]);
+        for (; k <= upto; k++) g.lineTo(...path[k]);
+        g.stroke(); k = upto;
+        p < 1 ? requestAnimationFrame(frame) : res();
+      };
+      requestAnimationFrame(frame);
+    });
+  }
+  const wobble = (x1, y1, x2, y2, n = 18) => Array.from({ length: n + 1 }, (_, i) => { const t = i / n; return [x1 + (x2 - x1) * t + Math.sin(t * 7) * 1.2, y1 + (y2 - y1) * t + Math.cos(t * 5) * 1.2]; });
+  async function writeRow(i, tokens, color) {
+    g.font = font(fs); const gap = fs * 0.32, widths = tokens.map(t => g.measureText(t).width);
+    const total = widths.reduce((a, b) => a + b, 0) + gap * (tokens.length - 1); let x = Math.max(14, (W - total) / 2);
+    for (let j = 0; j < tokens.length; j++) {
+      if (i === 0) tokenX[j] = [x, widths[j]];
+      await write(tokens[j], x, rowY(i), fs, tokens[j] === "?" ? QM : color);
+      x += widths[j] + gap;
+    }
+  }
+  async function hops(h) {
+    const y = rowY(1) + fs * 0.1, x0 = W * 0.1, x1 = W * 0.9, n = h.n, step = (x1 - x0) / n;
+    await stroke(wobble(x0 - 10, y, x1 + 10, y, 30), 500, ink, 3);
+    const X = i => h.dir > 0 ? x0 + i * step : x1 - i * step;
+    g.font = font(fs * 0.62);
+    await write(String(h.from), X(0) - g.measureText(String(h.from)).width / 2, y + fs * 0.75, fs * 0.62, ink);
+    for (let i = 1; i <= n; i++) {
+      const a = X(i - 1), c = X(i), m = (a + c) / 2, top = y - Math.min(step * 0.7, fs * 0.85);
+      const pts = Array.from({ length: 16 }, (_, k) => { const t = k / 15; return [(1 - t) * (1 - t) * a + 2 * (1 - t) * t * m + t * t * c, (1 - t) * (1 - t) * (y - 3) + 2 * (1 - t) * t * top + t * t * (y - 3)]; });
+      await stroke(pts, 260, HOP, 3.4);
+      const v = String(h.from + h.dir * i);
+      await write(v, c - g.measureText(v).width / 2, y + fs * 0.75, fs * 0.62, i === n ? ANS : ink);
+    }
+  }
+  async function answerLine() {                  // the whole number sentence with the answer, the answer circled
+    const y = rowY(lastRow), ansS = String(Q.ans);
+    const text = Q.eq && Q.eq.includes("?") ? Q.eq.replace("?", ansS) : `${Q.a} ${Q.op === "-" ? "−" : "+"} ${Q.b} = ${ansS}`;
+    const at = Q.eq && Q.eq.includes("?") ? Q.eq.indexOf("?") : text.length - ansS.length;
+    g.font = font(fs, 400); const w = g.measureText(text).width, x = Math.max(14, (W - w) / 2);
+    await write(text, x, y, fs, ANS);
+    const before = g.measureText(text.slice(0, at)).width, aw = g.measureText(ansS).width;
+    const cx = x + before + aw / 2, cy = y - fs * 0.32, rx = aw / 2 + fs * 0.32, ry = fs * 0.58;
+    await stroke(Array.from({ length: 40 }, (_, k) => { const t = k / 39 * Math.PI * 2.15 - .4; return [cx + Math.cos(t) * rx, cy + Math.sin(t) * ry]; }), 520, ANS, 3);
+  }
+  QS.line = startOf(); QS.hops = []; QS.hopFrom = null; drawLine();   // the hopper waits on the first number
+  /* move the hopper on the real number line, one hop at a time, and count each landing number out loud */
+  async function lineHops(from, to, step) {
+    step = Math.max(1, step || 1); fitLine(from, to, step);
+    QS.line = from; QS.hopFrom = from; drawLine();
+    const dir = to > from ? 1 : -1;
+    for (let v = from + dir * step; dir > 0 ? v <= to : v >= to; v += dir * step) {
+      if (!live()) return;
+      QS.hops.push([v - dir * step, v]); QS.line = v; QS.fresh = true; drawLine();
+      await Promise.all([say(String(v)), wait(450)]);
+    }
+  }
+  for (const st of plan.steps) {
+    if (!live()) return;
+    if (st === plan.steps[plan.steps.length - 1]) { QS.teaching = false; $("#app").classList.remove("locked"); }   // "Type 7": she can type now
+    const speech = say(st.say), drawing = (async () => {
+      for (const d of st.draw || []) {
+        if (d.tokens) await writeRow(d.row, d.tokens, d.row === 0 ? ink : STEP);
+        else if (d.split) {
+          const [bx, bw] = tokenX[2] || [W / 2, fs]; const cx = bx + bw / 2, y0 = rowY(0) + fs * 0.22, y1 = y0 + fs * 0.5;
+          await stroke(wobble(cx, y0, cx - fs * 0.7, y1, 10), 300, SPLIT, 3);
+          await stroke(wobble(cx, y0, cx + fs * 0.7, y1, 10), 300, SPLIT, 3);
+          g.font = font(fs * 0.7);
+          await write(String(d.split[0]), cx - fs * 0.7 - g.measureText(String(d.split[0])).width / 2, y1 + fs * 0.62, fs * 0.7, SPLIT);
+          await write(String(d.split[1]), cx + fs * 0.7 - g.measureText(String(d.split[1])).width / 2, y1 + fs * 0.62, fs * 0.7, SPLIT);
+        } else if (d.hops) await hops(d.hops);
+        else if (d.answer) await answerLine();
+      }
+    })();
+    await Promise.all([speech, drawing]);
+    if (!live()) return;
+    if (st.line) await lineHops(st.line[0], st.line[1], st.line[2]);
+    if (!live()) return;
+    await wait(250);
+  }
+  if (!live()) return;
+  QS.teaching = false; $("#app").classList.remove("locked");
+  bb.querySelector(".again").hidden = false; bb.querySelector(".bx").hidden = false; bb.querySelector(".bnext").hidden = QS.phase !== "right";
+  if (QS.phase === "right") afterRightLesson();
+}
+
+/* ---------- keypad: digits only ---------- */
+const NARROW = "(max-width: 640px), (max-aspect-ratio: 3/4) and (max-width: 820px)";
+function buildPad() {
+  const order = matchMedia(NARROW).matches ? ["1", "2", "3", "4", "5", "⌫", "6", "7", "8", "9", "0"] : ["1", "2", "3", "4", "5", "6", "7", "8", "9", "0", "⌫"];
+  $("#pad").innerHTML = order.map(k => `<button data-k="${k}" aria-label="${k === "⌫" ? "Delete" : k}">${k}</button>`).join("");
+  $("#pad").querySelectorAll("button").forEach(b => b.onclick = () => key(b.dataset.k));
+}
+function key(k) {
+  if (!QS || QS.phase !== "ask" || Q.kind === "choice" || QS.teaching) return;
+  if (k === "⌫") QS.typed = QS.typed.slice(0, -1); else if (QS.typed.length < 4) QS.typed += k;
+  QS.mark = null; renderBody();
+}
+
+/* ---------- one answer is finished: tell the engine, pay coins, move the counters ---------- */
+function finished(correct) {
+  if (QS.counted) return; QS.counted = true;
+  addTime();
+  const st = P.engine, d = dayLog();
+  const taught = QS.tries > 0, helped = taught || QS.hinted;
+  const rush = !correct && QS.firstMs != null && QS.firstMs < 1500;
+  const clean = correct && !helped;
+  if (Q.parent) { P.parentLog = (P.parentLog || []).concat({ q: Q.parent.q, a: Q.parent.a, firstTry: clean, day: dayKey(Date.now()) }).slice(-100); st.parentQs.shift(); }
+  else if (set.kind === "place") KidsEngine.placementRecord(st, M, Q.skill, clean);
+  else KidsEngine.record(st, M, { skill: Q.skill, correct, helped, taught, rush }, Date.now());
+  d.n++; if (clean) d.clean++;
+  if (Q.skill) { const k = d.skills[Q.skill] || (d.skills[Q.skill] = [0, 0]); k[0]++; if (clean) k[1]++; }
+  const coins = clean ? 2 : correct ? 1 : 0;
+  P.coins += coins; P.game.answered++; P.game.sinceReward++; P.game.sincePlay++;
+  save(); drawCoins(coins > 0); drawDots();
+}
+
+/* ---------- Check: right -> lesson -> next by itself; 1st wrong -> lesson; 2nd wrong -> Oops, See The Answer ---------- */
+const MSG_ICON = { right: "✓", shown: "✓", try: "!", wrong: "✗" };
+function msg(cls, text) { const m = $("#msg"); m.hidden = false; m.className = cls; m.innerHTML = `<b class="mi" aria-hidden="true">${MSG_ICON[cls]}</b><span>${text}</span>`; $("#top").classList.add("talking"); }
+function hideMsg() { $("#msg").hidden = true; $("#top").classList.remove("talking"); }
+async function afterRightLesson() {
+  const me = QS, run = QS.teachRun;
+  await wait(AUTO_NEXT_MS); if (QS === me && me.teachRun === run && !me.teaching) goNext();
+}
+function tileTo(cls, text) { const t = $("#tile"); t.className = cls; t.innerHTML = `<span>${text}</span>`; }
+async function tile() {
+  if (!QS || QS.teaching) return;
+  if (QS.phase === "ask") {
+    const a = Q.kind === "choice" ? QS.pick : (QS.typed === "" ? null : +QS.typed);
+    if (a == null) { say(Q.kind === "choice" ? "Tap an answer first." : "Type your answer first."); return; }
+    if (QS.firstMs == null) QS.firstMs = Date.now() - QS.t0;
+    if (a === Q.ans) {
+      QS.phase = "right"; QS.mark = "right"; finished(true); chime(); mascot("happy"); closeBoard(); renderBody(); $("#app").classList.add("locked");
+      msg("right", "Correct! Watch how it works."); $("#tile").hidden = true; band("correct");   // the only Next is on the lesson card
+      const me = QS; await say(Q.correct); if (QS !== me) return;
+      if (Q.parent) { await wait(1200); if (QS === me) goNext(); return; }
+      await wait(400); if (QS === me) teach();
+      return;
+    }
+    QS.tries++; QS.mark = "wrong"; renderBody();
+    if (QS.tries === 1) {
+      QS.teaching = !Q.parent;
+      msg("try", Q.parent ? "Not yet. Try again." : "Not yet. Watch how to work it out.");
+      const me = QS; await say(Q.parent ? "Not yet. Try again." : "Not yet. Watch how to work it out."); if (QS !== me) return;
+      QS.typed = ""; QS.pick = null; QS.mark = null; QS.teaching = false; renderBody();
+      teach();
+      return;
+    }
+    QS.phase = "final"; finished(false); closeBoard(); renderBody(); $("#app").classList.add("locked");
+    msg("wrong", "That answer was incorrect."); tileTo("see dim", "See The Answer"); band("oops");
+    say("Oops. Let's see the answer.");
+    const me = QS; await wait(2000); if (QS === me) $("#tile").classList.remove("dim");
+    return;
+  }
+  if (QS.phase === "final") {
+    QS.phase = "shown"; QS.mark = "right";
+    if (Q.kind === "choice") QS.pick = Q.ans; else QS.typed = String(Q.ans);
+    msg("shown", "This is the correct answer!"); tileTo("next", "Next ➜");
+    say(Q.fact); showHops();
+    return;
+  }
+  if (QS.phase === "shown" || QS.phase === "right") goNext();
+}
+let going = false;
+async function goNext() {
+  if (going) return; going = true;
+  try {
+    si++; closeBoard(); stopVoice();
+    if (P.game.sinceReward >= REWARD_EVERY) { P.game.sinceReward = 0; dayLog().sets++; save(); await reward(); }
+    if (overLimit()) return showEnd("See you tomorrow!", "That is all the maths for today. Well done!");
+    nextQuestion();
+  } finally { going = false; }
+}
+/* the short reward game after every 5 answers */
+async function reward() {
+  QS = null; drawDots();
+  if (window.__noRewards || !window.RewardGames) return;
+  const host = document.createElement("div"); host.className = "rewardhost"; document.body.appendChild(host);
+  try { await RewardGames.play(host, { theme, fast: !!window.__demoFast }); } catch (e) {}
+  host.remove(); lastAct = Date.now();
+}
+function band(kind) {
+  const b = document.createElement("div"); b.className = "band " + kind;
+  b.innerHTML = kind === "correct" ? `${art("happy")}<span>Correct!</span>` : `<span>Oops…</span>`;
+  document.body.appendChild(b); setTimeout(() => b.remove(), kind === "correct" ? 1350 : 2050);
+}
+function openHint() {
+  closeHint(); if (QS) QS.hinted = QS.phase === "ask" ? true : QS.hinted;
+  const h = document.createElement("div"); h.className = "bubble";
+  h.innerHTML = `<div class="bh"><button aria-label="Read the hint">${ICON.speaker}</button><h4>${Q.hint}</h4></div>`;
+  h.querySelector("button").onclick = () => say(Q.hint);
+  $("#work").appendChild(h);
+  document.querySelectorAll("#qbody .bulb").forEach(b => b.innerHTML = ICON.close);
+  say(Q.hint);
+}
+function closeHint() { document.querySelectorAll(".bubble").forEach(b => b.remove()); document.querySelectorAll("#qbody .bulb").forEach(b => b.innerHTML = ICON.bulb); }
+
+/* ---------- drawing: pencil always ready, 6 colours, rubber, bin (no sounds) ---------- */
+function buildTools() {
+  const down = matchMedia(NARROW).matches;
+  $("#tools").innerHTML = PENS.map(([c, d]) => `<button class="pencil" data-c="${c}" aria-label="Colour pencil">${pencilSVG(c, d, down)}</button>`).join("")
+    + `<button class="rubber" data-t="erase" aria-label="Rubber">${rubberSVG(down)}</button><div class="grow"></div><button class="bin" data-t="clear" aria-label="Clear the drawing">${ICON.bin}</button><button class="bin home" data-t="home" aria-label="Back to the start">${ICON.home}</button>`;
+  $("#tools").querySelectorAll("button").forEach(b => b.onclick = () => {
+    if (b.dataset.t === "clear") return clearDraw();
+    if (b.dataset.t === "home") return doors();
+    pen = b.dataset.c || "erase"; markTools();
+  });
+  markTools();
+}
+function markTools() { $("#tools").querySelectorAll("button").forEach(b => b.classList.toggle("on", (b.dataset.c || b.dataset.t) === pen)); }
+let gd = null;
+function sizeDraw() {
+  const c = $("#draw"), r = c.getBoundingClientRect(), dpr = window.devicePixelRatio || 1;
+  c.width = Math.max(1, Math.round(r.width * dpr)); c.height = Math.max(1, Math.round(r.height * dpr));
+  gd = c.getContext("2d"); gd.setTransform(dpr, 0, 0, dpr, 0, 0);
+}
+function clearDraw() { const c = $("#draw"); if (gd) { gd.save(); gd.setTransform(1, 0, 0, 1, 0, 0); gd.clearRect(0, 0, c.width, c.height); gd.restore(); } }
+function setupDraw() {
+  const c = $("#draw"); let last = null;
+  const at = e => { const b = c.getBoundingClientRect(); return [e.clientX - b.left, e.clientY - b.top]; };
+  const style = () => { const er = pen === "erase"; gd.globalCompositeOperation = er ? "destination-out" : "source-over";
+    gd.strokeStyle = er ? "#000" : pen; gd.fillStyle = gd.strokeStyle; gd.lineWidth = er ? 30 : 5; gd.lineCap = gd.lineJoin = "round"; };
+  c.onpointerdown = e => { if (!gd) return; e.preventDefault(); c.setPointerCapture(e.pointerId); last = at(e); style(); gd.beginPath(); gd.arc(last[0], last[1], gd.lineWidth / 2, 0, 7); gd.fill(); };
+  c.onpointermove = e => { if (!last) return; e.preventDefault(); const p = at(e); style(); gd.beginPath(); gd.moveTo(last[0], last[1]); gd.lineTo(p[0], p[1]); gd.stroke(); last = p; };
+  c.onpointerup = c.onpointercancel = () => last = null;
+}
+
+/* ---------- cards ---------- */
+function overlay(html, cls = "") {
+  return new Promise(res => {
+    const o = document.createElement("div"); o.className = ("over " + cls).trim(); o.innerHTML = html; document.body.appendChild(o);
+    o.querySelectorAll("button").forEach(b => b.onclick = () => { o.remove(); res(b.dataset.v); });
+  });
+}
+async function showEnd(title, text) {
+  QS = null; stopVoice(); closeBoard(); save();
+  say(`${title} ${text}`);
+  await overlay(`<div class="panel"><div class="mascot-big">${art("happy")}</div><h1>${title}</h1><p>${text}</p><button class="go">OK</button></div>`);
+  doors();
+}
+/* the doors: each child taps their own picture; no other choice */
+async function doors() {
+  stopVoice(); closeBoard(); closeHint(); save(); QS = null; who = null; P = null;
+  document.querySelectorAll(".over, .rewardhost").forEach(o => o.remove());
+  const door = w => `<button class="go" data-theme="${PROFILES[w].theme}" data-v="${w}"><span class="art">${art("wave", PROFILES[w].theme)}</span>${PROFILES[w].name}<small>${PROFILES[w].world}</small></button>`;
+  const w = await overlay(`<div class="panel"><h1>Kids Maths</h1><p>Tap your picture.</p><div class="pick">${door("marie")}${door("kennedy")}</div></div>`, "start");
+  start(w);
+}
+function start(w) {
+  who = PROFILES[w] ? w : "marie"; P = loadSave(who); set = null; si = 0; prevKey = ""; lastAct = Date.now();
+  setTheme(PROFILES[who].theme); audioCtx(); sizeDraw(); save();
+  if (P.engine.paused) return showEnd("Maths is resting.", "A grown-up paused maths for now.");
+  if (overLimit()) return showEnd("See you tomorrow!", "That is all the maths for today. Well done!");
+  nextQuestion();
+}
+
+/* ---------- start ---------- */
+$("#speak").innerHTML = ICON.speaker; $("#speak").onclick = () => QS && say(Q.say);
+$("#tile").onclick = tile;
+buildTools(); buildPad(); setupDraw();
+let wasNarrow = matchMedia(NARROW).matches;
+addEventListener("resize", () => {
+  const nw = matchMedia(NARROW).matches; if (nw !== wasNarrow) { wasNarrow = nw; buildTools(); }
+  buildPad(); sizeDraw(); if (QS) renderBody();
+});
+addEventListener("pagehide", save);
+requestAnimationFrame(sizeDraw);
+drawDots(); mascot("stand");
+doors();
+window.__game = { get Q() { return Q; }, get QS() { return QS; }, get P() { return P; }, get set() { return set; }, M, start, doors,
+  lesson() { if (!Q) return; closeBoard(); QS.tries = 1; return teach(); } };
+</script>
+</body>
+</html>

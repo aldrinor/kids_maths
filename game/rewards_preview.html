@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Reward games preview</title>
+<style>
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; overflow: hidden; background: #f4f1f6; color: #3b2a33;
+    font-family: "Lexend", "Trebuchet MS", "Segoe UI", system-ui, sans-serif; }
+  #menu { position: fixed; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 18px; padding: 16px; }
+  #menu h1 { font-size: 24px; margin: 0 0 6px; text-align: center; }
+  #menu button { min-width: 220px; min-height: 72px; border-radius: 22px; border: 3px solid #3b2a33; font: inherit; font-size: 24px; font-weight: 700; cursor: pointer; }
+  #go_cafe { background: #ffd7e3; }
+  #go_castle { background: #f0cf74; }
+  #status { min-height: 28px; font-size: 18px; }
+  #stage { position: fixed; inset: 0; display: none; }
+  body.playing #menu { display: none; }
+  body.playing #stage { display: block; }
+</style>
+</head>
+<body data-theme="cafe">
+<div id="menu">
+  <h1>Reward games preview</h1>
+  <button id="go_cafe" type="button">Cafe</button>
+  <button id="go_castle" type="button">Castle</button>
+  <div id="status" role="status"></div>
+</div>
+<div id="stage"></div>
+<script src="../modules/characters.js"></script>
+<script src="../modules/knight_art.js"></script>
+<script src="rewards.js"></script>
+<script>
+  /* the test sets window.__rewardFast = true before the page loads */
+  function start(theme) {
+    document.body.setAttribute("data-theme", theme);
+    document.body.classList.add("playing");
+    window.__rewardResult = null;
+    document.getElementById("status").textContent = "";
+    RewardGames.play(document.getElementById("stage"), { theme: theme, fast: !!window.__rewardFast, onDone: function () {} })
+      .then(function (r) {
+        window.__rewardResult = r;
+        document.body.classList.remove("playing");
+        document.getElementById("status").textContent = r.done ? "Finished: " + r.game : "Closed";
+      })
+      .catch(function (e) {
+        window.__rewardError = String(e && e.message || e);
+        document.body.classList.remove("playing");
+        document.getElementById("status").textContent = "Error: " + window.__rewardError;
+        console.error(window.__rewardError);
+      });
+  }
+  document.getElementById("go_cafe").addEventListener("click", function () { start("cafe"); });
+  document.getElementById("go_castle").addEventListener("click", function () { start("castle"); });
+</script>
+</body>
+</html>
