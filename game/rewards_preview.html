@@ -4,6 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Reward games preview</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Lexend:wght@400;500;600;700;800&family=Sniglet:wght@400;800&display=swap">
 <style>
   * { box-sizing: border-box; }
   html, body { margin: 0; height: 100%; overflow: hidden; background: #f4f1f6; color: #3b2a33;
@@ -29,7 +30,15 @@
 <div id="stage"></div>
 <script src="../modules/characters.js"></script>
 <script src="../modules/knight_art.js"></script>
+<!-- reward games: the old rewards.js stays only for the castle game until castle_pony_stable.js exists;
+     reward_core.js keeps it as the fallback for any theme with no new game. -->
+<link rel="stylesheet" href="rewards/reward_styles.css">
 <script src="rewards.js"></script>
+<script src="rewards/reward_kit_spring.js"></script>
+<script src="rewards/reward_kit_drag.js"></script>
+<script src="rewards/reward_kit_sound.js"></script>
+<script src="rewards/reward_core.js"></script>
+<script src="rewards/cafe_hot_chocolate.js"></script>
 <script>
   /* the test sets window.__rewardFast = true before the page loads */
   function start(theme) {
