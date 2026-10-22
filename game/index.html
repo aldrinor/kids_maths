@@ -11,7 +11,7 @@
      - Two doors: Marie (Kitty Cafe) and Kennedy (Knight Castle). No topic choosing: the learning engine
        (../modules/engine.js) picks every question, finds the level, moves up when secure, practises again on a slip.
      - Every question is a story (stories.js). The question screen is the agreed demo screen (../demo).
-     - Coins for right answers. Every 5 answers a short reward game (rewards/ folder; castle still uses rewards.js). Every 25 answers: play world (stage 2).
+     - Coins for right answers. Every 5 answers a short reward game (game/rewards/: Mimi's Hot Chocolate for Marie, Pony Stable for Kennedy). Every 25 answers: play world (stage 2).
      - Own save per child (kidsMaths.game.<child>); the old app's save is read once and never written. -->
 <link rel="stylesheet" href="theme.css">
 </head>
@@ -30,15 +30,14 @@
 <script src="../modules/engine.js"></script>
 <script src="../topics/kinder.js"></script>
 <script src="stories.js"></script>
-<!-- reward games: the old rewards.js stays only for the castle game until castle_pony_stable.js exists;
-     reward_core.js keeps it as the fallback for any theme with no new game. -->
+<!-- reward games (game/rewards/): the shared core and kits, then one file per game -->
 <link rel="stylesheet" href="rewards/reward_styles.css">
-<script src="rewards.js"></script>
 <script src="rewards/reward_kit_spring.js"></script>
 <script src="rewards/reward_kit_drag.js"></script>
 <script src="rewards/reward_kit_sound.js"></script>
 <script src="rewards/reward_core.js"></script>
 <script src="rewards/cafe_hot_chocolate.js"></script>
+<script src="rewards/castle_pony_stable.js"></script>
 <script>
 "use strict";
 const $ = s => document.querySelector(s);

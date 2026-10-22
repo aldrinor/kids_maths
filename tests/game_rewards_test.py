@@ -1,24 +1,29 @@
 """Silent browser test for the reward mini-games.
 
-Cafe = the new "Mimi's Hot Chocolate" (game/rewards/cafe_hot_chocolate.js on game/rewards/reward_core.js).
-Castle = the old horse ride (game/rewards.js), reached through reward_core.js's fallback until its new game exists.
+Cafe = "Mimi's Hot Chocolate" (game/rewards/cafe_hot_chocolate.js), castle = "Pony Stable"
+(game/rewards/castle_pony_stable.js), both on game/rewards/reward_core.js.
 
 Plays both games to the end like a child, in Chromium and WebKit, at six sizes, in fast mode.
 Cafe is played by taps on every size and also by real mouse drags (cup, hold-to-pour, stir circles, toppings,
 cup to the friend) on the mouse sizes, plus one real touch-drag run in Chromium.
-Also checks: nothing plays itself (no taps = no progress, and a hint shows), __rewardAutoPlay, castle ends with no taps,
-reduced motion, close() mid-game, and castle then cafe on one page (the old CSS must not touch the new game).
+Castle is played by taps on every size, by a real mouse rub and an apple dragged to the pony on the mouse sizes,
+and by a real touch rub in Chromium. Castle buttons must be at least 72 px (cafe tools 64 px).
+Also checks: nothing plays itself (no taps = no progress, and a hint shows; the pony never jumps by itself),
+__rewardAutoPlay, reduced motion, close() mid-game, and castle then cafe on one page.
 Prints only failures and one final line:  RESULT n/m passed
 
-Run from anywhere:  python tests/game_rewards_test.py [chromium|webkit]   (no argument = both engines)
-It starts "python -m http.server 8792" in the gh_site folder and stops it at the end.
+Run from anywhere:  python tests/game_rewards_test.py [URL] [chromium|webkit]   (no engine = both engines, side by side)
+URL defaults to http://localhost:8792/game/rewards_preview.html. If nothing answers on the URL's port, the test
+starts "python -m http.server <port>" in the gh_site folder and stops it at the end.
 """
 import math
+import re
 import os
 import socket
 import subprocess
 import sys
 import time
+from urllib.parse import urlparse
 
 SITE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 WORK_TMP = os.path.join(os.path.dirname(SITE), "work_tmp")
@@ -28,13 +33,14 @@ os.environ["TMP"] = WORK_TMP
 
 from playwright.sync_api import sync_playwright  # noqa: E402  (after TEMP is set)
 
-PORT = 8792
-URL = "http://localhost:%d/game/rewards_preview.html" % PORT
+URL = next((a for a in sys.argv[1:] if a.startswith("http")), "http://localhost:8792/game/rewards_preview.html")
+PORT = urlparse(URL).port or 80
 SIZES = [(360, 640), (390, 844), (820, 1180), (1180, 820), (1920, 1080), (640, 360)]
 TOUCH_SIZES = {(360, 640), (390, 844), (640, 360)}
 THEMES = ["cafe", "castle"]
 GAME_TIMEOUT_MS = 90000
-MIN_TARGET = 63.5  # every touch target at least 64 px
+MIN_TARGET = 63.5  # every cafe touch target at least 64 px
+MIN_CASTLE = 71.5  # every castle touch target at least 72 px
 
 STUB = (
     "window.speechSynthesis={speak(){},cancel(){},getVoices(){return[]},pause(){},resume(){}};"
@@ -96,6 +102,7 @@ class Run:
         self.fails = []
         self.touch = touch
         self.size = size
+        self.min_target = MIN_TARGET
         opts = {"viewport": {"width": size[0], "height": size[1]}, "reduced_motion": "reduce" if reduced else "no-preference"}
         if touch:
             opts.update({"has_touch": True, "is_mobile": True})
@@ -114,7 +121,7 @@ class Run:
         self.fails.append("console error: %s" % msg.text[:200])
 
     def check(self, when):
-        for problem in self.page.evaluate(CHECK_JS, MIN_TARGET):
+        for problem in self.page.evaluate(CHECK_JS, self.min_target):
             self.fails.append("%s: %s" % (when, problem))
 
     def tap(self, locator, force=False):
@@ -134,6 +141,9 @@ class Run:
         self.page.wait_for_selector("#go_" + theme)
         self.tap(self.page.locator("#go_" + theme))
         self.page.wait_for_selector(".rg-root, .rw-root")
+        self.min_target = MIN_CASTLE if theme == "castle" else MIN_TARGET
+        if theme == "castle":
+            self.page.wait_for_selector(".rw-root[data-art=ready]")
 
     def wait_result(self):
         self.page.wait_for_function("window.__rewardResult && window.__rewardResult.done === true")
@@ -334,47 +344,142 @@ def cafe_auto(r):
 
 
 def castle_then_cafe(r):
-    """The old castle CSS stays in <head> after the castle game; the new cafe game must still play and fit."""
+    """Castle, closed midway, then cafe on the same page: the cafe game must still play and fit."""
     p = r.page
     r.open("castle")
-    p.wait_for_selector(".rg-jump")
+    wait_step(r, "brush")
     p.wait_for_timeout(400)
     p.evaluate("RewardGames.close()")
     p.wait_for_function("window.__rewardResult && window.__rewardResult.done === false")
     p.wait_for_selector("#go_cafe", state="visible")
     r.tap(p.locator("#go_cafe"))
     p.wait_for_selector(".rw-root")
+    r.min_target = MIN_TARGET
     play_cafe(r, opened=True)
 
 
-# ---------------------------------------------------------------- castle: the old horse ride (game/rewards.js)
-def play_castle(r, taps=True):
-    p = r.page
-    w, h = r.size
-    r.open("castle")
-    p.wait_for_selector(".rg-jump")
-    p.wait_for_timeout(400)
-    r.check("castle start")
-    if taps:
-        r.tap(p.locator(".rg-jump"))
-        p.wait_for_timeout(500)
-        r.tap_at(w * 0.5, h * 0.25)
-        p.wait_for_timeout(500)
-        r.check("castle riding")
-        for _ in range(4):
-            r.tap(p.locator(".rg-jump"))
-            p.wait_for_timeout(700)
-            r.tap_at(w * 0.45, h * 0.3)
-            p.wait_for_timeout(500)
+# ---------------------------------------------------------------- castle: Pony Stable
+DS_JS = "(k) => { const r = document.querySelector('.rw-root'); return r ? r.dataset[k] : null; }"
+WAIT_DS_JS = "([k, v]) => { const r = document.querySelector('.rw-root'); return !!r && r.dataset[k] === v; }"
+
+
+def wait_ds(r, key, value, timeout=20000):
+    r.page.wait_for_function(WAIT_DS_JS, arg=[key, value], timeout=timeout)
+
+
+def castle_rub(r, cdp=None):
+    """Rub back and forth across the pony (about 5 sweeps of 40% of its width: cleans all 3 patches)."""
+    b = r.page.locator(".rw-ps-ponyhit").bounding_box()
+    y = b["y"] + b["height"] * 0.5
+    xs = [b["x"] + b["width"] * k for k in (0.3, 0.7, 0.3, 0.7, 0.3, 0.7)]
+    if cdp:
+        cdp.send("Input.dispatchTouchEvent", {"type": "touchStart", "touchPoints": [{"x": xs[0], "y": y}]})
     else:
-        p.wait_for_timeout(1500)
-        r.check("castle riding (no taps)")
-    p.wait_for_selector(".rg-done", state="visible", timeout=GAME_TIMEOUT_MS)
-    p.wait_for_timeout(500)
+        r.page.mouse.move(xs[0], y)
+        r.page.mouse.down()
+    for a, z in zip(xs, xs[1:]):
+        for k in range(1, 9):
+            x = a + (z - a) * k / 8
+            if cdp:
+                cdp.send("Input.dispatchTouchEvent", {"type": "touchMove", "touchPoints": [{"x": x, "y": y}]})
+            else:
+                r.page.mouse.move(x, y)
+    if cdp:
+        cdp.send("Input.dispatchTouchEvent", {"type": "touchEnd", "touchPoints": []})
+    else:
+        r.page.mouse.up()
+
+
+def play_castle(r, how="tap"):
+    """how = tap (every step by taps), mouse (a mouse rub, an apple dragged to the pony), touch (a CDP touch rub)."""
+    p = r.page
+    r.open("castle")
+    wait_step(r, "brush")
+    p.wait_for_timeout(300)
+    r.check("castle start")
+    if p.evaluate(DS_JS, "mud") != "3":
+        r.fails.append("the pony did not start with 3 mud patches")
+    if how == "tap":
+        for _ in range(3):
+            r.tap(p.locator(".rw-ps-ponyhit"))
+            p.wait_for_timeout(200)
+    else:
+        castle_rub(r, p.context.new_cdp_session(p) if how == "touch" else None)
+    wait_ds(r, "mud", "0", 8000)
+    wait_step(r, "feed")
+    p.wait_for_timeout(300)
+    r.check("castle feed")
+    for i in range(3):
+        r.tap(p.locator(".rw-ps-treeapple[data-i='%d']" % i))
+        p.wait_for_selector(".rw-ps-bapple[data-i='%d']" % i, state="visible")
+        p.wait_for_timeout(300)
+        if i == 0:
+            r.check("castle apple in the basket")
+            r.tap(p.locator(".rw-ps-bapple[data-i='0']"))
+        elif i == 1 and how == "mouse":
+            mouse_drag(r, centre(p.locator(".rw-ps-bapple[data-i='1']").bounding_box()), centre(p.locator(".rw-ps-ponyhit").bounding_box()))
+        else:
+            r.tap(p.locator(".rw-ps-ponyhit"))
+        wait_ds(r, "fed", str(i + 1), 8000)
+        p.wait_for_timeout(450)
+    p.wait_for_selector(".rw-ps-go", state="visible", timeout=20000)
+    p.wait_for_timeout(300)
+    r.check("castle ride")
+    for k in (1, 2):
+        r.tap(p.locator(".rw-ps-go"))
+        wait_ds(r, "stretch", str(k), 8000)
+        p.wait_for_timeout(400)  # the core ignores a second tap on one button within 450 ms (a trot is 240 ms in fast mode)
+    p.wait_for_selector(".rw-ps-jump", state="visible")
+    p.wait_for_timeout(1000)  # the pony must wait at the log until Jump is tapped (5 s at real speed)
+    r.check("castle at the log")
+    if p.evaluate(DS_JS, "stretch") != "2" or not p.locator(".rw-ps-jump").is_visible():
+        r.fails.append("the pony moved on at the log without a tap")
+    r.tap(p.locator(".rw-ps-jump"))
+    for k in (3, 4):
+        p.wait_for_selector(".rw-ps-go", state="visible")
+        p.wait_for_timeout(400)
+        r.tap(p.locator(".rw-ps-go"))
+        wait_ds(r, "stretch", str(k), 8000)
+    wait_step(r, "gate")
+    p.wait_for_selector(".rw-ps-gate", state="visible")
+    p.wait_for_timeout(300)
     r.check("castle gate")
-    if not p.evaluate("!!document.querySelector('.rg-obj[data-rg-late]')"):
-        r.fails.append("village gate never appeared")
-    r.tap(p.locator(".rg-done"))
+    r.tap(p.locator(".rw-ps-gate"))
+    p.wait_for_selector(".rw-done", state="visible", timeout=20000)
+    p.wait_for_timeout(400)
+    r.check("castle done")
+    lines = p.evaluate(LINES_JS)
+    for want in ("My pony is muddy. Can you help?", "So shiny!", "Yum!", "Jump!", "We're home!"):
+        if want not in lines:
+            r.fails.append("the line %r was never said" % want)
+    r.tap(p.locator(".rw-done"))
+    r.wait_result()
+
+
+def castle_no_taps(r):
+    """Nothing plays itself: with no taps the pony stays muddy on the brush step and a hint hand shows."""
+    p = r.page
+    r.open("castle")
+    wait_step(r, "brush")
+    p.wait_for_timeout(2500)
+    if p.evaluate(STEP_JS, "brush") is not True or p.evaluate(DS_JS, "mud") != "3":
+        r.fails.append("the castle game moved on with no taps")
+    if not p.query_selector(".rw-hint"):
+        r.fails.append("no hint hand after waiting (castle)")
+    r.check("castle waiting with a hint")
+    p.evaluate("RewardGames.close()")
+    p.wait_for_function("window.__rewardResult && window.__rewardResult.done === false")
+
+
+def castle_auto(r):
+    """window.__rewardAutoPlay = true: the castle game does every step by itself (tests only); the test taps Done."""
+    p = r.page
+    r.open("castle")
+    p.wait_for_selector(".rw-done", state="visible", timeout=40000)
+    if p.evaluate(DS_JS, "fed") != "3" or p.evaluate(DS_JS, "stretch") != "4":
+        r.fails.append("castle autoplay skipped a step")
+    r.check("castle autoplay done")
+    r.tap(p.locator(".rw-done"))
     r.wait_result()
 
 
@@ -406,6 +511,26 @@ def scenario(results, browser, engine, label, size, fn, reduced=False, auto=Fals
             r.close()
 
 
+def run_engines_side_by_side():
+    """No engine named: run Chromium and WebKit at the same time, one child process each (the server is already up),
+    then print both sets of failures and one combined RESULT line."""
+    kids = [subprocess.Popen([sys.executable, os.path.abspath(__file__), URL, e], stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+                             env=os.environ.copy(), text=True, encoding="utf-8", errors="replace") for e in ("chromium", "webkit")]
+    passed = total = 0
+    for kid in kids:
+        out, _ = kid.communicate()
+        for line in out.splitlines():
+            m = re.match(r"RESULT (\d+)/(\d+) passed", line)
+            if m:
+                passed += int(m.group(1))
+                total += int(m.group(2))
+            elif line.strip():
+                print(line)
+    total = total or 1
+    print("RESULT %d/%d passed" % (passed, total))
+    return 0 if passed == total else 1
+
+
 def main():
     server = None
     if not port_open():
@@ -421,8 +546,10 @@ def main():
             print("FAIL could not start the web server on port %d" % PORT)
             print("RESULT 0/1 passed")
             return 1
+        engines = [a for a in sys.argv[1:] if a in ("chromium", "webkit")]
+        if not engines:
+            return run_engines_side_by_side()
         with sync_playwright() as pw:
-            engines = [a for a in sys.argv[1:] if a in ("chromium", "webkit")] or ["chromium", "webkit"]
             for engine in engines:
                 kwargs = {"args": ["--mute-audio"]} if engine == "chromium" else {}
                 browser = getattr(pw, engine).launch(**kwargs)
@@ -432,13 +559,17 @@ def main():
                         if size not in TOUCH_SIZES:
                             scenario(results, browser, engine, "cafe drag", size, play_cafe_drag)
                         scenario(results, browser, engine, "castle", size, play_castle)
+                        if size not in TOUCH_SIZES:
+                            scenario(results, browser, engine, "castle rub and drag", size, lambda r: play_castle(r, "mouse"))
                     if engine == "chromium":
                         scenario(results, browser, engine, "cafe touch drag", (390, 844), play_cafe_touch_drag)
+                        scenario(results, browser, engine, "castle touch rub", (390, 844), lambda r: play_castle(r, "touch"))
                     scenario(results, browser, engine, "cafe no taps", (390, 844), cafe_no_taps)
                     scenario(results, browser, engine, "cafe autoplay", (820, 1180), cafe_auto, auto=True)
+                    scenario(results, browser, engine, "castle no taps", (390, 844), castle_no_taps)
+                    scenario(results, browser, engine, "castle autoplay", (820, 1180), castle_auto, auto=True)
                     scenario(results, browser, engine, "castle then cafe", (1180, 820), castle_then_cafe)
                     for size in ((390, 844), (1180, 820)):
-                        scenario(results, browser, engine, "castle no taps", size, lambda r: play_castle(r, taps=False))
                         scenario(results, browser, engine, "cafe", size, play_cafe, reduced=True)
                         scenario(results, browser, engine, "castle", size, play_castle, reduced=True)
                     for theme in THEMES:

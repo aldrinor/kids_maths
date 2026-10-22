@@ -9,8 +9,8 @@
  *       Resolves with { done: true, theme, game } when the child taps Done (onDone runs then too).
  *   RewardGames.close()  -> stops the running game (sounds, timers, frames), resolves it with { done: false }.
  *   RewardGames.register(theme, { name, start(ctx, finish) })   (the old form (theme, name, start) also works)
- *       Games of one theme are played in turn. A theme with no new game falls back to the old
- *       game/rewards.js (loaded before this file), so "castle" keeps working until its new game is registered.
+ *       Games of one theme are played in turn. ("cafe" = cafe_hot_chocolate.js, "castle" = castle_pony_stable.js.)
+ *       If an older RewardGames object was loaded before this file, a theme with no new game falls back to it.
  *   Tests: window.__rewardAutoPlay = true makes each game do its own steps (ctx.auto).
  *
  * THE ctx A GAME GETS  (start(ctx, finish); call finish() when the child taps Done - ctx.doneButton does that)
@@ -30,7 +30,8 @@
  *   ctx.onTap(el, fn)        fn once per tap (pointer down+up, or keyboard click); safe after touch drags.
  *   ctx.drag(el, opts)       drag OR tap on el (see reward_kit_drag.js): opts.enabled, zones, onTap, onDrop, onLift, onMove.
  *   ctx.spring               RewardKit.spring: .curve (the linear() spring string), .soft, .make(zeta, ms), .follow(opts).
- *   ctx.sound                soft sounds: plop, clink, bell, pop, pourStart, pourStop (silent when P.sound is off or no Web Audio).
+ *   ctx.sound                soft sounds: plop, clink, bell, pop, pourStart, pourStop, swish, crunch, clipClop, neigh, creak
+ *                            (silent when P.sound is off or no Web Audio).
  *   ctx.speak(text)          says a line through opts.speak (never awaited by the game flow); the line is also kept
  *                            in root.dataset.lines ("a|b|c") for the tests.
  *   ctx.hint(getEl)          after 5.5 s with no touch, a soft pointing hand bobs over getEl(); any touch hides it
@@ -87,7 +88,7 @@
     root.setAttribute("aria-label", opts.label || "Reward game");
     root.dataset.lines = "";
     var layer = make("div", "rw-layer");
-    var sound = kit.sound ? kit.sound.make() : { plop: noop, clink: noop, bell: noop, pop: noop, pourStart: noop, pourStop: noop, stopAll: noop };
+    var sound = kit.sound ? kit.sound.make() : { plop: noop, clink: noop, bell: noop, pop: noop, pourStart: noop, pourStop: noop, swish: noop, crunch: noop, clipClop: noop, neigh: noop, creak: noop, stopAll: noop };
     var hintGet = null;
     var hintTimer = 0;
     var hintEl = null;
