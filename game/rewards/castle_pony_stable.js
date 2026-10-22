@@ -363,11 +363,12 @@
       var nose = L.pathPony.x + pboxW * 640 / PW;
       L.logX = nose + stride * 2 + stride * 0.1;
       place(logEl, L.logX, gyP - L.logH * 0.85, L.logW, L.logH);
-      /* the castle: after the whole ride its centre stands at 70% of the width */
-      var cw = tall ? W * 0.8 : Math.min(W * 0.5, bw * 0.62);
+      /* the castle: after the whole ride its centre stands at 70% of the width (upright screens: 63%, a little
+         narrower, so the right tower stays inside the screen and the pony stands clear of the door) */
+      var cw = tall ? W * 0.68 : Math.min(W * 0.5, bw * 0.62);
       var chh = cw * 900 / 1000;
       if (chh * 880 / 900 > gyP + H * 0.01 - 4) { chh = (gyP + H * 0.01 - 4) * 900 / 880; cw = chh * 1000 / 900; }
-      var ccx = (tall ? W * 0.6 : W * 0.7) + L.camMax;
+      var ccx = (tall ? W * 0.63 : W * 0.7) + L.camMax;
       L.castle = { x: ccx - cw / 2, y: gyP + H * 0.01 - chh * 880 / 900, w: cw, h: chh };
       place(castle, L.castle.x, L.castle.y, cw, chh);
       /* the gate's tap area: the drawbridge, at least 72 px */

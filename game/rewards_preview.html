@@ -37,7 +37,13 @@
 <script src="rewards/reward_kit_sound.js"></script>
 <script src="rewards/reward_core.js"></script>
 <script src="rewards/cafe_hot_chocolate.js"></script>
+<script src="rewards/cafe_scene_kit.js"></script>
+<script src="rewards/cafe_ice_cream.js"></script>
+<script src="rewards/cafe_cookie.js"></script>
 <script src="rewards/castle_pony_stable.js"></script>
+<script src="rewards/castle_extra_art.js"></script>
+<script src="rewards/castle_goblin_rescue.js"></script>
+<script src="rewards/castle_kitty_tower.js"></script>
 <script>
   /* the test sets window.__rewardFast = true before the page loads */
   function start(theme) {
@@ -45,7 +51,9 @@
     document.body.classList.add("playing");
     window.__rewardResult = null;
     document.getElementById("status").textContent = "";
-    RewardGames.play(document.getElementById("stage"), { theme: theme, fast: !!window.__rewardFast, onDone: function () {} })
+    /* rewards_preview.html#game=ice_cream picks one game by name (tests); otherwise the games take turns */
+    var pick = (location.hash.match(/game=([a-z_]+)/) || [])[1];
+    RewardGames.play(document.getElementById("stage"), { theme: theme, game: pick, fast: !!window.__rewardFast, onDone: function () {} })
       .then(function (r) {
         window.__rewardResult = r;
         document.body.classList.remove("playing");

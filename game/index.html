@@ -11,7 +11,7 @@
      - Two doors: Marie (Kitty Cafe) and Kennedy (Knight Castle). No topic choosing: the learning engine
        (../modules/engine.js) picks every question, finds the level, moves up when secure, practises again on a slip.
      - Every question is a story (stories.js). The question screen is the agreed demo screen (../demo).
-     - Coins for right answers. Every 5 answers a short reward game (game/rewards/: Mimi's Hot Chocolate for Marie, Pony Stable for Kennedy). Every 25 answers: play world (stage 2).
+     - Coins for right answers. Every 5 answers a short reward game (game/rewards/: Mimi's Hot Chocolate, Ice Cream and Cookies in turn for Marie, Pony Stable, Goblin Rescue and Tower for Kitty in turn for Kennedy). Every 25 answers: play world (stage 2).
      - Own save per child (kidsMaths.game.<child>); the old app's save is read once and never written. -->
 <link rel="stylesheet" href="theme.css">
 </head>
@@ -37,7 +37,17 @@
 <script src="rewards/reward_kit_sound.js"></script>
 <script src="rewards/reward_core.js"></script>
 <script src="rewards/cafe_hot_chocolate.js"></script>
+<script src="rewards/cafe_scene_kit.js"></script>
+<script src="rewards/cafe_ice_cream.js"></script>
+<script src="rewards/cafe_cookie.js"></script>
 <script src="rewards/castle_pony_stable.js"></script>
+<script src="rewards/castle_extra_art.js"></script>
+<script src="rewards/castle_goblin_rescue.js"></script>
+<script src="rewards/castle_kitty_tower.js"></script>
+<script src="world/world_core.js"></script>
+<!-- play worlds: world/cafe_world.js and world/castle_world.js are added when built -->
+<script src="world/cafe_world.js"></script>
+<script src="world/castle_world.js"></script>
 <script>
 "use strict";
 const $ = s => document.querySelector(s);
@@ -80,7 +90,7 @@ function addTime() { const t = Date.now(); dayLog().ms += Math.min(120000, Math.
 const overLimit = () => dayLog().ms >= (P.limitMin || DAY_LIMIT_MIN) * 60000;
 
 /* ---------- skills: only those with a story question are played; the engine skips the rest ---------- */
-const M = KidsEngine.buildSkillMap((window.MathTopics || []).filter(t => t.id === "kinder"));
+const M = KidsEngine.buildSkillMap((window.MathTopics || []).filter(t => t.id === "kinder"), KS.extraSkills());   // + the Stage 3 story kinds
 M.order.forEach(id => { M.map[id].ready = KS.SKILLS.includes(id); });
 M.order.forEach(id => { M.map[id].needs = M.map[id].needs.filter(n => M.map[n] && M.map[n].ready); });   // a need with no game cannot lock a skill
 
@@ -571,6 +581,7 @@ async function goNext() {
   try {
     si++; closeBoard(); stopVoice();
     if (P.game.sinceReward >= REWARD_EVERY) { P.game.sinceReward = 0; dayLog().sets++; save(); await reward(); }
+    if (P.game.sincePlay >= PLAY_EVERY) { P.game.sincePlay = 0; save(); await playWorld(); }
     if (overLimit()) return showEnd("See you tomorrow!", "That is all the maths for today. Well done!");
     nextQuestion();
   } finally { going = false; }
@@ -580,8 +591,21 @@ async function reward() {
   QS = null; drawDots();
   if (window.__noRewards || !window.RewardGames) return;
   const host = document.createElement("div"); host.className = "rewardhost"; document.body.appendChild(host);
-  try { await RewardGames.play(host, { theme, fast: !!window.__demoFast, speak: say }); } catch (e) {}
+  /* the games of a theme take turns; the turn is saved, so it goes on after a reload */
+  const turn = P.game.rewardTurn || 0; P.game.rewardTurn = turn + 1; save();
+  try { await RewardGames.play(host, { theme, fast: !!window.__demoFast, speak: say, turn }); } catch (e) {}
   host.remove(); lastAct = Date.now();
+}
+/* the play world after every 25 answers: 5 minutes to spend coins and play */
+async function playWorld() {
+  QS = null; drawDots();
+  if (window.__noWorld || !window.PlayWorlds || !PlayWorlds.has(theme)) return;
+  P.world = P.world || {};
+  try {
+    await PlayWorlds.open(document.body, { theme, minutes: 5, fast: !!window.__demoFast, speak: say, data: P.world,
+      getCoins: () => P.coins, spendCoins: n => { if (P.coins < n) return false; P.coins -= n; drawCoins(true); return true; }, save });
+  } catch (e) { console.error(e); }
+  drawCoins(false); lastAct = Date.now();
 }
 function band(kind) {
   const b = document.createElement("div"); b.className = "band " + kind;
@@ -653,6 +677,7 @@ async function doors() {
 function start(w) {
   who = PROFILES[w] ? w : "marie"; P = loadSave(who); set = null; si = 0; prevKey = ""; lastAct = Date.now();
   setTheme(PROFILES[who].theme); audioCtx(); sizeDraw(); save();
+  M.order.forEach(id => { M.map[id].ready = KS.SKILLS.includes(id) && KS.fits(id, theme); });   // cafe kinds are Marie's, knight kinds Kennedy's
   if (P.engine.paused) return showEnd("Maths is resting.", "A grown-up paused maths for now.");
   if (overLimit()) return showEnd("See you tomorrow!", "That is all the maths for today. Well done!");
   nextQuestion();

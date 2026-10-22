@@ -8,8 +8,11 @@ Cafe is played by taps on every size and also by real mouse drags (cup, hold-to-
 cup to the friend) on the mouse sizes, plus one real touch-drag run in Chromium.
 Castle is played by taps on every size, by a real mouse rub and an apple dragged to the pony on the mouse sizes,
 and by a real touch rub in Chromium. Castle buttons must be at least 72 px (cafe tools 64 px).
+Kennedy's two extra castle games (Goblin Rescue, Tower for Kitty) are played to the end at 390x844, 820x1180 and
+1280x720 (castle_extra_scenarios; their buttons must be at least 80 px).
 Also checks: nothing plays itself (no taps = no progress, and a hint shows; the pony never jumps by itself),
 __rewardAutoPlay, reduced motion, close() mid-game, and castle then cafe on one page.
+Mimi's Ice Cream and Mimi's Cookies (cafe_extra_scenarios) run in two more child processes, one per engine.
 Prints only failures and one final line:  RESULT n/m passed
 
 Run from anywhere:  python tests/game_rewards_test.py [URL] [chromium|webkit]   (no engine = both engines, side by side)
@@ -494,6 +497,375 @@ def close_midway(r, theme):
     p.wait_for_timeout(1500)  # leftover timers or frames would fail here
 
 
+# ---------------------------------------------------------------- castle extra: Goblin Rescue and Tower for Kitty
+# (game/rewards/castle_goblin_rescue.js, castle_kitty_tower.js). Castle games take turns on one page, so a test opens
+# castle, and closes and reopens it until the wanted game is playing. Their buttons must be at least 80 px.
+MIN_EXTRA = 79.5
+EXTRA_SIZES = [(390, 844), (820, 1180), (1280, 720)]
+
+
+def open_extra(r, cls):
+    """Open castle games until the one whose root has class cls (rw-gr or rw-kt) plays."""
+    p = r.page
+    r.open("castle")
+    for _ in range(3):
+        if p.evaluate("(c) => document.querySelector('.rw-root').classList.contains(c)", cls):
+            r.min_target = MIN_EXTRA
+            return
+        p.evaluate("RewardGames.close()")
+        p.wait_for_function("window.__rewardResult && window.__rewardResult.done === false")
+        p.wait_for_selector("#go_castle", state="visible")
+        r.tap(p.locator("#go_castle"))
+        p.wait_for_selector(".rw-root[data-art=ready]")
+    raise RuntimeError("the castle game %s never came up in turn" % cls)
+
+
+def play_goblin(r, how="tap"):
+    """how = tap (every step by taps) or mouse (the key dragged to the lock)."""
+    p = r.page
+    open_extra(r, "rw-gr")
+    wait_step(r, "bop")
+    p.wait_for_timeout(300)
+    r.check("goblin start")
+    for i in range(3):
+        r.tap(p.locator(".rw-gr-gob[data-i='%d']" % i))
+        if i == 0:
+            p.wait_for_timeout(150)
+            r.check("goblin bop")
+        wait_ds(r, "bopped", str(i + 1), 8000)
+        if p.locator(".rw-gr-gob[data-i='%d']" % i).is_visible():
+            r.fails.append("goblin %d still on the screen after it ran away" % i)
+        if i < 2:
+            p.wait_for_timeout(700)
+            if p.evaluate(DS_JS, "bopped") != str(i + 1):
+                r.fails.append("a goblin went away without a tap")
+    wait_step(r, "key")
+    p.wait_for_selector(".rw-gr-key", state="visible")
+    p.wait_for_timeout(300)
+    r.check("goblin key")
+    if how == "mouse":
+        mouse_drag(r, centre(p.locator(".rw-gr-key").bounding_box()), centre(p.locator(".rw-gr-lock").bounding_box()))
+    else:
+        r.tap(p.locator(".rw-gr-key"))
+    wait_step(r, "door")
+    p.wait_for_selector(".rw-gr-doorbtn", state="visible")
+    p.wait_for_timeout(1000)  # the door must wait for a tap
+    if p.evaluate(STEP_JS, "door") is not True:
+        r.fails.append("the cage door opened without a tap")
+    r.check("goblin door")
+    r.tap(p.locator(".rw-gr-doorbtn"))
+    p.wait_for_selector(".rw-done", state="visible", timeout=20000)
+    p.wait_for_timeout(400)
+    r.check("goblin done")
+    lines = p.evaluate(LINES_JS)
+    for want in ("Help! The silly goblins shut me in!", "Bop the silly goblins!", "Oops!", "Run away!", "Get the key!", "You saved me! Thank you!"):
+        if want not in lines:
+            r.fails.append("the line %r was never said" % want)
+    if "buddy_cheer" not in (p.evaluate("() => document.querySelector('.rw-gr-bpic').dataset.pic || ''") or ""):
+        r.fails.append("the buddy did not cheer at the end")
+    r.tap(p.locator(".rw-done"))
+    r.wait_result()
+
+
+def play_kitty(r):
+    p = r.page
+    open_extra(r, "rw-kt")
+    wait_step(r, "build")
+    p.wait_for_timeout(300)
+    r.check("kitty start")
+    for k in range(1, 5):
+        p.wait_for_function("() => { const c = document.querySelector('.rw-kt-cart'); return c && !c.hidden && c.classList.contains('rw-now'); }")
+        r.tap(p.locator(".rw-kt-cart"))
+        wait_ds(r, "blocks", str(k), 8000)
+        p.wait_for_timeout(450)  # the core ignores a second tap on one button within 450 ms (fast mode is 5x)
+        if k == 2:
+            p.wait_for_timeout(800)  # nothing builds by itself
+            if p.evaluate(DS_JS, "blocks") != "2":
+                r.fails.append("a block was added without a tap")
+            r.check("kitty building")
+    wait_step(r, "kitty")
+    p.wait_for_timeout(1000)
+    if p.evaluate(STEP_JS, "kitty") is not True:
+        r.fails.append("the kitten came down without a tap")
+    r.check("kitty on the tree")
+    r.tap(p.locator(".rw-kt-kitten"))
+    p.wait_for_selector(".rw-done", state="visible", timeout=20000)
+    p.wait_for_timeout(400)
+    r.check("kitty done")
+    lines = p.evaluate(LINES_JS)
+    for want in ("Mew! I'm stuck up the tree!", "Let's build a tower!", "Up it goes!", "Our tower is tall!", "Tap the kitten!", "Thank you, knight! Mew!"):
+        if want not in lines:
+            r.fails.append("the line %r was never said" % want)
+    r.tap(p.locator(".rw-done"))
+    r.wait_result()
+
+
+def extra_no_taps(r, cls, step):
+    """Nothing plays itself: with no taps the game stays on its first step and a hint hand shows."""
+    p = r.page
+    open_extra(r, cls)
+    wait_step(r, step)
+    p.wait_for_timeout(2500)
+    if p.evaluate(STEP_JS, step) is not True or p.evaluate(DS_JS, "bopped" if cls == "rw-gr" else "blocks") != "0":
+        r.fails.append("%s moved on with no taps" % cls)
+    if not p.query_selector(".rw-hint"):
+        r.fails.append("no hint hand after waiting (%s)" % cls)
+    r.check("%s waiting with a hint" % cls)
+    p.evaluate("RewardGames.close()")
+    p.wait_for_function("window.__rewardResult && window.__rewardResult.done === false")
+    if p.query_selector(".rw-root"):
+        r.fails.append("root still on the page after close() (%s)" % cls)
+    p.wait_for_timeout(1000)  # leftover timers or frames would fail here
+
+
+def extra_auto(r, cls):
+    p = r.page
+    open_extra(r, cls)
+    p.wait_for_selector(".rw-done", state="visible", timeout=40000)
+    r.check("%s autoplay done" % cls)
+    r.tap(p.locator(".rw-done"))
+    r.wait_result()
+
+
+def castle_extra_scenarios(results, browser, engine):
+    """Goblin Rescue and Tower for Kitty: played to the end by taps at phone, iPad and laptop size (touch on the phone),
+    the key dragged by mouse, waiting with no taps, autoplay, and reduced motion."""
+    for size in EXTRA_SIZES:
+        scenario(results, browser, engine, "goblin rescue", size, play_goblin)
+        scenario(results, browser, engine, "kitty tower", size, play_kitty)
+    scenario(results, browser, engine, "goblin rescue key drag", (1280, 720), lambda r: play_goblin(r, "mouse"))
+    scenario(results, browser, engine, "goblin no taps", (390, 844), lambda r: extra_no_taps(r, "rw-gr", "bop"))
+    scenario(results, browser, engine, "kitty no taps", (390, 844), lambda r: extra_no_taps(r, "rw-kt", "build"))
+    scenario(results, browser, engine, "goblin autoplay", (820, 1180), lambda r: extra_auto(r, "rw-gr"), auto=True)
+    scenario(results, browser, engine, "kitty autoplay", (820, 1180), lambda r: extra_auto(r, "rw-kt"), auto=True)
+    scenario(results, browser, engine, "goblin rescue", (1280, 720), play_goblin, reduced=True)
+    scenario(results, browser, engine, "kitty tower", (390, 844), play_kitty, reduced=True)
+
+
+# ---------------------------------------------------------------- cafe extra: Mimi's Ice Cream and Mimi's Cookies
+# (game/rewards/cafe_ice_cream.js, cafe_cookie.js on cafe_scene_kit.js). The preview picks one by its name:
+# rewards_preview.html#game=ice_cream. These run in their own child processes (see run_engines_side_by_side).
+ORDER_JS = "() => JSON.parse(document.querySelector('.rw-root').dataset.order)"
+CAFE_EXTRA_CLS = {"ice_cream": "rw-ic", "cookie": "rw-ck"}
+
+
+def open_cafe_extra(r, game):
+    p = r.page
+    p.goto(URL.split("#")[0] + "#game=" + game)
+    p.wait_for_selector("#go_cafe")
+    r.tap(p.locator("#go_cafe"))
+    p.wait_for_selector(".rw-root[data-art=ready]")
+    r.min_target = MIN_TARGET
+    if not p.evaluate("(c) => document.querySelector('.rw-root').classList.contains(c)", CAFE_EXTRA_CLS[game]):
+        raise RuntimeError("the preview did not open %s" % game)
+
+
+def cafe_extra_tool(p, kind, tid):
+    sel = ".rw-tool[data-tool=%s][data-id=%s]" % (kind, tid)
+    p.wait_for_function("(s) => { const b = document.querySelector(s); return !!b && b.classList.contains('rw-now'); }", arg=sel, timeout=10000)
+    return p.locator(sel)
+
+
+def cafe_extra_finish(r, first_line, hello, match):
+    p = r.page
+    p.wait_for_function(HAS_LINE_JS, arg=first_line, timeout=20000)
+    r.check("friend reacts")
+    p.wait_for_selector(".rw-done", state="visible", timeout=20000)
+    p.wait_for_timeout(400)
+    r.check("done")
+    lines = p.evaluate(LINES_JS)
+    if hello not in lines:
+        r.fails.append("the friend never ordered")
+    if match and "Just like my picture!" not in lines:
+        r.fails.append("the order was matched but the friend did not say 'Just like my picture!'")
+    if not match and "Just like my picture!" in lines:
+        r.fails.append("the order was not matched but the friend said 'Just like my picture!'")
+    if "Thank you, Mimi!" not in lines:
+        r.fails.append("the friend never said thank you")
+    if p.evaluate(DS_JS, "match") != ("yes" if match else "no"):
+        r.fails.append("match flag is %r" % p.evaluate(DS_JS, "match"))
+    p.wait_for_selector(".rw-cs-sticker", state="visible", timeout=8000)
+    r.tap(p.locator(".rw-done"))
+    r.wait_result()
+
+
+def play_ice(r, how="tap"):
+    """how = tap (the card's ice cream, by taps) or mouse (a different ice cream, every step by a real mouse drag)."""
+    p = r.page
+    open_cafe_extra(r, "ice_cream")
+    wait_step(r, "cone")
+    p.wait_for_timeout(300)
+    r.check("ice start")
+    o = p.evaluate(ORDER_JS)
+    if how == "mouse":
+        o = {"cone": "pink" if o["cone"] != "pink" else "waffle", "scoops": o["scoops"][::-1], "sauce": o["sauce"], "top": o["top"]}
+
+    def zone():
+        return centre(p.locator(".rw-ic-zone").bounding_box())
+
+    def act(kind, tid):
+        loc = cafe_extra_tool(p, kind, tid)
+        if how == "mouse":
+            mouse_drag(r, centre(loc.bounding_box()), zone())
+        else:
+            r.tap(loc)
+    act("cone", o["cone"])
+    wait_step(r, "scoops")
+    for k, fl in enumerate(o["scoops"]):
+        act("tub", fl)
+        wait_ds(r, "scoops", str(k + 1), 8000)
+        if k == 0:
+            p.wait_for_timeout(700)  # nothing stacks by itself
+            if p.evaluate(DS_JS, "scoops") != "1":
+                r.fails.append("a scoop was added without a tap")
+            r.check("ice scoops")
+    wait_step(r, "sauce")
+    act("sauce", o["sauce"])
+    wait_step(r, "toppings")
+    r.check("ice toppings")
+    act("top", o["top"])
+    wait_ds(r, "tops", "1", 8000)
+    if how == "mouse":
+        other = "wafer" if o["top"] != "wafer" else "cherry"
+        mouse_drag(r, centre(cafe_extra_tool(p, "top", other).bounding_box()), (5, 5))
+        p.wait_for_timeout(500)
+        if p.evaluate(DS_JS, "tops") != "1":
+            r.fails.append("a topping dropped far from the ice cream was added")
+        if p.query_selector(".rw-ghost"):
+            r.fails.append("a drag ghost was left on the screen")
+    p.wait_for_selector(".rw-cs-bell", state="visible")
+    p.wait_for_timeout(300)
+    r.check("ice bell")
+    if how == "mouse":
+        mouse_drag(r, zone(), centre(p.locator(".rw-hc-friendhit").bounding_box()))
+    else:
+        r.tap(p.locator(".rw-cs-bell"))
+        wait_step(r, "serve")
+        r.tap(p.locator(".rw-hc-friendhit"))
+    cafe_extra_finish(r, "Mmm! So cold!", "Hello Mimi! Can I have an ice cream, please?", how != "mouse")
+
+
+def play_cookie(r, how="tap"):
+    """how = tap (the card's cookie; icing by dots) or mouse (another shape, icing drawn with the mouse, drags)."""
+    p = r.page
+    open_cafe_extra(r, "cookie")
+    wait_step(r, "shape")
+    p.wait_for_timeout(300)
+    r.check("cookie start")
+    o = p.evaluate(ORDER_JS)
+    if how == "mouse":
+        o = {"shape": "cat" if o["shape"] != "cat" else "star", "colour": o["colour"], "sweet": o["sweet"]}
+
+    def zb():
+        return p.locator(".rw-ck-zone").bounding_box()
+    loc = cafe_extra_tool(p, "cookie", o["shape"])
+    if how == "mouse":
+        mouse_drag(r, centre(loc.bounding_box()), centre(zb()))
+    else:
+        r.tap(loc)
+    wait_step(r, "ice")
+    r.tap(cafe_extra_tool(p, "bag", o["colour"]))
+    p.wait_for_selector(".rw-ck-pen", state="visible")
+    p.wait_for_timeout(300)
+    z = zb()
+    if how == "mouse":
+        m = p.mouse
+        m.move(z["x"] + z["width"] * 0.3, z["y"] + z["height"] * 0.4)
+        m.down()
+        for k in range(1, 41):
+            m.move(z["x"] + z["width"] * (0.3 + 0.4 * (k % 10) / 10), z["y"] + z["height"] * (0.4 + 0.2 * (k // 10) / 4))
+        m.up()
+    else:
+        for k in range(8):
+            r.tap_at(z["x"] + z["width"] * (0.32 + 0.12 * (k % 4)), z["y"] + z["height"] * (0.42 + 0.14 * (k // 4)))
+            p.wait_for_timeout(80)
+            if k == 2:
+                r.check("cookie icing")
+    wait_step(r, "decorate", 8000)
+    if p.evaluate(DS_JS, "icing") != "100":
+        r.fails.append("icing amount %r at the decorate step" % p.evaluate(DS_JS, "icing"))
+    sweet = cafe_extra_tool(p, "sweet", o["sweet"])
+    if how == "mouse":
+        mouse_drag(r, centre(sweet.bounding_box()), centre(zb()))
+    else:
+        r.tap(sweet)
+    wait_ds(r, "sweets", "1", 8000)
+    p.wait_for_selector(".rw-cs-bell", state="visible")
+    p.wait_for_timeout(300)
+    r.check("cookie bell")
+    r.tap(p.locator(".rw-cs-bell"))
+    wait_step(r, "serve")
+    if how == "mouse":
+        mouse_drag(r, centre(zb()), centre(p.locator(".rw-hc-friendhit").bounding_box()))
+    else:
+        r.tap(p.locator(".rw-hc-friendhit"))
+    cafe_extra_finish(r, "Crunch! Yummy!", "Hello Mimi! Can I have a cookie, please?", how != "mouse")
+
+
+def cafe_extra_no_taps(r, game, step):
+    """Nothing plays itself: with no taps the game stays on its first step and a hint hand shows."""
+    p = r.page
+    open_cafe_extra(r, game)
+    wait_step(r, step)
+    p.wait_for_timeout(2500)
+    if p.evaluate(STEP_JS, step) is not True:
+        r.fails.append("%s moved past the first step with no taps" % game)
+    if not p.query_selector(".rw-hint"):
+        r.fails.append("no hint hand after waiting (%s)" % game)
+    r.check("%s waiting with a hint" % game)
+    p.evaluate("RewardGames.close()")
+    p.wait_for_function("window.__rewardResult && window.__rewardResult.done === false")
+    if p.query_selector(".rw-root"):
+        r.fails.append("root still on the page after close() (%s)" % game)
+    p.wait_for_timeout(1000)  # leftover timers or frames would fail here
+
+
+def cafe_extra_auto(r, game):
+    p = r.page
+    open_cafe_extra(r, game)
+    p.wait_for_selector(".rw-done", state="visible", timeout=40000)
+    r.check("%s autoplay done" % game)
+    r.tap(p.locator(".rw-done"))
+    r.wait_result()
+
+
+def cafe_rotation(r):
+    """The cafe games take turns on one page (hot chocolate, ice cream, cookie), and opts.turn picks by a saved count."""
+    p = r.page
+    p.goto(URL.split("#")[0])
+    got = []
+    for _ in range(4):
+        p.wait_for_selector("#go_cafe", state="visible")
+        r.tap(p.locator("#go_cafe"))
+        p.wait_for_selector(".rw-root")
+        got.append(p.evaluate("() => { const c = document.querySelector('.rw-root').classList; return c.contains('rw-ic') ? 'ice_cream' : c.contains('rw-ck') ? 'cookie' : 'hot_chocolate'; }"))
+        p.evaluate("RewardGames.close()")
+        p.wait_for_function("window.__rewardResult && window.__rewardResult.done === false")
+    if got != ["hot_chocolate", "ice_cream", "cookie", "hot_chocolate"]:
+        r.fails.append("cafe games did not take turns: %s" % got)
+    name = p.evaluate("""() => new Promise((res) => { const el = document.getElementById('stage'); document.body.classList.add('playing');
+      RewardGames.play(el, { theme: 'cafe', turn: 5, fast: true }).then((x) => res(x.game)); setTimeout(() => RewardGames.close(), 300); })""")
+    if name != "cookie":
+        r.fails.append("turn 5 should play the cookie game, got %r" % name)
+
+
+def cafe_extra_scenarios(results, browser, engine):
+    """Mimi's Ice Cream and Mimi's Cookies: by taps at all six sizes (touch on the phone sizes), by real mouse drags,
+    waiting with no taps, autoplay, reduced motion, and the cafe games taking turns."""
+    for size in SIZES:
+        scenario(results, browser, engine, "ice cream", size, play_ice)
+        scenario(results, browser, engine, "cookie", size, play_cookie)
+    scenario(results, browser, engine, "ice cream drag", (1280, 720), lambda r: play_ice(r, "mouse"))
+    scenario(results, browser, engine, "cookie draw and drag", (1280, 720), lambda r: play_cookie(r, "mouse"))
+    scenario(results, browser, engine, "ice cream no taps", (390, 844), lambda r: cafe_extra_no_taps(r, "ice_cream", "cone"))
+    scenario(results, browser, engine, "cookie no taps", (390, 844), lambda r: cafe_extra_no_taps(r, "cookie", "shape"))
+    scenario(results, browser, engine, "ice cream autoplay", (820, 1180), lambda r: cafe_extra_auto(r, "ice_cream"), auto=True)
+    scenario(results, browser, engine, "cookie autoplay", (820, 1180), lambda r: cafe_extra_auto(r, "cookie"), auto=True)
+    scenario(results, browser, engine, "ice cream", (390, 844), play_ice, reduced=True)
+    scenario(results, browser, engine, "cookie", (1280, 720), play_cookie, reduced=True)
+    scenario(results, browser, engine, "cafe rotation", (820, 1180), cafe_rotation)
+
+
 def scenario(results, browser, engine, label, size, fn, reduced=False, auto=False):
     touch = size in TOUCH_SIZES
     r = None
@@ -516,6 +888,12 @@ def run_engines_side_by_side():
     then print both sets of failures and one combined RESULT line."""
     kids = [subprocess.Popen([sys.executable, os.path.abspath(__file__), URL, e], stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
                              env=os.environ.copy(), text=True, encoding="utf-8", errors="replace") for e in ("chromium", "webkit")]
+    # Mimi's Ice Cream and Mimi's Cookies run in two more children at the same time (keeps the whole test under 10 minutes)
+    kids += [subprocess.Popen([sys.executable, os.path.abspath(__file__), URL, e, "cafe_extra"], stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+                              env=os.environ.copy(), text=True, encoding="utf-8", errors="replace") for e in ("chromium", "webkit")]
+    # Goblin Rescue and Tower for Kitty (Kennedy's extra castle games) run in two more children at the same time
+    kids += [subprocess.Popen([sys.executable, os.path.abspath(__file__), URL, e, "castle_extra"], stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+                              env=os.environ.copy(), text=True, encoding="utf-8", errors="replace") for e in ("chromium", "webkit")]
     passed = total = 0
     for kid in kids:
         out, _ = kid.communicate()
@@ -554,6 +932,12 @@ def main():
                 kwargs = {"args": ["--mute-audio"]} if engine == "chromium" else {}
                 browser = getattr(pw, engine).launch(**kwargs)
                 try:
+                    if "cafe_extra" in sys.argv[1:]:  # the child that plays only Mimi's Ice Cream and Mimi's Cookies
+                        cafe_extra_scenarios(results, browser, engine)
+                        continue
+                    if "castle_extra" in sys.argv[1:]:  # the child that plays only Goblin Rescue and Tower for Kitty
+                        castle_extra_scenarios(results, browser, engine)
+                        continue
                     for size in SIZES:
                         scenario(results, browser, engine, "cafe", size, play_cafe)
                         if size not in TOUCH_SIZES:

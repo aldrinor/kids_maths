@@ -1,4 +1,5 @@
 /* game_stories_test.js - checks game/stories.js. Run: node tests/game_stories_test.js
+   Stage 3 (22 Oct 2026): also every question of every new kind (cafe_* for Marie, kinder.count20/more_less/compare/make10 for Kennedy).
    Prints only failures and one RESULT line. No browser, no sound. */
 "use strict";
 const path = require("path");
@@ -79,7 +80,7 @@ function evalTokens(tokens) {
   return v === Z ? "" : "wrong sum in row " + tokens.join(" ");
 }
 
-KS.SKILLS.forEach(skill => KS.THEMES.forEach(theme => {
+KS.OLD_SKILLS.forEach(skill => KS.THEMES.forEach(theme => {
   const rng = seeded(skill.length * 977 + (theme === "cafe" ? 1 : 2) * 131 + skill.charCodeAt(skill.length - 1));
   const P = {};
   const bad = (cat, msg) => { (P[cat] = P[cat] || []).push(msg); };
@@ -230,6 +231,191 @@ KS.SKILLS.forEach(skill => KS.THEMES.forEach(theme => {
     });
   }));
   check("every pair of sums.1-4 and kinder, both themes: sentences and pieces", probs.slice(0, 5));
+})();
+
+// ---------- Stage 3 kinds (22 Oct 2026): every question each kind can make ----------
+(function stage3() {
+  const KIND_IDS = ["cafe_tens.1", "cafe_times.1", "cafe_times.2", "cafe_share.1", "cafe_share.2", "cafe_money.1", "cafe_money.2", "cafe_time.1", "cafe_frac.1",
+    "kinder.count20", "kinder.more_less", "kinder.compare", "kinder.make10"];
+  check("stage 3: every kind is a skill", KIND_IDS.filter(id => !KS.SKILLS.includes(id) || !KS.KIND_IDS.includes(id)));
+  check("stage 3: old skills kept", ["sums.1", "sums.9", "kinder.2", "kinder.5"].filter(id => !KS.OLD_SKILLS.includes(id)));
+  check("stage 3: no shapes skill (no picture on the question screen)", KS.SKILLS.includes("kinder.6") ? ["kinder.6 listed"] : []);
+  const known = new Set(KS.SKILLS);
+  const ex = KS.extraSkills();
+  check("stage 3: plain counting stays out of the game", ex.some(x => x.id === "kinder.count20") ? ["kinder.count20"] : []);
+  check("stage 3: extra skills for the engine", KIND_IDS.filter(id => id !== "kinder.count20").filter(id => { const e = ex.find(x => x.id === id); return !e || !e.name || !Number.isFinite(e.grade) || !e.group || !Array.isArray(e.needs) || !e.needs.length || e.needs.some(n => !known.has(n) || n === id) || e.ready !== true; }));
+  check("stage 3: extra skills are fresh objects", KS.extraSkills()[0] !== ex[0] ? [] : ["same object"]);
+  check("stage 3: theme fits", KIND_IDS.filter(id => { const th = id.startsWith("cafe") ? "cafe" : "castle", other = th === "cafe" ? "castle" : "cafe"; return !KS.fits(id, th) || KS.fits(id, other) || KS.kindTheme(id) !== th; })
+    .concat(KS.OLD_SKILLS.filter(id => !KS.fits(id, "cafe") || !KS.fits(id, "castle"))));
+  check("stage 3: needs stay inside one child's skills", ex.filter(e => e.needs.some(n => !KS.fits(n, KS.kindTheme(e.id)))).map(e => e.id));
+  check("stage 3: wrong theme throws", KIND_IDS.filter(id => { try { KS.make(id, KS.kindTheme(id) === "cafe" ? "castle" : "cafe", Math.random, ""); return true; } catch (e) { return false; } }));
+
+  // The right answer, worked out here from the numbers (not taken from stories.js).
+  const ANSWER = {
+    "cafe_tens.1": (t, p) => t === "T" ? 10 * p.t + p.o : t === "D" ? p.t : p.o,
+    "cafe_times.1": (t, p) => p.n * p.s, "cafe_times.2": (t, p) => p.n * p.s,
+    "cafe_share.1": (t, p) => p.q, "cafe_share.2": (t, p) => p.q,
+    "cafe_money.1": (t, p) => t === "L" ? 2 * p.a + p.b : 10 * p.a + 5 * p.b,
+    "cafe_money.2": (t, p) => p.g - p.p,
+    "cafe_time.1": (t, p) => t === "J" ? p.a + p.b : t === "A" ? p.a - p.b : p.b,
+    "cafe_frac.1": (t, p) => t === "H" ? p.n / 2 : p.n / 4,
+    "kinder.count20": (t, p) => p.x + 3,
+    "kinder.more_less": (t, p) => t === "O" ? p.a + 1 : p.a - 1,
+    "kinder.compare": (t, p) => t === "G" ? Math.max(p.a, p.b) : Math.min(p.a, p.b),
+    "kinder.make10": (t, p) => 10 - p.a
+  };
+  // Allowed numbers for each kind: [lowest answer, highest answer, rule on the numbers].
+  const RANGE = {
+    "cafe_tens.1": [0, 99, (t, p) => inr(p.t, 1, 9) && inr(p.o, t === "D" ? 0 : 1, 9)],
+    "cafe_times.1": [4, 100, (t, p) => [2, 5, 10].includes(p.s) && inr(p.n, 2, 10)],
+    "cafe_times.2": [6, 40, (t, p) => [3, 4].includes(p.s) && inr(p.n, 2, 10)],
+    "cafe_share.1": [2, 10, (t, p) => [2, 5, 10].includes(p.d) && inr(p.q, 2, 10)],
+    "cafe_share.2": [2, 10, (t, p) => [3, 4].includes(p.d) && inr(p.q, 2, 10)],
+    "cafe_money.1": [3, 50, (t, p) => p.a >= 1 && p.b >= 1 && (t === "L" ? 2 * p.a + p.b <= 10 : 10 * p.a + 5 * p.b <= 50)],
+    "cafe_money.2": [1, 9, (t, p) => (p.g === 10 && inr(p.p, 1, 9)) || (p.g === 20 && inr(p.p, 11, 19))],
+    "cafe_time.1": [1, 12, (t, p) => inr(p.a, 1, 12) && inr(p.b, 1, 8) && inr(t === "A" ? p.a - p.b : p.a + p.b, 1, 12)],
+    "cafe_frac.1": [1, 10, (t, p) => p.n % (t === "H" ? 2 : 4) === 0],
+    "kinder.count20": [4, 20, (t, p) => p.x >= 1],
+    "kinder.more_less": [1, 10, (t, p) => inr(p.a, 1, 10)],
+    "kinder.compare": [1, 10, (t, p) => p.a !== p.b && inr(p.a, 1, 10) && inr(p.b, 1, 10)],
+    "kinder.make10": [1, 9, (t, p) => inr(p.a, 1, 9)]
+  };
+  // Is a written sentence true? Sums, ×, ÷, >, <, "3 tens + 4 = 34", "3×2 + 4 = 10", "tens in 34 = 3", "ones in 34 = 4", "13, 14, 15, 16".
+  function truth(text) {
+    let m;
+    if ((m = text.match(/^(\d+), (\d+), (\d+), (\d+)$/))) return +m[2] === +m[1] + 1 && +m[3] === +m[2] + 1 && +m[4] === +m[3] + 1;
+    if ((m = text.match(/^tens in (\d+) = (\d+)$/))) return Math.floor(+m[1] / 10) === +m[2];
+    if ((m = text.match(/^ones in (\d+) = (\d+)$/))) return +m[1] % 10 === +m[2];
+    if ((m = text.match(/^(\d+) ([<>]) (\d+)$/))) return m[2] === ">" ? +m[1] > +m[3] : +m[1] < +m[3];
+    const sides = text.replace(/(\d+) tens/g, "($1*10)").replace(/×/g, "*").replace(/÷/g, "/").replace(new RegExp(MINUS, "g"), "-").split(" = ");
+    if (sides.length !== 2 || !sides.every(x => /^[\d\s+\-*/()]+$/.test(x))) return false;
+    const [l, r] = sides.map(x => Function(`"use strict"; return (${x});`)());
+    return Number.isInteger(l) && l === r;
+  }
+  check("stage 3: the truth checker works", [["3 × 4 = 12", true], ["3 × 4 = 13", false], ["12 ÷ 3 = 4", true], ["7 ÷ 2 = 3", false], ["6 > 4", true], ["6 < 4", false],
+    ["3 tens + 4 = 34", true], ["tens in 34 = 3", true], ["ones in 34 = 3", false], ["13, 14, 15, 16", true], ["13, 14, 15, 17", false], ["3×2 + 4 = 10", true], ["10 − 7 = 3", true]]
+    .filter(([t, w]) => truth(t) !== w).map(([t]) => t));
+  const PLURAL_ONE = /(^|[^\d.,])1 (?!more\b|and\b|is\b|plus\b|minus\b|times\b)([a-z']+s)\b/i;
+  const SINGULAR_MANY = /\b(?:[2-9]|\d\d+) (?:hour|dollar|ten|hop|toonie|loonie|dime|nickel|group|villager|goblin|cookie|cupcake|slice|piece|knight|apple|coin|lantern|pillow|tray|table|cup)\b(?!s| bill)/;
+  const LONGEST = 15;   // letters in one board row: the board does not shrink or wrap ("999 − 555 = 444" is 15)
+
+  KIND_IDS.forEach(id => {
+    const P = {}, bad = (cat, msg) => { (P[cat] = P[cat] || []).push(msg); };
+    const theme = KS.kindTheme(id), bank = KS.kindBank(id), [aLo, aHi, rule] = RANGE[id];
+    const nTpl = Object.values(bank).reduce((a, l) => a + l.length, 0);
+    if (nTpl < 10) bad("stories", `only ${nTpl} stories`);
+    Object.values(bank).flat().forEach(([story, ask]) => {
+      if (BANNED.test(story + " " + ask) || NAMES.test(story + " " + ask)) bad("stories", "banned word: " + story);
+      const max = theme === "castle" ? 12 : 16;
+      (story + " " + ask).replace(/\{[^}]*\}/g, "1").split(/[.?!:]+/).forEach(x => { if (wordsIn(x) >= max) bad("stories", "sentence too long: " + x); });
+      if (/\d/.test(ask)) bad("stories", "digits in the question: " + ask);
+    });
+    const types = new Set(KS.kindAll(id).map(p => p.type));
+    Object.keys(bank).forEach(t => { if (!types.has(t)) bad("stories", "no numbers for type " + t); });
+    let count = 0;
+    const checkQ = Q => {
+      count++;
+      const tag = `${Q.key}|${Q.tpl}`, p = Q.p;
+      // fields
+      if (Q.skill !== id || Q.theme !== theme) bad("fields", "skill or theme " + tag);
+      ["story", "ask", "say", "eq", "correct", "fact", "hint", "key"].forEach(f => { if (typeof Q[f] !== "string" || !Q[f]) bad("fields", f + " missing " + tag); });
+      if (Q.say !== Q.story + " " + Q.ask) bad("fields", "say is not story + ask " + tag);
+      if (Q.correct !== "Correct! " + Q.fact) bad("fields", "correct text " + tag);
+      // answer and numbers
+      const want = ANSWER[id](Q.type, p);
+      if (Q.ans !== want) bad("answer", `ans ${Q.ans} want ${want} ${tag}`);
+      if (!Number.isInteger(Q.ans) || Q.ans < aLo || Q.ans > aHi) bad("range", `ans ${Q.ans} outside ${aLo}-${aHi} ${tag}`);
+      if (!rule(Q.type, p)) bad("range", "numbers break the rule " + JSON.stringify(p));
+      if (id.startsWith("cafe_share") && Q.result !== p.d * p.q) bad("range", "share total " + tag);
+      // the number sentence
+      if ((Q.eq.match(/\?/g) || []).length !== 1) bad("eq", "eq needs one ? " + Q.eq);
+      if (/-/.test(Q.eq)) bad("eq", "ascii hyphen in eq " + Q.eq);
+      const filled = Q.eq.replace("?", String(Q.ans));
+      if (!truth(filled)) bad("eq", "eq with the answer is not true: " + filled);
+      if (filled.length > LONGEST) bad("board", "answer line too wide: " + filled);
+      // story numbers
+      const nums = (Q.story.match(/\d+/g) || []).map(Number).sort((x, y) => x - y).join(","), wantNums = Q.nums.slice().sort((x, y) => x - y).join(",");
+      if (nums !== wantNums) bad("story", `story numbers [${nums}] want [${wantNums}] ${tag}: ${Q.story}`);
+      if ((Q.ask.match(/\d/g) || []).length) bad("story", "digits in the question: " + Q.ask);
+      // answers: Marie types, Kennedy taps
+      if (theme === "cafe") { if (Q.kind !== "typed" || Q.opts) bad("choice", "cafe kinds are typed " + tag); }
+      else {
+        const o = Q.opts, n = id === "kinder.compare" ? 2 : 3;
+        if (Q.kind !== "choice" || !Array.isArray(o) || o.length !== n || new Set(o).size !== n || !o.includes(Q.ans) || o.some(x => !Number.isInteger(x) || x < 0 || x > 20))
+          bad("choice", "bad opts " + JSON.stringify(o) + " ans " + Q.ans + " " + tag);
+        else if (id === "kinder.compare" && !(o.includes(p.a) && o.includes(p.b))) bad("choice", "compare opts are not the two groups " + tag);
+      }
+      // the number line on the question screen
+      const L = Q.line, on = v => v >= L.lo && v <= L.hi && (v - L.lo) % L.step === 0;
+      if (!L || ![L.lo, L.hi, L.step].every(Number.isInteger) || L.lo < 0 || L.step < 1 || (L.hi - L.lo) % L.step || (L.hi - L.lo) / L.step > 10 || (L.hi - L.lo) / L.step < 4) bad("line", "window " + JSON.stringify(L));
+      else {
+        if (!on(Q.a) || !on(Q.result)) bad("line", `start ${Q.a} or end ${Q.result} not on ${JSON.stringify(L)} ${tag}`);
+        if (L.step > 1 && (Q.a !== L.lo || Q.op === "-")) bad("line", "the game moves a big-step line to start at Q.a: " + tag);
+      }
+      // text quality and voice
+      const lesson = [true, false].map(r => KS.teach(Q, r));
+      const texts = [Q.say, Q.correct, Q.fact, Q.hint].concat(lesson.flatMap(T => (T && T.steps || []).map(s => s.say)));
+      texts.forEach(t => {
+        if (typeof t !== "string" || !t.trim() || /\{|\}|undefined|NaN/.test(t)) { bad("text", "unfilled: " + t); return; }
+        if (BANNED.test(t)) bad("text", "banned word: " + t);
+        if (PLURAL_ONE.test(t)) bad("text", "plural after 1: " + t);
+        if (SINGULAR_MANY.test(t)) bad("text", "singular after many: " + t);
+        if (!sentenceSet.has(t)) bad("voice", "not in KS.sentences(): " + t);
+        splitPieces(t).forEach(pc => { if (!pieceSet.has(pc)) bad("voice", `piece "${pc}" of "${t}"`); });
+      });
+      if (theme === "castle") (Q.story + " " + Q.ask).split(/[.?!:]+/).forEach(x => { if (wordsIn(x) >= 12) bad("text", "castle sentence too long: " + x); });
+      // the lesson plan
+      lesson.forEach((T, ri) => {
+        const right = ri === 0;
+        if (!T || !T.kind || !Array.isArray(T.steps) || T.steps.length < 2) { bad("teach", "no lesson " + tag); return; }
+        const rows = new Set();
+        let answers = 0;
+        T.steps.forEach((st, si) => {
+          if (!Array.isArray(st.draw)) bad("teach", "draw missing " + tag);
+          (st.draw || []).forEach(d => {
+            Object.keys(d).forEach(k => { if (!["row", "tokens", "answer"].includes(k)) bad("teach", "draw key " + k); });
+            if (d.tokens) {
+              if (!Number.isInteger(d.row) || d.row < 0 || d.row > 3) bad("teach", "row index " + d.row);
+              rows.add(d.row);
+              if (!d.tokens.every(x => typeof x === "string" && x)) bad("teach", "empty token " + tag);
+              const text = d.tokens.join(" ");
+              if (text.length > LONGEST) bad("board", "row too wide: " + text);
+              if (d.row === 0) { if (text !== Q.eq) bad("teach", `row 0 "${text}" is not eq "${Q.eq}"`); }
+              else if (!truth(text)) bad("teach", `row not true: "${text}" ${tag}`);
+            }
+            if (d.answer) { answers++; if (si !== T.steps.length - 1) bad("teach", "answer not in the last step"); }
+          });
+          if (st.line) {
+            const [f, t2, stp] = st.line, n = Math.abs(t2 - f) / stp;
+            if (st.line.length !== 3 || ![f, t2, stp].every(Number.isInteger) || stp < 1 || f < 0 || t2 < 0 || f === t2 || !Number.isInteger(n) || n > 12) bad("teach", "line " + JSON.stringify(st.line) + " " + tag);
+          }
+        });
+        if (answers !== 1) bad("teach", "answer items: " + answers);
+        const maxRow = Math.max(...rows);
+        for (let r = 0; r <= maxRow; r++) if (!rows.has(r)) bad("teach", "gap in rows " + [...rows]);
+        if (!rows.has(0)) bad("teach", "no row 0");
+        const last = T.steps[T.steps.length - 1].say, wantLast = right ? Q.fact : `${Q.fact} ${Q.kind === "typed" ? "Type" : "Tap"} ${Q.ans}.`;
+        if (last !== wantLast) bad("teach", `last step "${last}" want "${wantLast}"`);
+        if (T.steps.slice(0, -1).some(x => /\b(Type|Tap) \d+\./.test(x.say))) bad("teach", "Type/Tap before the last step");
+      });
+    };
+    KS.eachKindQuestion(id, checkQ);
+    // random questions as the game asks them: no repeats, variety, every type
+    const rng = seeded(id.length * 7919 + id.charCodeAt(id.length - 1)), keys = new Set(), seenTypes = new Set(), seenTpl = new Set();
+    let prev = "";
+    for (let i = 0; i < 400; i++) {
+      let Q;
+      try { Q = KS.make(id, theme, rng, prev); } catch (e) { bad("make", e.message); break; }
+      if (Q.key === prev) bad("make", "repeated " + prev);
+      prev = Q.key; keys.add(Q.key); seenTypes.add(Q.type); seenTpl.add(Q.tpl);
+      checkQ(Q);
+    }
+    if (keys.size < 8) bad("variety", "only " + keys.size + " different questions");
+    if (seenTypes.size !== Object.keys(bank).length) bad("variety", "types seen " + [...seenTypes]);
+    if (seenTpl.size < Math.min(10, nTpl)) bad("variety", "stories seen " + seenTpl.size);
+    if (count < 50) bad("variety", "only " + count + " questions in all");
+    ["stories", "fields", "answer", "range", "eq", "board", "story", "choice", "line", "text", "voice", "teach", "make", "variety"].forEach(cat => check(`${id} ${cat}`, P[cat] || []));
+  });
 })();
 
 failures.forEach(f => console.log(f));

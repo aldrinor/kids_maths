@@ -407,6 +407,8 @@ LEGS = {
     "stand": (((202, 505), (200, 548), (198, 572)), ((260, 505), (262, 548), (264, 572))),
     "walk": (((200, 505), (180, 545), (160, 560)), ((260, 505), (276, 548), (294, 574))),
     "cheer": (((202, 505), (186, 540), (196, 556)), ((260, 505), (276, 540), (266, 556))),
+    # sitting, seen from the front: short legs toward the viewer, the soles of the feet showing
+    "sit": (((204, 505), (194, 536), (186, 556)), ((258, 505), (268, 536), (276, 556))),
 }
 
 
@@ -438,19 +440,21 @@ def chin_sh(A):
 
 
 def build_character(kind, pose):
-    """kind: mimi bella lulu momo puff. pose: stand smile wave high_five walk sip cheer."""
+    """kind: mimi bella lulu momo puff. pose: stand smile wave high_five walk sip cheer sit sleep.
+    sit / sleep are for Mimi's House in the cafe world (seats, the bath and the bed): the seat line is y 531
+    (230/260 of the box), the soles of the feet show below it."""
     A = Art(CW, CH)
     fur = FUR[kind]
     iris = IRIS[kind]
     girl = kind in ("mimi", "bella", "lulu")
     arm_key = {"stand": "stand", "smile": "stand", "walk": "walk", "sip": "sip", "cheer": "cheer",
-               "wave": "wave_r" if kind == "mimi" else "wave_l", "high_five": "five"}[pose]
-    leg_key = {"walk": "walk", "cheer": "cheer"}.get(pose, "stand")
-    eyes = {"smile": "happy", "cheer": "happy", "high_five": "happy", "sip": "calm"}.get(pose, "open")
+               "wave": "wave_r" if kind == "mimi" else "wave_l", "high_five": "five", "sit": "stand", "sleep": "stand"}[pose]
+    leg_key = {"walk": "walk", "cheer": "cheer", "sit": "sit", "sleep": "sit"}.get(pose, "stand")
+    eyes = {"smile": "happy", "cheer": "happy", "high_five": "happy", "sip": "calm", "sleep": "calm"}.get(pose, "open")
     mmode = {"smile": "open", "cheer": "open", "high_five": "open", "wave": "open", "sip": "sip"}.get(pose, "smile")
     look = -1.0 if pose == "walk" else 0.0
     face_dx = -20 if pose == "walk" else 0
-    tilt = {"walk": -4, "wave": 4 if kind == "mimi" else -4, "high_five": 5, "sip": -2, "cheer": 0}.get(pose, 0)
+    tilt = {"walk": -4, "wave": 4 if kind == "mimi" else -4, "high_five": 5, "sip": -2, "cheer": 0, "sleep": 7}.get(pose, 0)
     lift = 18 if pose == "cheer" else 0
     lean = {"walk": -3, "high_five": 3}.get(pose, 0)
     scale = {"bella": 0.9}.get(kind, 1.0)
@@ -474,7 +478,10 @@ def build_character(kind, pose):
     legpal = ("#ffe9ec", "#f9d6dc", "#ecc8cf") if kind == "puff" else fur
     for s, c, p in LEGS[leg_key]:
         body.append(A.poly(limb_pts(s, c, p, 30, 31), legpal, sw=5.2))
-        body.append(paw_toes((p[0], p[1] + 4), (p[0], p[1] - 20), 30))
+        if leg_key == "sit":
+            body.append(open_paw(A, p[0], p[1] + 8, legpal, 30))   # the sole faces us
+        else:
+            body.append(paw_toes((p[0], p[1] + 4), (p[0], p[1] - 20), 30))
 
     # ---- torso and clothes
     tp = torso_pts(kind)
@@ -863,10 +870,10 @@ def background_svg():
 # ------------------------------------------------------------------ jobs, render, optimise, sheet
 def jobs():
     j = {}
-    for pose in ("stand", "smile", "wave", "high_five"):
+    for pose in ("stand", "smile", "wave", "high_five", "sit", "sleep"):
         j["mimi_" + pose] = (lambda p=pose: build_character("mimi", p), CW, CH)
     for kind in ("bella", "lulu", "momo", "puff"):
-        for pose in ("stand", "walk", "sip", "cheer", "wave"):
+        for pose in ("stand", "walk", "sip", "cheer", "wave", "sit", "sleep"):
             j["friend_%s_%s" % (kind, pose)] = (lambda k=kind, p=pose: build_character(k, p), CW, CH)
     for cid in ("pink", "mint", "cream"):
         j["cup_" + cid] = (lambda c=cid: cup_svg(c), 440, 420)
@@ -979,7 +986,13 @@ def main():
             print("%-34s %7d bytes  %s" % (n + ".png", s, note))
         if big:
             print("OVER %d KB: %s" % (MAX_BYTES // 1024, ", ".join(n for n, _ in big)))
-    have = sorted(n + ".png" for n in names if os.path.exists(os.path.join(OUT_DIR, n + ".png")))
+    have = set(n + ".png" for n in names if os.path.exists(os.path.join(OUT_DIR, n + ".png")))
+    # keep files other scripts listed (they still exist), so re-running this never drops their art
+    old = os.path.join(OUT_DIR, "manifest.json")
+    if os.path.exists(old):
+        with open(old, encoding="utf-8") as fh:
+            have |= set(x for x in json.load(fh).get("files", []) if os.path.exists(os.path.join(OUT_DIR, x)))
+    have = sorted(have)
     with open(os.path.join(OUT_DIR, "manifest.json"), "w", encoding="utf-8") as fh:
         json.dump({"files": have}, fh, indent=1)
     contact_sheet(names)

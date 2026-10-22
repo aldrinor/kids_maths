@@ -9,7 +9,9 @@
  *       Resolves with { done: true, theme, game } when the child taps Done (onDone runs then too).
  *   RewardGames.close()  -> stops the running game (sounds, timers, frames), resolves it with { done: false }.
  *   RewardGames.register(theme, { name, start(ctx, finish) })   (the old form (theme, name, start) also works)
- *       Games of one theme are played in turn. ("cafe" = cafe_hot_chocolate.js, "castle" = castle_pony_stable.js.)
+ *       Games of one theme are played in turn. ("cafe" = cafe_hot_chocolate.js, cafe_ice_cream.js, cafe_cookie.js;
+ *       "castle" = castle_pony_stable.js.) Optional opts.turn (a number the page saves, e.g. P.game.rewardTurn)
+ *       picks game turn % count, so the turns survive a reload; optional opts.game (a game's name) picks that game.
  *       If an older RewardGames object was loaded before this file, a theme with no new game falls back to it.
  *   Tests: window.__rewardAutoPlay = true makes each game do its own steps (ctx.auto).
  *
@@ -305,8 +307,13 @@
       }
       return Promise.reject(new Error("RewardGames: no game for theme " + theme));
     }
-    var game = list[turn[theme] % list.length];
-    turn[theme] += 1;
+    /* which game: opts.game (a name) wins, else opts.turn (a saved count, so the turns go on after a reload),
+       else this page's own count */
+    var idx = -1;
+    if (typeof opts.game === "string") { idx = list.map(function (g) { return g.name; }).indexOf(opts.game); }
+    if (idx < 0) { idx = (typeof opts.turn === "number" && opts.turn >= 0 ? Math.floor(opts.turn) : turn[theme]) % list.length; }
+    var game = list[idx];
+    turn[theme] = idx + 1;
     var ctx = makeContext({ theme: theme, fast: opts.fast, speak: opts.speak, label: game.label });
     var restore = null;
     try {

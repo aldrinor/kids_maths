@@ -1,0 +1,31 @@
+{
+ "files": [
+  "buddy_cheer.png",
+  "cage_back.png",
+  "cage_door.png",
+  "cage_front.png",
+  "cage_key.png",
+  "cage_lock.png",
+  "cart.png",
+  "goblin_a_oops.png",
+  "goblin_a_run.png",
+  "goblin_a_silly.png",
+  "goblin_b_oops.png",
+  "goblin_b_run.png",
+  "goblin_b_silly.png",
+  "goblin_c_oops.png",
+  "goblin_c_run.png",
+  "goblin_c_silly.png",
+  "kitten_happy.png",
+  "kitten_hop.png",
+  "kitten_stuck.png",
+  "knight_bop.png",
+  "knight_sword.png",
+  "knight_sword_cheer.png",
+  "tower_base.png",
+  "tower_block_1.png",
+  "tower_block_2.png",
+  "tower_block_3.png",
+  "tower_block_4.png"
+ ]
+}

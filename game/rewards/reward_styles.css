@@ -196,6 +196,90 @@
   .rw-hc-mat.rw-glow .rw-matglow { opacity: .8; }
 }
 
+/* ---------------------------------------------------------------- Kennedy's extra castle games
+   shared scenery (castle_extra_art.js), "Goblin Rescue" (rw-gr-) and "Tower for Kitty" (rw-kt-) */
+.rw-gr, .rw-kt { background: linear-gradient(#e7eef5, #d6e1ec 55%, #a9d394 56%, #7db86c); }
+.rw-cx-scene { position: absolute; inset: 0; z-index: 0; pointer-events: none; }
+.rw-cx-scene > div { position: absolute; }
+.rw-cx-scene .rw-pic { object-fit: cover; object-position: 0 100%; }
+.rw-cx-puff, .rw-gr-fly, .rw-kt-fly { position: absolute; pointer-events: none; }
+.rw-cx-puff svg, .rw-gr-fly svg, .rw-kt-fly svg { width: 100%; height: 100%; }
+.rw-gr > div, .rw-gr > button, .rw-kt > div, .rw-kt > button { position: absolute; }
+.rw-gr button, .rw-kt button { background: transparent; border: 0; padding: 0; border-radius: 30px; touch-action: manipulation; }
+.rw-gr svg, .rw-kt svg { width: 100%; height: 100%; }
+/* goblin rescue */
+.rw-gr-c, .rw-gr-buddy, .rw-gr-lock, .rw-gr-knight { pointer-events: none; }
+.rw-gr-cback { z-index: 2; }
+.rw-gr-buddy { z-index: 3; }
+.rw-gr-buddy.rw-gr-free { z-index: 9; }
+.rw-gr-bpic { position: absolute; inset: 0; }
+.rw-gr-cfront { z-index: 4; }
+.rw-gr-door { z-index: 5; transform-origin: 33.333% 50%; }
+.rw-gr-door.rw-glow { animation: rw-ps-glow calc(var(--s) * 2.6s) ease-in-out infinite; }
+.rw-gr-lock { z-index: 6; }
+.rw-gr-doorbtn { z-index: 7; }
+.rw-gr-gob { z-index: 8; overflow: visible; }
+.rw-gr-gmove { position: absolute; display: block; filter: drop-shadow(0 6px 5px rgba(74, 48, 70, .14)); }
+.rw-gr-gpic { position: absolute; inset: 0; display: block; transform-origin: 50% 98%; }
+.rw-gr-gob.rw-now .rw-gr-gpic { animation: rw-gr-sway calc(var(--s) * 3.2s) ease-in-out infinite; }
+.rw-gr-gob[data-i="1"].rw-now .rw-gr-gpic { animation-delay: calc(var(--s) * -1.1s); }
+.rw-gr-gob[data-i="2"].rw-now .rw-gr-gpic { animation-delay: calc(var(--s) * -2.2s); }
+@keyframes rw-gr-sway { 0%, 100% { transform: rotate(-2.5deg); } 50% { transform: rotate(2.5deg); } }
+.rw-gr-mirror { transform: scaleX(-1); }
+.rw-gr-knight { z-index: 10; transform-origin: 0 0; filter: drop-shadow(0 6px 5px rgba(74, 48, 70, .16)); }
+.rw-gr-kflip, .rw-gr-kpic { position: absolute; inset: 0; }
+.rw-gr-kflip.rw-gr-mirror { transform: scaleX(-1); }
+.rw-gr-key { z-index: 11; display: flex; align-items: center; justify-content: center; }
+.rw-gr-keypic { display: block; width: 100%; height: 62%; pointer-events: none; }
+.rw-gr-key.rw-now .rw-gr-keypic { animation: rw-ps-glow calc(var(--s) * 2.6s) ease-in-out infinite; }
+/* tower for kitty */
+.rw-kt-tree, .rw-kt-base, .rw-kt-block, .rw-kt-knight { pointer-events: none; }
+.rw-kt-tree { z-index: 2; }
+.rw-kt-base { z-index: 3; }
+.rw-kt-block { z-index: 4; transform-origin: 50% 83%; }
+.rw-kt-block[data-k="2"] { z-index: 5; }
+.rw-kt-block[data-k="3"] { z-index: 6; }
+.rw-kt-block[data-k="4"] { z-index: 7; }
+.rw-kt-knight { z-index: 9; filter: drop-shadow(0 6px 5px rgba(74, 48, 70, .16)); }
+.rw-kt-cart { z-index: 10; overflow: visible; }
+.rw-kt-cpic, .rw-kt-load { position: absolute; display: block; pointer-events: none; }
+.rw-kt-cart.rw-now .rw-kt-load { animation: rw-ps-bob calc(var(--s) * 2.4s) ease-in-out infinite; }
+.rw-kt-kitten { z-index: 12; overflow: visible; }
+.rw-kt-kitten:disabled { cursor: default; }
+.rw-kt-kpic { position: absolute; display: block; pointer-events: none; transform-origin: 50% 96%; }
+.rw-kt-kitten.rw-now .rw-kt-kpic { animation: rw-ps-glow calc(var(--s) * 2.6s) ease-in-out infinite; }
+@media (prefers-reduced-motion: reduce) {
+  .rw-gr-door.rw-glow, .rw-gr-key.rw-now .rw-gr-keypic, .rw-kt-kitten.rw-now .rw-kt-kpic { filter: drop-shadow(0 0 8px rgba(255, 226, 140, .9)); }
+}
+
 /* pictures from game/rewards/art/<theme>/ (PNG with clear backgrounds) */
 .rw-pic { display: block; width: 100%; height: 100%; object-fit: contain; object-position: 50% 100%; pointer-events: none; -webkit-user-drag: none; }
 .rw-hc-room .rw-pic { object-fit: cover; object-position: 50% 0; }
+
+/* ---------------- cafe extra games: Mimi's Ice Cream and Mimi's Cookies (cafe_scene_kit.js; they reuse the rw-hc-* room) ---------------- */
+.rw-cs:not(.rw-cs-on) .rw-scene, .rw-cs:not(.rw-cs-on) .rw-cs-shelf { visibility: hidden; }
+.rw-cs.rw-cs-on .rw-scene, .rw-cs.rw-cs-on .rw-cs-shelf { animation: rw-hint-in calc(var(--s) * .4s) ease both; }
+.rw-scene > .rw-cs-centre { left: 0; top: 0; width: 100%; height: 100%; pointer-events: none; }
+.rw-cs-centre > * { position: absolute; }
+.rw-ic-item, .rw-ck-item { z-index: 5; pointer-events: none; }
+.rw-ic-item svg, .rw-ck-item svg, .rw-cs-sticker svg { width: 100%; height: 100%; }
+.rw-ic-zone, .rw-ck-zone { z-index: 8; pointer-events: auto; background: transparent; border: 0; padding: 0; border-radius: 30px; touch-action: none; }
+.rw-ic-zone:disabled, .rw-ck-zone:disabled { pointer-events: none; }
+.rw-ic-zone.rw-over, .rw-ck-zone.rw-over { box-shadow: 0 0 0 5px rgba(124, 207, 184, .7), inset 0 0 26px rgba(124, 207, 184, .45); }
+.rw-ic-zoneart, .rw-ck-zoneart { position: absolute; visibility: hidden; pointer-events: none; }
+.rw-ic-zoneart svg, .rw-ck-zoneart svg { width: 100%; height: 100%; }
+.rw-ghost .rw-ic-zoneart, .rw-ghost .rw-ck-zoneart { visibility: visible; }
+.rw-ghost.rw-ic-zone, .rw-ghost.rw-ck-zone { box-shadow: none; }
+.rw-ck-item.rw-ck-lifted .rw-ck-cookie { visibility: hidden; }
+.rw-ic .rw-hc-stick { transform: translateX(-60%) scale(.5) rotate(-6deg); transform-origin: 50% 100%; }
+.rw-cs-held.rw-down { transform: translate(var(--downx, -18%), var(--down, 30%)); }
+.rw-ic-cone, .rw-ic-new, .rw-ck-cookie, .rw-ck-new, .rw-ck-stroke { transform-box: fill-box; transform-origin: 50% 100%; }
+.rw-ck-stroke { transform-origin: 50% 50%; }
+.rw-cs-fly { position: absolute; z-index: 51; pointer-events: none; filter: drop-shadow(0 10px 8px rgba(87, 54, 54, .2)); }
+.rw-ic-bottle { z-index: 49; transform-origin: 50% 50%; transition: transform calc(var(--s) * .35s) ease; }
+.rw-ic-bottle.rw-ic-tip { transform: rotate(168deg); }
+.rw-ck-pen { z-index: 9; pointer-events: none; transform-origin: 50% 94%; transform: rotate(14deg); filter: drop-shadow(0 8px 7px rgba(87, 54, 54, .22)); }
+.rw-ck-pen.rw-ck-drawing { transform: rotate(-10deg) scale(1.04); }
+.rw-tool.rw-ck-picked .rw-tool-pad { background: radial-gradient(circle at 40% 35%, #fff6f8, #fbd9e2 75%);
+  box-shadow: 0 0 0 5px rgba(217, 83, 111, .55), 0 5px 0 #b48f69, 0 10px 14px rgba(87, 54, 54, .14); }
+.rw-ck-crumb { position: absolute; pointer-events: none; border-radius: 50%; background: #e3ad72; border: 2px solid #563832; }

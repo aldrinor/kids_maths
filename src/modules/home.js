@@ -2,7 +2,12 @@
  *
  *   <script src="modules/characters.js"></script>
  *   <script src="modules/home.js"></script>
- *   HomeGame.mount(rootEl [, { artBase: "art2/" }])
+ *   HomeGame.mount(rootEl [, { artBase: "art2/", chars, art, price }])
+ *     chars  (optional) an object like KittyChars ({ full(id, pose, opts), face(id), headInner(id) }) that draws the
+ *            five friends instead of KittyChars (the cafe world passes its own pictures). Same 200 x 260 box.
+ *     art    (optional) { itemId: { src: "url", aspect: width / height } } pictures that replace catalogue pictures.
+ *     price  (optional) function (basePrice, item) -> price, for items, wallpapers and floors (the cafe world's coins).
+ *   With no options the house is exactly the old app's house. Every mount starts from these defaults again.
  *
  * Uses the host globals P, save(), renderTop(), tone(), speak() (never redefines them).
  * All CSS is scoped under .hg and injected once (style#home-game-css).
@@ -22,7 +27,10 @@
   var FOOT_MIN = 478, FOOT_MAX = 738;
   var WALL_TOP = 140, WALL_BOT = 440;
   var CHAR_BOX = 1.1;               // char svg box height in H (the figure is about 91% of its box)
-  var opts = { artBase: "art2/" };
+  var DEFAULT_OPTS = { artBase: "art2/", chars: null, art: null, price: null };
+  var opts = { artBase: DEFAULT_OPTS.artBase, chars: null, art: null, price: null };
+  function KC() { return opts.chars || window.KittyChars; }   // who draws the five friends
+  function artOver(c) { return opts.art && c && opts.art[c.id] ? opts.art[c.id] : null; }
 
   /* ---------- picture aspect ratios (width / height) of art2/*.png ---------- */
   var ASPECT = {tt_ducky:0.811,tt_towels:1.119,tt_slippers:2.490,tt_candle:0.776,tt_monstera:0.945,tt_pothos:0.764,tt_yucca:0.669,tt_sansevieria:0.673,tt_cacti:1.037,tt_succulent:1.608,tt_kettle:1.245,tt_toaster:1.316,tt_mug:1.239,tt_pot:1.776,tt_hooks:2.248,tt_teapot:1.373,tt_radio:1.323,tt_basket:1.109,tt_pillow_red:1.028,tt_pillow_blue:1.028,tt_apple:1.192,tt_cupcake:0.732,tt_donut:1.380,tt_cake_birthday:1.104,tt_cake_strawberry:1.227,tt_muffin:1.020,tt_cinnamon_roll:1.351,tt_cookie:1.671,tt_waffle:1.316,tt_macaron_pink:1.149,tt_macaron_blue:1.149,tt_cookie_jar:0.713,tt_pillow_green:1.896,tt_zzplant:0.417,tt_croissant:1.881,tt_cake_chocolate:1.257,tt_pie:1.660,tt_watering_can:1.119,tt_mug_yellow:1.239,tt_pastry_stand:1.344,fl_teddy:0.996,fl_dolls:0.798,fl_picture:1.000,fl_heart:1.000,fl_discoball:0.857,fl_yarn:0.886,fl_puzzle:1.000,fl_blossom:1.035,fl_cat:1.035,fl_bunnyfull:1.033,fl_fish:1.202,fl_unicorn:0.987,fl_sunflower:0.798,fl_tulip:0.670,fl_guitar:1.013,fl_drum:0.996,fl_books:1.072,fl_lantern:0.664,fl_rainbow:1.000,fl_kite:0.992,fl_balloon:0.730,fl_gift:0.933,fl_crown:1.208,fl_icecream:0.754,fl_strawberry:0.731,fl_cocoa:0.965,fl_watermelon:1.004,fl_pancakes:1.021,fl_bubbletea:0.731,fl_star:1.013};
@@ -201,6 +209,7 @@
   function depthScale(footY) { return .82 + .18 * clamp((footY - FOOT_MIN) / (FOOT_MAX - FOOT_MIN), 0, 1); }
   function aspectOf(c) {
     if (c.art === "char") return 200 / 260;
+    var ov = artOver(c); if (ov && ov.aspect) return ov.aspect;
     var p = c.art.split(":");
     return p[0] === "png" ? (ASPECT[p[1]] || 1) : (SVG_ASPECT[p[1]] || 1);
   }
@@ -459,7 +468,7 @@
       '<path d="M30 52 Q36 34 52 26" ' + SHINE + ' stroke-width="5"/>');
   }
   function kittyframeSVG() {
-    var head = window.KittyChars ? window.KittyChars.headInner("kitty") : "";
+    var head = KC() ? KC().headInner("kitty") : "";
     return svgWrap("0 0 120 140",
       '<path d="M30 30 L60 6 L90 30" fill="none" stroke="' + INK + '" stroke-width="3"/><circle cx="60" cy="6" r="4" fill="' + INK + '"/>' +
       '<rect x="8" y="24" width="104" height="112" rx="16" fill="url(#hg-sun)" ' + S + '/>' +
@@ -522,7 +531,8 @@
     return "";
   }
   function artHTML(c, t, pose) {
-    if (c.art === "char") return window.KittyChars ? window.KittyChars.full(c.id, pose || "stand") : "";
+    if (c.art === "char") return KC() ? KC().full(c.id, pose || "stand") : "";
+    var ov = artOver(c); if (ov) return '<img src="' + ov.src + '" alt="" draggable="false">';
     var p = c.art.split(":");
     if (p[0] === "png") return '<img src="' + opts.artBase + p[1] + '.png" alt="" draggable="false">';
     return svgArt(p[1], t && t.state);
@@ -1179,7 +1189,7 @@
   }
   function catIcon(id) {
     switch (id) {
-      case "friends": return window.KittyChars ? window.KittyChars.face("kitty") : "";
+      case "friends": return KC() ? KC().face("kitty") : "";
       case "furniture": return sofaSVG();
       case "decor": return '<img src="' + opts.artBase + 'tt_monstera.png" alt="">';
       case "treats": return '<img src="' + opts.artBase + 'tt_cupcake.png" alt="">';
@@ -1208,7 +1218,7 @@
         return;
       }
       var isOwned = owned(c), cant2 = !isOwned && stars < c.price;
-      var art = c.art === "char" ? window.KittyChars.full(c.id, "stand") : artHTML(c, null);
+      var art = c.art === "char" ? KC().full(c.id, "stand") : artHTML(c, null);
       h += '<div class="hg-pad' + (cant2 ? " cant" : "") + '" role="button" tabindex="0" data-id="' + c.id + '" aria-label="' + esc(c.name) + (isOwned ? ", at home" : ", " + c.price + " stars") + '"><div class="hg-pa">' + art + "</div>" +
         (isOwned ? '<span class="hg-badge">' + HOUSE + "</span>" : '<span class="hg-price">' + (cant2 ? LOCK : STAR_IMG()) + c.price + "</span>") + "</div>";
     });
@@ -1644,8 +1654,8 @@
       bubble(t.uid, "Hi!"); say(hiFor(c)); snd([660, 880], .08);
       if (t.on) { anim(el, "bounce"); return; }
       var art = el.querySelector(".hg-art");
-      art.innerHTML = window.KittyChars.full(c.id, "wave");
-      timers.push(setTimeout(function () { var e2 = itemEl(t.uid); if (e2 && !e2.classList.contains("lift")) e2.querySelector(".hg-art").innerHTML = window.KittyChars.full(c.id, poseFor(t)); }, 2300));
+      art.innerHTML = KC().full(c.id, "wave");
+      timers.push(setTimeout(function () { var e2 = itemEl(t.uid); if (e2 && !e2.classList.contains("lift")) e2.querySelector(".hg-art").innerHTML = KC().full(c.id, poseFor(t)); }, 2300));
       return;
     }
     if (c.tap === "tv") { t.state = ((t.state || 0) + 1) % 4; el.querySelector(".hg-art").innerHTML = tvSVG(t.state); doSave(); snd([523 + t.state * 110], .1); return; }
@@ -1664,8 +1674,8 @@
       lifeReact(a, { pose: seated ? (inBath(charT) || inBed(charT) ? shownPose(a, charT) : "eatsit") : "eat", eyes: "happy", dur: 2.6, fx: "crumbs", seatOk: true });
       var hh = headTop(a); burstFx(a.room, hh.x, hh.y, "heart", 2);
     } else {
-      el.querySelector(".hg-art").innerHTML = window.KittyChars.full(c.id, charT.on ? "sit" : "happy");
-      if (!charT.on) timers.push(setTimeout(function () { var e2 = itemEl(charT.uid); if (e2 && !e2.classList.contains("lift")) e2.querySelector(".hg-art").innerHTML = window.KittyChars.full(c.id, poseFor(charT)); }, 1600));
+      el.querySelector(".hg-art").innerHTML = KC().full(c.id, charT.on ? "sit" : "happy");
+      if (!charT.on) timers.push(setTimeout(function () { var e2 = itemEl(charT.uid); if (e2 && !e2.classList.contains("lift")) e2.querySelector(".hg-art").innerHTML = KC().full(c.id, poseFor(charT)); }, 1600));
     }
     bubble(charT.uid, "Yum!"); say("Yum! " + foodC.name + "!");
     snd([392, 330, 392], .07, "triangle", .14);
@@ -1850,7 +1860,7 @@
       drag.el.style.transform = ""; drag.el.style.opacity = "";
       var heldArt = drag.el.querySelector(".hg-art");
       heldArt.style.clipPath = ""; heldArt.style.transform = "";
-      heldArt.innerHTML = window.KittyChars.full(c.id, "held", { eyes: "surprised" });
+      heldArt.innerHTML = KC().full(c.id, "held", { eyes: "surprised" });
       // what she holds goes up with her raised paw (about 75% across, 55% down her drawing)
       drag.el.querySelectorAll(".hg-held.hand").forEach(function (hh) {
         var w0 = parseFloat(hh.style.width) || 20, h0 = parseFloat(hh.style.height) || 20;
@@ -1894,7 +1904,7 @@
     var s = depthScale(640), hh = boxH(c) * (c.zone === "wall" ? .86 : s), ww = hh * aspectOf(c);
     var el = document.createElement("div");
     el.className = "hg-it lift " + c.zone + (c.zone === "char" ? " char" : "");
-    el.innerHTML = '<i class="hg-sh"></i><div class="hg-art">' + (c.zone === "char" ? window.KittyChars.full(c.id, "held", { eyes: "surprised" }) : artHTML(c, null)) + "</div>";
+    el.innerHTML = '<i class="hg-sh"></i><div class="hg-art">' + (c.zone === "char" ? KC().full(c.id, "held", { eyes: "surprised" }) : artHTML(c, null)) + "</div>";
     el.style.zIndex = 8000;
     root.querySelector(".hg-items").appendChild(el);
     drag.el = el; drag.c = c; drag.box = { w: ww, h: hh }; drag.kids = [];
@@ -2279,7 +2289,7 @@
   function poseKey(a, t) { var p = shownPose(a, t); return p + "|" + (shownEyes(a, t, p) || ""); }
   function charArt(a, t) {
     var p = shownPose(a, t), e = shownEyes(a, t, p);
-    return window.KittyChars.full(a.id, p, e ? { eyes: e } : null);
+    return KC().full(a.id, p, e ? { eyes: e } : null);
   }
   function applyPose(a, t, key) {
     a.shown = key;
@@ -3136,11 +3146,19 @@
     '<path d="M4 58 L46 6 H254 L296 58 Z" fill="#ff9cc2" stroke="#3b2a33" stroke-width="3.5" stroke-linejoin="round" vector-effect="non-scaling-stroke"/>' +
     '<path d="M30 42 H270 M18 52 H282 M40 30 H260 M52 18 H248" stroke="#ff6f9f" stroke-width="3" vector-effect="non-scaling-stroke"/>' +
     '<path d="M60 10 H240" stroke="#fff" stroke-opacity=".7" stroke-width="4" stroke-linecap="round" vector-effect="non-scaling-stroke"/></svg>';
+  // every item, wallpaper and floor keeps its own price as base; the price shown and paid comes from opts.price
+  function setPrices() {
+    C.concat(WALLS, FLOORS).forEach(function (c) {
+      if (c.base === undefined) c.base = c.price;
+      c.price = opts.price ? Math.max(0, Math.round(opts.price(c.base, c)) || 0) : c.base;
+    });
+  }
   function mount(el, o) {
     if (!el) throw new Error("HomeGame.mount needs a container element");
     if (!window.KittyChars) throw new Error("HomeGame needs modules/characters.js loaded first");
     if (!window.P) throw new Error("HomeGame needs the host's saved state P");
-    if (o && o.artBase) opts.artBase = o.artBase;
+    opts = { artBase: (o && o.artBase) || DEFAULT_OPTS.artBase, chars: (o && o.chars) || null, art: (o && o.art) || null, price: (o && typeof o.price === "function") ? o.price : null };
+    setPrices();
     unmount();
     injectCss(); window.KittyChars.injectCss();
     migrate(window.P);

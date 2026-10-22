@@ -7,9 +7,12 @@
      KS.SKILLS                          supported skill ids
      KS.make(skill, theme, rng, prev)   one question Q (never Q.key === prev)
      KS.teach(Q, right)                 {kind, steps:[{say, draw, line?}]}
-     KS.sentences(limit)                every full sentence for sums.1-4 and kinder.* (limit = optional cap)
+     KS.sentences(limit)                every full sentence for sums.1-4, kinder.2, kinder.5 and every Stage 3 kind (limit = optional cap)
      KS.pieces()                        every text piece left when sentences are split around digits
      KS.build / KS.templates / KS.usable   used by the tests
+     KS.extraSkills()                   the Stage 3 skills for KidsEngine.buildSkillMap(topics, extra)
+     KS.fits(skill, theme)              true when the skill has stories in that theme (cafe = Marie, castle = Kennedy)
+     KS.KIND_IDS / kindAll / buildKind / kindBank / eachKindQuestion   the Stage 3 kinds, used by the tests
 
    Q fields: skill, theme, tpl, type, a, b, op ("+" or "-"), result (a op b), ans, missing (true when the
    child finds b, as in "8 + ? = 15"), kind ("typed"|"choice"), opts, story, ask, say, eq, correct, fact, hint,
@@ -142,10 +145,10 @@
   const sym = op => (op === "+" ? "+" : MINUS);
 
   function render(str, v) {
-    return str.replace(/\{([abtrw])(?:\|([^|}]*))?(?:\|([^|}]*))?\}/g, (m, k, sing, plur) => {
-      if (k === "w") return v.w;
+    return str.replace(/\{([a-z]+)(?:\|([^|}]*))?(?:\|([^|}]*))?\}/g, (m, k, sing, plur) => {
       const n = v[k];
-      if (sing === undefined) return String(n);
+      if (n === undefined) throw new Error("KS: no value for {" + k + "} in " + str);
+      if (typeof n === "string" || sing === undefined) return String(n);
       return n + " " + (n === 1 ? sing : (plur !== undefined ? plur : sing + "s"));
     });
   }
@@ -264,6 +267,10 @@
     rng = rng || Math.random;
     if (!SKILLS.includes(skill)) throw new Error("KS: unknown skill " + skill);
     if (!THEMES.includes(theme)) throw new Error("KS: unknown theme " + theme);
+    if (KINDS[skill]) {
+      if (KINDS[skill].theme !== theme) throw new Error("KS: " + skill + " has no " + theme + " stories");
+      return makeKind(skill, rng, prevKey);
+    }
     for (let i = 0; i < 4000; i++) {
       let n;
       if (skill === "kinder.2") n = { a: 1 + Math.floor(rng() * 10), b: 0, op: "+" };
@@ -294,6 +301,7 @@
   const row = (i, x, o, y, z) => ({ row: i, tokens: [String(x), sym(o), String(y), "=", String(z)] });
 
   function teach(Q, right) {
+    if (KINDS[Q.skill]) return teachKind(Q, right);
     const { a, b, op, result, type } = Q, steps = [headStep(Q)];
     let kind;
     if (type === "K") {
@@ -369,6 +377,495 @@
     return { kind, steps };
   }
 
+  /* =====================================================================================
+     Stage 3 (22 Oct 2026): more question kinds.
+     Each kind has its own story bank (never mixed with BANK above), every number set it can use (all), and its own lesson.
+     A kind belongs to one theme: the cafe kinds are Marie's (Grade 3, typed answers), the kinder kinds are Kennedy's
+     (Kindergarten, tap answers). Q.a is where the hopper starts and Q.result is where it ends; the answer can be the
+     number of hops (sharing, change, hours, tens). Rows on the board stay at 15 letters or fewer, so they fit a phone.
+     Not built: kinder.6 shapes and clock faces (the question screen has no picture), half hours (the keypad types digits only).
+     ===================================================================================== */
+  const pl = (n, one, many) => `${n} ${n === 1 ? one : (many || one + "s")}`;
+  const range = (lo, hi) => Array.from({ length: hi - lo + 1 }, (_, i) => lo + i);
+  const rowOf = (i, text) => ({ row: i, tokens: text.split(" ") });
+  const near = (ans, lo, hi) => [ans - 2, ans - 1, ans + 1, ans + 2].filter(x => x >= lo && x <= hi);
+
+  // Equal groups: n groups of s. Facts of 2, 5 and 10 first, then 3 and 4.
+  const TIMES_BANK = [
+    ["Mimi fills {n|tray}. Each tray holds {s|cupcake}.", "How many cupcakes are there in all?"],
+    ["Mimi sets {n|table}. Each table needs {s|cup}.", "How many cups does she need?"],
+    ["{n|customer} each order {s|cookie}.", "How many cookies does Mimi pack?"],
+    ["Mimi packs {n|box|boxes}. She puts {s|muffin} in each box.", "How many muffins does she pack?"],
+    ["Mimi makes {n|plate} of treats. Each plate has {s|biscuit}.", "How many biscuits are on the plates?"],
+    ["There are {n|vase|vases} on the tables. Each vase has {s|flower}.", "How many flowers are there?"],
+    ["Mimi bakes {n|batch|batches} of bread. Each batch makes {s|roll}.", "How many rolls does she bake?"],
+    ["Mimi stacks {n|pile} of saucers. Each pile has {s|saucer}.", "How many saucers are there?"],
+    ["{n|child|children} come to a party. Each child gets {s|sticker}.", "How many stickers does Mimi need?"],
+    ["Mimi fills {n|jar} on the shelf. Each jar holds {s|candy|candies}.", "How many candies are in the jars?"],
+    ["Mimi buys {n|bag} of lemons. Each bag has {s|lemon}.", "How many lemons does she buy?"],
+    ["Mimi puts {n|row} of chairs in the cafe. Each row has {s|chair}.", "How many chairs are there?"]
+  ];
+  function timesKind(name, sizes, grade, needs) {
+    return {
+      theme: "cafe", name, grade, group: "times", needs,
+      all: () => sizes.flatMap(s => range(2, 10).map(n => ({ type: "G", n, s }))),
+      bank: { G: TIMES_BANK },
+      q: ({ n, s }) => ({ v: { n, s }, nums: [n, s], ans: n * s, eq: `${n} × ${s} = ?`, op: "×", start: 0, end: n * s,
+        line: { lo: 0, hi: 10 * s, step: s }, fact: `${n} groups of ${s} is ${n * s}.`, hint: `Skip count by ${s}, ${n} times.`, key: `${n}x${s}` }),
+      lesson: ({ n, s }, Q) => {
+        const rep = Array(n).fill(s).join(" + ") + " = " + Q.ans;
+        return { kind: "groups", steps: [
+          { say: `${n} groups of ${s} means ${n} times ${s}.`, draw: [rowOf(0, Q.eq)] },
+          { say: `Skip count by ${s}. Hop ${n} times.`, draw: [], line: [0, Q.ans, s] },
+          { say: `${n} times ${s} is ${Q.ans}.`, draw: [rowOf(1, rep.length <= 15 ? rep : `${n} × ${s} = ${Q.ans}`)] }
+        ] };
+      }
+    };
+  }
+
+  // Sharing (S: how many each) and grouping (G: how many groups): t divided by d is q.
+  const SHARE_BANK = {
+    S: [
+      ["Mimi puts {t|cookie} on {d|plate}. Each plate gets the same number.", "How many cookies go on each plate?"],
+      ["{d|friend} share {t|grape} equally.", "How many grapes does each friend get?"],
+      ["Mimi splits {t|cupcake} equally into {d|box|boxes}.", "How many cupcakes go in each box?"],
+      ["Mimi shares {t|strawberry|strawberries} equally on {d|cake}.", "How many strawberries go on each cake?"],
+      ["{d|table} share {t|muffin} equally.", "How many muffins does each table get?"],
+      ["Mimi puts {t|flower} in {d|vase|vases}, the same number in each.", "How many flowers go in each vase?"]
+    ],
+    G: [
+      ["Mimi has {t|cookie}. She puts {d|cookie} in each bag.", "How many bags does she fill?"],
+      ["Mimi has {t|cupcake}. Each box holds {d|cupcake}.", "How many boxes does she need?"],
+      ["Mimi has {t|cup}. She stacks {d|cup} in each pile.", "How many piles does she make?"],
+      ["Mimi has {t|chair}. Each table needs {d|chair}.", "How many tables can she set?"],
+      ["Mimi bakes {t|roll}. She puts {d|roll} on each plate.", "How many plates does she fill?"],
+      ["Mimi has {t|lemon}. Each jug of lemonade uses {d|lemon}.", "How many jugs can she make?"]
+    ]
+  };
+  function shareKind(name, divisors, grade, needs) {
+    return {
+      theme: "cafe", name, grade, group: "times", needs,
+      all: () => ["S", "G"].flatMap(type => divisors.flatMap(d => range(2, 10).map(q => ({ type, d, q })))),
+      bank: SHARE_BANK,
+      q: ({ type, d, q }) => { const t = d * q; return { v: { t, d }, nums: [t, d], ans: q, eq: `${t} ÷ ${d} = ?`, op: "÷", start: 0, end: t,
+        line: { lo: 0, hi: 10 * d, step: d }, fact: type === "S" ? `${t} shared by ${d} is ${q} each.` : `${t} in groups of ${d} makes ${q} groups.`,
+        hint: `Hop by ${d} up to ${t}. Count the hops.`, key: `${t}/${d}` }; },
+      lesson: ({ type, d, q }, Q) => ({ kind: "share", steps: [
+        { say: type === "S" ? `Sharing equally means divide. So it is ${Q.result} divided by ${d}.` : `Making groups of ${d} means divide. So it is ${Q.result} divided by ${d}.`, draw: [rowOf(0, Q.eq)] },
+        { say: `Hop by ${d} up to ${Q.result}. Count the hops.`, draw: [], line: [0, Q.result, d] },
+        { say: `That is ${q} hops. ${q} times ${d} is ${Q.result}.`, draw: [rowOf(1, `${q} × ${d} = ${Q.result}`)] }
+      ] })
+    };
+  }
+
+  // Tens and ones: T makes the number, D finds the tens (full boxes), O finds the ones (left over).
+  const TENS_BANK = {
+    T: [
+      ["Mimi has {t|box|boxes} of 10 cookies and {o|loose cookie|loose cookies}.", "How many cookies does she have?"],
+      ["The shelf has {t|pack} of 10 cups and {o|single cup|single cups}.", "How many cups are on the shelf?"],
+      ["Mimi bakes {t|tray} of 10 muffins and {o|extra muffin|extra muffins}.", "How many muffins did she bake?"],
+      ["The till has {t|roll} of 10 coins and {o|loose coin|loose coins}.", "How many coins are in the till?"]
+    ],
+    D: [
+      ["Mimi baked {n|cupcake}. She packs them in boxes of 10.", "How many boxes can she fill?"],
+      ["Mimi has {n|cookie}. Each bag holds 10 cookies.", "How many full bags can she make?"],
+      ["The cafe has {n|cup}. Mimi stacks them in piles of 10.", "How many full piles can she make?"],
+      ["Mimi picks {n|strawberry|strawberries}. Each basket holds 10.", "How many baskets can she fill?"]
+    ],
+    O: [
+      ["Mimi baked {n|cupcake}. She packs them in boxes of 10.", "How many cupcakes are left over?"],
+      ["Mimi has {n|cookie}. She fills bags of 10.", "How many cookies are left over?"],
+      ["Mimi has {n|coin}. She makes stacks of 10.", "How many coins are not in a stack?"],
+      ["Mimi has {n|napkin}. She folds them in packs of 10.", "How many napkins are left over?"]
+    ]
+  };
+  const TENS_KIND = {
+    theme: "cafe", name: "Cafe: tens and ones", grade: 2, group: "count", needs: ["sums.3"],
+    all: () => ["T", "D", "O"].flatMap(type => range(1, 9).flatMap(t => range(type === "D" ? 0 : 1, 9).map(o => ({ type, t, o })))),
+    bank: TENS_BANK,
+    q: ({ type, t, o }) => {
+      const n = 10 * t + o, fact = `${n} is ${pl(t, "ten")} and ${pl(o, "one")}.`, ones = { lo: 10 * t, hi: 10 * t + 10, step: 1 };
+      if (type === "T") return { v: { t, o }, nums: [t, 10, o], ans: n, eq: `${t} tens + ${o} = ?`, op: "+", start: 10 * t, end: n, line: ones,
+        fact, hint: "Count the tens by 10, then count on the ones.", key: `${n}` };
+      if (type === "D") return { v: { n }, nums: [n, 10], ans: t, eq: `tens in ${n} = ?`, op: "+", start: 0, end: 10 * t, line: { lo: 0, hi: 100, step: 10 },
+        fact, hint: `Hop by 10 from 0. Stop before you pass ${n}.`, key: `${n}` };
+      return { v: { n }, nums: [n, 10], ans: o, eq: `ones in ${n} = ?`, op: "+", start: 10 * t, end: n, line: ones,
+        fact, hint: `Take out the tens. Count on from ${10 * t} to ${n}.`, key: `${n}` };
+    },
+    lesson: ({ type, t, o }, Q) => {
+      const n = 10 * t + o, last = rowOf(1, `${10 * t} + ${o} = ${n}`);
+      if (type === "T") return { kind: "tens", steps: [
+        { say: `Each ten is 10. Count the tens by 10.`, draw: [rowOf(0, Q.eq)], line: [0, 10 * t, 10] },
+        { say: `Then count on ${pl(o, "one")}.`, draw: [], line: [10 * t, n, 1] },
+        { say: `${10 * t} plus ${o} is ${n}.`, draw: [last] }
+      ] };
+      if (type === "D") return { kind: "tens", steps: [
+        { say: `Each full box holds 10. How many tens are in ${n}?`, draw: [rowOf(0, Q.eq)] },
+        { say: `Hop by 10 from 0. Stop before you pass ${n}.`, draw: [], line: [0, 10 * t, 10] },
+        { say: `That is ${pl(t, "hop")}. ${10 * t} plus ${o} is ${n}.`, draw: [last] }
+      ] };
+      return { kind: "tens", steps: [
+        { say: `Take out the tens. ${n} has ${pl(t, "ten")}, that is ${10 * t}.`, draw: [rowOf(0, Q.eq)], line: [0, 10 * t, 10] },
+        { say: `Count on from ${10 * t} to ${n}.`, draw: [], line: [10 * t, n, 1] },
+        { say: `That is ${o} left over. ${10 * t} plus ${o} is ${n}.`, draw: [last] }
+      ] };
+    }
+  };
+
+  // Coins: L is toonies (2 dollars) and loonies (1 dollar), N is dimes (10 cents) and nickels (5 cents).
+  const COIN_BANK = {
+    L: [
+      ["A customer pays Mimi with {a|toonie} and {b|loonie}.", "How many dollars is that?"],
+      ["Mimi finds {a|toonie} and {b|loonie} in the tips jar.", "How many dollars did she find?"],
+      ["The till has {a|toonie} and {b|loonie}.", "How many dollars are in the till?"],
+      ["A girl pays for her tea with {a|toonie} and {b|loonie}.", "How many dollars did she pay?"],
+      ["Mimi saves {a|toonie} and {b|loonie} for a new teapot.", "How many dollars has she saved?"]
+    ],
+    N: [
+      ["A boy pays Mimi with {a|dime} and {b|nickel}.", "How many cents is that?"],
+      ["Mimi finds {a|dime} and {b|nickel} under a table.", "How many cents did she find?"],
+      ["The tips jar has {a|dime} and {b|nickel}.", "How many cents are in the jar?"],
+      ["A customer leaves {a|dime} and {b|nickel} as a tip.", "How many cents is the tip?"],
+      ["Mimi pays for a lemon with {a|dime} and {b|nickel}.", "How many cents did she pay?"]
+    ]
+  };
+  const COIN_KIND = {
+    theme: "cafe", name: "Cafe: counting coins", grade: 2, group: "money_time", needs: ["cafe_times.1"],
+    all: () => [].concat(
+      range(1, 4).flatMap(a => range(1, 10 - 2 * a).map(b => ({ type: "L", a, b }))),
+      range(1, 4).flatMap(a => range(1, (50 - 10 * a) / 5).map(b => ({ type: "N", a, b })))),
+    bank: COIN_BANK,
+    q: ({ type, a, b }) => {
+      if (type === "L") { const t = 2 * a + b; return { v: { a, b }, nums: [a, b], ans: t, eq: `${a}×2 + ${b} = ?`, op: "+", start: 0, end: t, line: { lo: 0, hi: 10, step: 1 },
+        fact: `${pl(a, "toonie")} and ${pl(b, "loonie")} make ${pl(t, "dollar")}.`, hint: "A toonie is 2 dollars. Count the toonies by 2, then the loonies by 1.", key: `${a}t${b}l` }; }
+      const t = 10 * a + 5 * b;
+      return { v: { a, b }, nums: [a, b], ans: t, eq: `${a}×10 + ${b}×5 = ?`, op: "+", start: 0, end: t, line: { lo: 0, hi: 50, step: 5 },
+        fact: `${pl(a, "dime")} and ${pl(b, "nickel")} make ${t} cents.`, hint: "A dime is 10 cents. A nickel is 5 cents. Count by 10, then by 5.", key: `${a}d${b}n` };
+    },
+    lesson: ({ type, a, b }, Q) => type === "L" ? { kind: "coins", steps: [
+      { say: "A toonie is 2 dollars. A loonie is 1 dollar.", draw: [rowOf(0, Q.eq)] },
+      { say: "Skip count the toonies by 2.", draw: [], line: [0, 2 * a, 2] },
+      { say: "Count on the loonies by 1.", draw: [], line: [2 * a, Q.ans, 1] },
+      { say: `${2 * a} plus ${b} is ${Q.ans}.`, draw: [rowOf(1, `${2 * a} + ${b} = ${Q.ans}`)] }
+    ] } : { kind: "coins", steps: [
+      { say: "A dime is 10 cents. A nickel is 5 cents.", draw: [rowOf(0, Q.eq)] },
+      { say: "Skip count the dimes by 10.", draw: [], line: [0, 10 * a, 10] },
+      { say: "Count on the nickels by 5.", draw: [], line: [10 * a, Q.ans, 5] },
+      { say: `${10 * a} plus ${5 * b} is ${Q.ans}.`, draw: [rowOf(1, `${10 * a} + ${5 * b} = ${Q.ans}`)] }
+    ] }
+  };
+
+  // Change at the till: a price p paid with a 10 or a 20 dollar bill g. Count up from the price.
+  const CHANGE_BANK = { C: [
+    ["A muffin costs {p|dollar}. The customer pays with a {g} dollar bill.", "How much change does Mimi give back?"],
+    ["A cake costs {p|dollar}. Mimi gets a {g} dollar bill.", "How many dollars of change does she give?"],
+    ["Tea and a cookie cost {p|dollar}. A man pays with a {g} dollar bill.", "How much change does he get?"],
+    ["A box of cupcakes costs {p|dollar}. A girl pays {g} dollars.", "How much change does she get?"],
+    ["A pie costs {p|dollar}. Mimi's friend pays with a {g} dollar bill.", "How much change does her friend get?"],
+    ["Lunch costs {p|dollar}. A customer gives Mimi {g} dollars.", "How much change does Mimi give?"],
+    ["A bag of buns costs {p|dollar}. A boy pays with a {g} dollar bill.", "How much change does he get back?"],
+    ["Hot chocolate for the family costs {p|dollar}. Dad pays {g} dollars.", "How much change does Dad get?"],
+    ["A sandwich costs {p|dollar}. Grandma pays with a {g} dollar bill.", "How much change does Grandma get?"],
+    ["A big tin of cookies costs {p|dollar}. A lady pays {g} dollars.", "How much change does she get?"]
+  ] };
+  const CHANGE_KIND = {
+    theme: "cafe", name: "Cafe: change from 10 or 20 dollars", grade: 3, group: "money_time", needs: ["sums.2", "cafe_money.1"],
+    all: () => range(1, 9).map(p => ({ type: "C", p, g: 10 })).concat(range(11, 19).map(p => ({ type: "C", p, g: 20 }))),
+    bank: CHANGE_BANK,
+    q: ({ p, g }) => ({ v: { p, g }, nums: [p, g], ans: g - p, eq: `${g} − ${p} = ?`, op: "-", start: p, end: g, line: { lo: g - 10, hi: g, step: 1 },
+      fact: `The change from ${g} dollars for ${pl(p, "dollar")} is ${pl(g - p, "dollar")}.`, hint: `Count up from ${p} to ${g}.`, key: `${g}-${p}` }),
+    lesson: ({ p, g }, Q) => ({ kind: "change", steps: [
+      { say: `Change is what is left. So it is ${g} minus ${p}.`, draw: [rowOf(0, Q.eq)] },
+      { say: `Count up from ${p} to ${g}.`, draw: [], line: [p, g, 1] },
+      { say: `That is ${pl(Q.ans, "hop")}. ${p} plus ${Q.ans} is ${g}.`, draw: [rowOf(1, `${p} + ${Q.ans} = ${g}`)] }
+    ] })
+  };
+
+  // Cafe hours (whole hours on a 12 hour clock): J later, A earlier, M how long.
+  const HOURS_BANK = {
+    J: [
+      ["The cafe opens at {a} o'clock. Mimi bakes for {b|hour}.", "What time is it when she is done?"],
+      ["Mimi starts the soup at {a} o'clock. It cooks for {b|hour}.", "What time is the soup ready?"],
+      ["A party starts at {a} o'clock. It lasts {b|hour}.", "What time does the party end?"],
+      ["Mimi opens the cafe at {a} o'clock. It stays open for {b|hour}.", "What time does the cafe close?"]
+    ],
+    A: [
+      ["The cafe closes at {a} o'clock. Mimi starts cleaning {b|hour} before.", "What time does she start cleaning?"],
+      ["The cake must be ready at {a} o'clock. It takes {b|hour} to bake.", "What time must Mimi start baking?"],
+      ["Lunch ends at {a} o'clock. It lasted {b|hour}.", "What time did lunch start?"]
+    ],
+    M: [
+      ["The cafe opens at {a} o'clock and closes at {t} o'clock.", "How many hours is it open?"],
+      ["Mimi starts work at {a} o'clock. She stops at {t} o'clock.", "How many hours did she work?"],
+      ["The bread goes in at {a} o'clock. It comes out at {t} o'clock.", "How many hours did it bake?"],
+      ["Breakfast starts at {a} o'clock and ends at {t} o'clock.", "How many hours does breakfast last?"]
+    ]
+  };
+  const hourLine = (p, q) => { const lo = Math.max(p, q) <= 11 ? 1 : 2; return { lo, hi: lo + 10, step: 1 }; };
+  const HOURS_KIND = {
+    theme: "cafe", name: "Cafe: opening hours", grade: 3, group: "money_time", needs: ["sums.4"],
+    all: () => {
+      const out = [];
+      range(1, 11).forEach(a => range(1, 8).forEach(b => {
+        if (a + b <= 12 && a >= hourLine(a, a + b).lo) { out.push({ type: "J", a, b }); out.push({ type: "M", a, b }); }
+        if (a + b <= 12 && a + b >= hourLine(a, a + b).lo && a >= hourLine(a, a + b).lo) out.push({ type: "A", a: a + b, b });
+      }));
+      return out;
+    },
+    bank: HOURS_BANK,
+    q: ({ type, a, b }) => {
+      const r = type === "A" ? a - b : a + b, line = hourLine(a, r);
+      if (type === "J") return { v: { a, b }, nums: [a, b], ans: r, eq: `${a} + ${b} = ?`, op: "+", start: a, end: r, line,
+        fact: `${pl(b, "hour")} after ${a} o'clock is ${r} o'clock.`, hint: `Start at ${a} and hop forward ${b}.`, key: `${a}+${b}` };
+      if (type === "A") return { v: { a, b }, nums: [a, b], ans: r, eq: `${a} − ${b} = ?`, op: "-", start: a, end: r, line,
+        fact: `${pl(b, "hour")} before ${a} o'clock is ${r} o'clock.`, hint: `Start at ${a} and hop back ${b}.`, key: `${a}-${b}` };
+      return { v: { a, t: r }, nums: [a, r], ans: b, eq: `${a} + ? = ${r}`, op: "+", start: a, end: r, line,
+        fact: `From ${a} o'clock to ${r} o'clock is ${pl(b, "hour")}.`, hint: `Start at ${a} and hop up to ${r}. Count the hops.`, key: `${a}+?${r}` };
+    },
+    lesson: ({ type, a, b }, Q) => {
+      if (type === "M") return { kind: "hours", steps: [
+        { say: `We start at ${a} o'clock and end at ${Q.result} o'clock. How many hours?`, draw: [rowOf(0, Q.eq)] },
+        { say: `Start at ${a}. Hop up to ${Q.result}, one hop for each hour.`, draw: [], line: [a, Q.result, 1] },
+        { say: `You hopped ${b}.`, draw: [rowOf(1, `${a} + ${b} = ${Q.result}`)] }
+      ] };
+      const plus = type === "J";
+      return { kind: "hours", steps: [
+        { say: plus ? `Later means plus. So it is ${a} plus ${b}.` : `Earlier means minus. So it is ${a} minus ${b}.`, draw: [rowOf(0, Q.eq)] },
+        { say: `Start at ${a}. Hop ${plus ? "forward" : "back"} ${b}, one hop for each hour.`, draw: [], line: [a, Q.result, 1] },
+        { say: `${a} ${plus ? "plus" : "minus"} ${b} is ${Q.result}.`, draw: [rowOf(1, `${a} ${plus ? "+" : MINUS} ${b} = ${Q.result}`)] }
+      ] };
+    }
+  };
+
+  // Half (H) and quarter (Q) of a cake, a tray or a box.
+  const FRACTION_BANK = {
+    H: [
+      ["Mimi cuts a cake into {n|slice}. Half of the slices go to a party.", "How many slices go to the party?"],
+      ["A tray has {n|cookie}. Mimi gives half of them to her friend.", "How many cookies does her friend get?"],
+      ["Mimi bakes {n|muffin}. She sells half of them before lunch.", "How many muffins did she sell before lunch?"],
+      ["A pizza has {n|piece}. Mimi and her friend each eat half.", "How many pieces does each one eat?"],
+      ["Mimi has {n|strawberry|strawberries}. Half of them go on top of a cake.", "How many strawberries go on the cake?"]
+    ],
+    Q: [
+      ["A pie has {n|piece}. A quarter of the pie is sold.", "How many pieces were sold?"],
+      ["Mimi bakes {n|cupcake}. She puts a quarter of them in the window.", "How many cupcakes are in the window?"],
+      ["A cake has {n|slice}. Four friends share it equally.", "How many slices is a quarter of the cake?"],
+      ["Mimi has {n|cookie}. A quarter of them have pink icing.", "How many cookies have pink icing?"],
+      ["A box holds {n|chocolate}. Mimi gives a quarter of them away.", "How many chocolates does she give away?"]
+    ]
+  };
+  const FRACTION_KIND = {
+    theme: "cafe", name: "Cafe: half and quarter", grade: 3, group: "fractions", needs: ["cafe_share.1"],
+    all: () => range(1, 10).map(k => ({ type: "H", n: 2 * k })).concat(range(1, 10).map(k => ({ type: "Q", n: 4 * k }))),
+    bank: FRACTION_BANK,
+    q: ({ type, n }) => {
+      const parts = type === "H" ? 2 : 4, k = n / parts;
+      return { v: { n }, nums: [n], ans: k, eq: `${n} ÷ ${parts} = ?`, op: "÷", start: 0, end: k, line: { lo: 0, hi: 10, step: 1 },
+        fact: type === "H" ? `Half of ${n} is ${k}.` : `A quarter of ${n} is ${k}.`,
+        hint: type === "H" ? `Half means 2 equal parts. Split ${n} into 2 equal groups.` : `A quarter means 4 equal parts. Split ${n} into 4 equal groups.`, key: `${n}/${parts}` };
+    },
+    lesson: ({ type, n }, Q) => {
+      const parts = type === "H" ? 2 : 4, k = Q.ans;
+      return { kind: "fraction", steps: [
+        { say: type === "H" ? `Half means 2 equal parts. So it is ${n} divided by 2.` : `A quarter means 4 equal parts. So it is ${n} divided by 4.`, draw: [rowOf(0, Q.eq)] },
+        { say: `Make ${parts} equal hops to ${n}.`, draw: [], line: [0, n, k] },
+        { say: `Each part is ${k}. ${parts} times ${k} is ${n}.`, draw: [rowOf(1, `${parts} × ${k} = ${n}`)] }
+      ] };
+    }
+  };
+
+  /* ---------- Kennedy's kinds: tap answers, the knight's journey, short sentences ---------- */
+  const COUNT_BANK = { N: [
+    ["You climb the castle stairs: {x}, {y}, {z}.", "What number comes next?"],
+    ["You count the villagers you saved: {x}, {y}, {z}.", "What number comes next?"],
+    ["Silly goblins hop out one by one: {x}, {y}, {z}.", "What number comes next?"],
+    ["You count the sheep going home: {x}, {y}, {z}.", "What number comes next?"],
+    ["You bop goblins with your pillow: {x}, {y}, {z}.", "What number comes next?"],
+    ["Your horse eats apples: {x}, {y}, {z}.", "What number comes next?"],
+    ["You light the lanterns: {x}, {y}, {z}.", "What number comes next?"],
+    ["You count the stones on the bridge: {x}, {y}, {z}.", "What number comes next?"],
+    ["Your buddy knight counts the shields: {x}, {y}, {z}.", "What number comes next?"],
+    ["You count the flags on the tower: {x}, {y}, {z}.", "What number comes next?"],
+    ["The goblins giggle and run home: {x}, {y}, {z}.", "What number comes next?"]
+  ] };
+  const COUNT_KIND = {
+    theme: "castle", name: "Knight: counting to 20", grade: 0, group: "count", needs: ["kinder.2"], choice: true,
+    all: () => range(1, 17).map(x => ({ type: "N", x })),
+    bank: COUNT_BANK,
+    q: ({ x }) => { const y = x + 1, z = x + 2, n = x + 3; return { v: { x, y, z }, nums: [x, y, z], ans: n, eq: `${x}, ${y}, ${z}, ?`, op: "+", start: z, end: n,
+      line: lineWindow(x, n), fact: `After ${z} comes ${n}.`, hint: `Count on from ${z}. Say the next number.`, key: `${x}`, pool: near(n, 1, 20) }; },
+    lesson: ({ x }, Q) => ({ kind: "count", steps: [
+      { say: `Let's count together. Start at ${x}.`, draw: [rowOf(0, Q.eq)], line: [x, Q.a, 1] },
+      { say: `What comes next? One more than ${Q.a}.`, draw: [], line: [Q.a, Q.ans, 1] },
+      { say: `${Q.a} and 1 more is ${Q.ans}.`, draw: [rowOf(1, `${Q.a} + 1 = ${Q.ans}`)] }
+    ] })
+  };
+
+  const MORE_LESS_BANK = {
+    O: [
+      ["You saved {a|villager}. One more villager runs to you.", "How many villagers did you save?"],
+      ["{a|goblin} sat on the wall. One more goblin climbed up.", "How many goblins are on the wall now?"],
+      ["You have {a|pillow}. Your buddy gives you one more.", "How many pillows do you have now?"],
+      ["You led {a|sheep|sheep} to the pen. One more sheep came.", "How many sheep are in the pen now?"],
+      ["You lit {a|lantern}. Then you lit one more.", "How many lanterns are lit now?"],
+      ["Your horse ate {a|carrot}. Then it ate one more.", "How many carrots did it eat?"]
+    ],
+    L: [
+      ["{a|goblin} giggled at the gate. You bopped one with a pillow. It ran home.", "How many goblins are still at the gate?"],
+      ["{a|villager} waited at the gate. One went home.", "How many villagers are still waiting?"],
+      ["Your horse had {a|apple}. It ate one.", "How many apples are left?"],
+      ["{a|arrow} were in the target. You pulled one out.", "How many arrows are still in the target?"],
+      ["You had {a|coin}. You gave one to a villager.", "How many coins do you have now?"],
+      ["{a|knight} guarded the bridge. One went to lunch.", "How many knights are still on the bridge?"]
+    ]
+  };
+  const MORE_LESS_KIND = {
+    theme: "castle", name: "Knight: one more, one less", grade: 0, group: "count", needs: ["kinder.2"], choice: true,
+    all: () => range(1, 9).map(a => ({ type: "O", a })).concat(range(2, 10).map(a => ({ type: "L", a }))),
+    bank: MORE_LESS_BANK,
+    q: ({ type, a }) => {
+      const up = type === "O", r = up ? a + 1 : a - 1;
+      return { v: { a }, nums: [a], ans: r, eq: `${a} ${up ? "+" : MINUS} 1 = ?`, op: up ? "+" : "-", start: a, end: r, line: lineWindow(a, r),
+        fact: up ? `One more than ${a} is ${r}.` : `One less than ${a} is ${r}.`, hint: `Start at ${a} and hop ${up ? "forward" : "back"} 1.`, key: `${a}`, pool: near(r, 1, 10) };
+    },
+    lesson: ({ type, a }, Q) => ({ kind: "one", steps: [
+      { say: type === "O" ? `One more means plus 1. So it is ${a} plus 1.` : `One less means minus 1. So it is ${a} minus 1.`, draw: [rowOf(0, Q.eq)] },
+      { say: `Start at ${a}. Hop ${type === "O" ? "forward" : "back"} 1.`, draw: [], line: [a, Q.ans, 1] }
+    ] })
+  };
+
+  const COMPARE_BANK = {
+    G: [
+      ["{a|silly goblin|silly goblins} came to the bridge. {b|knight} came too.", "Which group has more? Tap its number."],
+      ["You have {a|apple}. Your horse has {b|carrot}.", "Which group has more? Tap its number."],
+      ["You see {a|red flag|red flags} and {b|blue flag|blue flags}.", "Which group has more? Tap its number."],
+      ["You saved {a|villager}. Your buddy saved {b|villager}.", "Which group has more? Tap its number."],
+      ["You see {a|goblin} and {b|pillow}.", "Which group has more? Tap its number."],
+      ["You see {a|sheep|sheep} and {b|horse}.", "Which group has more? Tap its number."]
+    ],
+    F: [
+      ["You lit {a|lantern}. Your buddy lit {b|torch|torches}.", "Which group has fewer? Tap its number."],
+      ["{a|goblin} sat on the left wall. {b|goblin} sat on the right wall.", "Which group has fewer? Tap its number."],
+      ["You found {a|coin} in the cave. You found {b|gem} in the tower.", "Which group has fewer? Tap its number."],
+      ["You bopped {a|goblin} with a pillow. Your buddy bopped {b|goblin}.", "Which group has fewer? Tap its number."],
+      ["Your shield has {a|star}. Your buddy's shield has {b|star}.", "Which group has fewer? Tap its number."]
+    ]
+  };
+  const COMPARE_KIND = {
+    theme: "castle", name: "Knight: which has more?", grade: 0, group: "count", needs: ["kinder.2"], choice: true,
+    all: () => ["G", "F"].flatMap(type => range(1, 10).flatMap(a => range(1, 10).filter(b => b !== a).map(b => ({ type, a, b })))),
+    bank: COMPARE_BANK,
+    q: ({ type, a, b }) => {
+      const hi = Math.max(a, b), lo = Math.min(a, b), more = type === "G", ans = more ? hi : lo;
+      return { v: { a, b }, nums: [a, b], ans, eq: more ? `? > ${lo}` : `? < ${hi}`, op: more ? ">" : "<", start: 0, end: ans, line: { lo: 0, hi: 10, step: 1 },
+        fact: more ? `${hi} is more than ${lo}.` : `${lo} is less than ${hi}.`,
+        hint: more ? "Count each group. The number further along the line is more." : "Count each group. The number closer to 0 is less.",
+        key: `${a}:${b}`, pool: [more ? lo : hi], want: 1 };
+    },
+    lesson: ({ type, a, b }, Q) => {
+      const hi = Math.max(a, b), lo = Math.min(a, b);
+      return { kind: "compare", steps: [
+        { say: "Let's count both groups on the line.", draw: [rowOf(0, Q.eq)] },
+        { say: `The first group: count up to ${a}.`, draw: [], line: [0, a, 1] },
+        { say: `The second group: count up to ${b}.`, draw: [], line: [0, b, 1] },
+        type === "G" ? { say: `${hi} is further along the line. ${hi} is more.`, draw: [rowOf(1, `${hi} > ${lo}`)] }
+          : { say: `${lo} is closer to 0. ${lo} is less.`, draw: [rowOf(1, `${lo} < ${hi}`)] }
+      ] };
+    }
+  };
+
+  const MAKE10_BANK = { M: [
+    ["You have {a|buddy knight|buddy knights}. Your team needs 10.", "How many more buddies do you need?"],
+    ["You saved {a|villager}. There are 10 to save.", "How many more must you save?"],
+    ["You have {a|pillow}. Your team needs 10 pillows.", "How many more pillows do you need?"],
+    ["The bridge needs 10 planks. You have {a|plank}.", "How many more planks do you need?"],
+    ["You bopped {a|goblin} with a pillow. 10 goblins came to play.", "How many more goblins can you bop?"],
+    ["Your horse wants 10 apples. It has {a|apple}.", "How many more apples does it want?"],
+    ["You lit {a|lantern}. The road needs 10.", "How many more must you light?"],
+    ["The pen holds 10 sheep. You led {a|sheep|sheep} in.", "How many more sheep can come in?"],
+    ["The chest needs 10 coins. You put in {a|coin}.", "How many more coins fill the chest?"],
+    ["10 villagers need a ride. {a|villager} sat in the cart.", "How many more need a ride?"],
+    ["You have {a|shield}. Your team needs 10 shields.", "How many more shields do you need?"]
+  ] };
+  const MAKE10_KIND = {
+    theme: "castle", name: "Knight: make 10", grade: 0, group: "add", needs: ["kinder.5"], choice: true,
+    all: () => range(1, 9).map(a => ({ type: "M", a })),
+    bank: MAKE10_BANK,
+    q: ({ a }) => ({ v: { a }, nums: [a, 10], ans: 10 - a, eq: `${a} + ? = 10`, op: "+", start: a, end: 10, line: { lo: 0, hi: 10, step: 1 },
+      fact: `${a} and ${10 - a} make 10.`, hint: `Start at ${a} and hop up to 10.`, key: `${a}`, pool: near(10 - a, 1, 10) }),
+    lesson: ({ a }, Q) => ({ kind: "make10", steps: [
+      { say: `We have ${a}. We want 10. How many more?`, draw: [rowOf(0, Q.eq)] },
+      { say: `Start at ${a}. Hop up to 10.`, draw: [], line: [a, 10, 1] },
+      { say: `You hopped ${Q.ans}.`, draw: [rowOf(1, `${a} + ${Q.ans} = 10`)] }
+    ] })
+  };
+
+  const KINDS = {
+    "cafe_tens.1": TENS_KIND,
+    "cafe_times.1": timesKind("Cafe: equal groups of 2, 5 and 10", [2, 5, 10], 2, ["sums.3"]),
+    "cafe_times.2": timesKind("Cafe: equal groups of 3 and 4", [3, 4], 3, ["cafe_times.1"]),
+    "cafe_share.1": shareKind("Cafe: sharing by 2, 5 and 10", [2, 5, 10], 3, ["cafe_times.1"]),
+    "cafe_share.2": shareKind("Cafe: sharing by 3 and 4", [3, 4], 3, ["cafe_share.1", "cafe_times.2"]),
+    "cafe_money.1": COIN_KIND,
+    "cafe_money.2": CHANGE_KIND,
+    "cafe_time.1": HOURS_KIND,
+    "cafe_frac.1": FRACTION_KIND,
+    "kinder.count20": COUNT_KIND,
+    "kinder.more_less": MORE_LESS_KIND,
+    "kinder.compare": COMPARE_KIND,
+    "kinder.make10": MAKE10_KIND
+  };
+  const kindCache = {};
+  const kindAll = skill => kindCache[skill] || (kindCache[skill] = KINDS[skill].all());
+
+  function buildKind(skill, p, ti, rng) {
+    rng = rng || (() => .5);
+    const K = KINDS[skill], tpl = K.bank[p.type][ti], d = K.q(p);
+    const Q = { skill, theme: K.theme, tpl: `${skill}.${p.type}${ti + 1}`, type: p.type, p, a: d.start, op: d.op, result: d.end, ans: d.ans, missing: false,
+      eq: d.eq, fact: d.fact, hint: d.hint, line: d.line, key: `${skill}:${p.type}:${d.key}`, scale: d.line.hi, nums: d.nums };
+    Q.story = render(tpl[0], d.v); Q.ask = render(tpl[1], d.v);
+    Q.say = Q.story + " " + Q.ask;
+    Q.correct = "Correct! " + Q.fact;
+    Q.kind = K.choice ? "choice" : "typed";
+    if (K.choice) {
+      const pool = [...new Set(d.pool)].filter(x => x !== Q.ans), picks = [];
+      while (picks.length < (d.want || 2) && pool.length) picks.push(pool.splice(Math.floor(rng() * pool.length), 1)[0]);
+      const opts = [Q.ans, ...picks];
+      for (let i = opts.length - 1; i > 0; i--) { const j = Math.floor(rng() * (i + 1)); [opts[i], opts[j]] = [opts[j], opts[i]]; }
+      Q.opts = opts;
+    }
+    return Q;
+  }
+  function makeKind(skill, rng, prevKey) {
+    const K = KINDS[skill], types = Object.keys(K.bank);
+    for (let i = 0; i < 4000; i++) {
+      const type = types[Math.floor(rng() * types.length)], list = kindAll(skill).filter(p => p.type === type);
+      const Q = buildKind(skill, list[Math.floor(rng() * list.length)], Math.floor(rng() * K.bank[type].length), rng);
+      if (Q.key !== prevKey) return Q;
+    }
+    throw new Error("KS: could not avoid repeating " + prevKey);
+  }
+  function teachKind(Q, right) {
+    const L = KINDS[Q.skill].lesson(Q.p, Q);
+    const steps = L.steps.concat({ say: right ? Q.fact : `${Q.fact} ${Q.kind === "typed" ? "Type" : "Tap"} ${Q.ans}.`, draw: [{ answer: true }] });
+    return { kind: L.kind, steps };
+  }
+  // Every question a kind can make (all numbers x every story of that type).
+  function eachKindQuestion(skill, fn) {
+    const K = KINDS[skill];
+    kindAll(skill).forEach(p => K.bank[p.type].forEach((t, ti) => fn(buildKind(skill, p, ti))));
+  }
+  const OLD_SKILLS = SKILLS.slice();
+  Object.keys(KINDS).forEach(id => SKILLS.push(id));
+  const kindTheme = id => (KINDS[id] ? KINDS[id].theme : null);
+  // A skill fits a theme when it has stories in that theme (the game marks the rest not ready for that child).
+  const fits = (id, theme) => (KINDS[id] ? KINDS[id].theme === theme : OLD_SKILLS.includes(id) && THEMES.includes(theme));
+  // New skills for the engine's skill map: KidsEngine.buildSkillMap(topics, KS.extraSkills()). Fresh objects each call.
+  // Kept out of the game: plain counting (Aldrin, 19 Oct 2026: both children already count well; sums first, no counting games).
+  const OFF = ["kinder.count20"];
+  const extraSkills = () => Object.keys(KINDS).filter(id => !OFF.includes(id)).map(id => ({ id, name: KINDS[id].name, grade: KINDS[id].grade, group: KINDS[id].group,
+    needs: KINDS[id].needs.slice(), play: { src: "story" }, ready: true }));
+
   /* ---------- every sentence and every piece ---------- */
   function addQuestionTexts(Q, put) {
     [Q.say, Q.correct, Q.fact, Q.hint].forEach(put);
@@ -381,6 +878,7 @@
     THEMES.forEach(theme => SMALL_SKILLS.forEach(skill => allPairs(skill).forEach(p => {
       usableList(theme, skill, p.op).forEach(tpl => addQuestionTexts(build(skill, theme, tpl, p.a, p.b), t => out.add(t)));
     })));
+    Object.keys(KINDS).forEach(skill => eachKindQuestion(skill, Q => addQuestionTexts(Q, t => out.add(t))));   // Stage 3 kinds come last
     sentenceCache = [...out];
     return sentenceCache;
   }
@@ -405,15 +903,17 @@
         [1, 2].forEach(x => [1, 2].forEach(y => put(render(tpl.story, { a: x, b: y, t: y, r: y }) + " " + render(tpl.ask, { a: x, b: y, t: y, r: y }))));
       });
       // fact, correct, hint and lesson sentences
-      SKILLS.forEach(skill => structuralPairs(skill).forEach(p => {
+      OLD_SKILLS.forEach(skill => structuralPairs(skill).forEach(p => {
         TEMPLATES[theme].filter(t => usable(t, skill, p.op)).filter((t, i, all) => all.findIndex(u => u.type === t.type) === i)
           .forEach(tpl => addQuestionTexts(build(skill, theme, tpl, p.a, p.b), put));
       }));
     });
+    Object.keys(KINDS).forEach(skill => eachKindQuestion(skill, Q => addQuestionTexts(Q, put)));   // Stage 3: every question, so every piece
     pieceCache = [...out];
     return pieceCache;
   }
 
-  const KS = { SKILLS, THEMES, SCALE, WORDS, make, build, teach, sentences, pieces, templates: theme => TEMPLATES[theme].slice(), usable, allPairs, lineWindow };
+  const KS = { SKILLS, THEMES, SCALE, WORDS, make, build, teach, sentences, pieces, templates: theme => TEMPLATES[theme].slice(), usable, allPairs, lineWindow,
+    OLD_SKILLS, KIND_IDS: Object.keys(KINDS), fits, kindTheme, extraSkills, kindAll, buildKind, kindBank: id => KINDS[id].bank, eachKindQuestion };
   if (typeof module !== "undefined" && module.exports) module.exports = KS; else root.KS = KS;
 })(typeof window !== "undefined" ? window : globalThis);
