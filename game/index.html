@@ -14,12 +14,14 @@
      - Coins for right answers. Every 5 answers a short reward game (game/rewards/: Mimi's Hot Chocolate, Ice Cream and Cookies in turn for Marie, Pony Stable, Goblin Rescue and Tower for Kitty in turn for Kennedy). Every 25 answers: play world (stage 2).
      - Own save per child (kidsMaths.game.<child>); the old app's save is read once and never written. -->
 <link rel="stylesheet" href="theme.css">
+<link rel="stylesheet" href="scene/scene.css">
 </head>
 <body>
 <div id="app">
   <div id="deco"></div>
   <div id="rotate" role="alert"><div><svg viewBox="0 0 48 48" aria-hidden="true"><rect x="15" y="6" width="18" height="32" rx="4" fill="none" stroke="currentColor" stroke-width="3"/><path d="M8 30a16 16 0 0 0 10 12M40 18A16 16 0 0 0 30 6" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"/></svg><p>Please turn the phone upright.</p></div></div>
   <div id="top"><button id="speak" aria-label="Read the question out loud"></button><div id="dots" aria-label="Questions until the next game"></div><div id="msg" role="status" hidden></div><div id="coins" aria-label="Coins"></div><div id="mascot" aria-hidden="true"></div></div>
+  <div id="scene" aria-hidden="true" hidden></div>
   <div id="tools"></div>
   <div id="work"><canvas id="draw"></canvas><div id="qbody"></div></div>
   <div id="keys"><div id="pad"></div></div>
@@ -48,6 +50,10 @@
 <!-- play worlds: world/cafe_world.js and world/castle_world.js are added when built -->
 <script src="world/cafe_world.js"></script>
 <script src="world/castle_world.js"></script>
+<!-- the question scene above each question (game/scene/): the core, then one file per theme -->
+<script src="scene/scene_core.js"></script>
+<script src="scene/scene_cafe.js"></script>
+<script src="scene/scene_castle.js"></script>
 <script>
 "use strict";
 const $ = s => document.querySelector(s);
@@ -103,7 +109,11 @@ if (window.KittyChars) KittyChars.injectCss();
 if (window.KnightArt) KnightArt.injectCss();
 const css = name => getComputedStyle(document.body).getPropertyValue(name).trim();
 const art = (pose, t = theme) => t === "cafe" ? KittyChars.full("kitty", pose) : KnightArt.full("knight", pose);
-const faceArt = () => theme === "cafe" ? KittyChars.face("kitty") : KnightArt.face("knight");
+/* the hopper on the number line: Mimi's face or the knight's helmet, cropped from the same pictures as the rest of the game */
+const PAWN = { cafe: { src: "rewards/art/cafe/mimi_stand.png", box: "62 22 336 336" }, castle: { src: "rewards/art/castle/knight_idle.png", box: "66 6 330 330" } };
+Object.values(PAWN).forEach(p => { const im = new Image(); im.src = p.src; });
+const pawnSvg = (x, y, size) => { const p = PAWN[theme] || PAWN.cafe;
+  return `<svg x="${x}" y="${y}" width="${size}" height="${size}" viewBox="${p.box}" class="pawn"><image href="${p.src}" xlink:href="${p.src}" width="462" height="600"/></svg>`; };
 function mascot(pose) { const m = $("#mascot"); if (m) m.innerHTML = art(pose); }
 function setTheme(t) { theme = t === "castle" ? "castle" : "cafe"; document.body.dataset.theme = theme; mascot("stand"); buildTools(); }
 
@@ -258,18 +268,21 @@ function nextQ() {
 /* ---------- screen ---------- */
 function drawDots() { const k = P ? P.game.sinceReward : 0; $("#dots").innerHTML = Array.from({ length: REWARD_EVERY }, (_, i) => `<i class="${i < k ? "done" : i === k ? "now" : ""}"></i>`).join(""); }
 function drawCoins(pop) { const c = $("#coins"); c.innerHTML = `${ICON.coin}<b>${P ? P.coins : 0}</b>`; if (pop) { c.classList.remove("pop"); void c.offsetWidth; c.classList.add("pop"); } }
-function nextQuestion() {
+function nextQuestion(given) {
   closeHint(); closeBoard(); clearDraw(); stopVoice();
-  Q = nextQ();
+  Q = given || nextQ();
   if (!Q) return showEnd("All done for now!", "There are no more questions today. See you tomorrow!");
   let L = Q.line || { lo: 0, hi: 10, step: 1 };
-  if (L.step > 1 && Number.isFinite(Q.a)) {      // tens or hundreds: put the marks on the start number (94: 4, 14 ... 104)
+  if (isRuler(Q)) L = { lo: 0, hi: 10, step: 1 };  // big numbers: a ruler in ones, one ten at a time (set up below)
+  else if (L.step > 1 && Number.isFinite(Q.a)) {      // tens or hundreds: put the marks on the start number (94: 4, 14 ... 104)
     let lo = Q.a - (Q.op === "-" ? 10 * L.step : 0); while (lo < 0) lo += L.step;
     L = { lo, hi: lo + 10 * L.step, step: L.step };
   }
   QS = { tries: 0, phase: "ask", typed: "", pick: null, lo: L.lo, hi: L.hi, step: L.step || 1, line: null, hops: [], t0: Date.now(), hinted: false };
+  if (isRuler(Q)) rulerSetup();
   $("#app").classList.toggle("nokeys", Q.kind === "choice"); $("#app").classList.remove("locked");
   hideMsg(); tileTo("", "Check"); $("#tile").hidden = false;
+  if (window.QuestScene) QuestScene.show(Q, theme);      // the scene above the question acts it out (before the body is measured)
   drawDots(); drawCoins(); renderBody(); mascot("stand");
   setTimeout(() => say(Q.say), 250);
 }
@@ -283,19 +296,21 @@ function renderBody() {
     ? `${story}<div class="bars">${Q.opts.map((o, i) => `<button class="opt" data-v="${o}"><small>${"abc"[i]})</small>${o}</button>`).join("")}</div>`
     : `${story}<div class="eq"><span class="box ${boxCls()}" id="ansBox">${QS.typed || "&nbsp;"}</span></div>`;
   const off = QS.phase === "shown" || QS.phase === "right" ? " disabled" : "";
+  const sz = sign => QS.ruler ? `<b class="sz">${sign}${QS.hop}</b>` : "", hz = QS.ruler ? ` ${QS.hop}` : "";   // the hop size is on the button
   const tileEl = $("#tile"); tileEl.remove();             // Check sits in the row beside Restart; keep it while the body is rebuilt
   b.innerHTML = `<div class="qtop">${top}</div><div class="room"></div>
     <div class="qbottom"><div class="nlbox" aria-label="Number line"></div>
-    <div class="hoprow"><button data-h="-1"${off} aria-label="Hop back"><i class="ar">◀ </i>Back</button><button data-h="1" class="fwd"${off} aria-label="Hop forward">Forward<i class="ar"> ▶</i></button><button data-h="0"${off} aria-label="Start again"><i class="ar">↺ </i>Restart</button></div></div>`;
+    <div class="hoprow"><button data-h="-1"${off} aria-label="Hop back${hz}"><i class="ar">◀ </i>Back${sz("−")}</button><button data-h="1" class="fwd"${off} aria-label="Hop forward${hz}">Forward${sz("+")}<i class="ar"> ▶</i></button><button data-h="0"${off} aria-label="Start again"><i class="ar">↺ </i>Restart</button></div></div>`;
   b.querySelector(".hoprow").appendChild(tileEl);
+  b.classList.toggle("rulerq", !!QS.ruler);       // the ruler is a little taller: the empty gap above it gives way
   drawLine();
   b.querySelectorAll(".bulb").forEach(x => x.onclick = e => { e.stopPropagation(); document.querySelector(".bubble") ? closeHint() : openHint(); });
   b.querySelectorAll(".opt").forEach(x => x.onclick = () => { if (QS.phase !== "ask" || QS.teaching) return; QS.pick = +x.dataset.v; QS.mark = null; renderBody(); });
   if (QS.pick != null) b.querySelectorAll(`.opt[data-v="${QS.pick}"]`).forEach(x => x.classList.add("sel", ...(QS.mark ? [QS.mark] : [])));
-  b.querySelectorAll(".hoprow button[data-h]").forEach(x => x.onclick = () => { const h = +x.dataset.h; if (h) hopTo(QS.line + h * QS.step); else restart(); });
+  b.querySelectorAll(".hoprow button[data-h]").forEach(x => x.onclick = () => { const h = +x.dataset.h; if (!h) restart(); else if (QS.ruler) hopBy(h); else hopTo(QS.line + h * QS.step); });
   if (QS.board) placeBoard();
 }
-function restart() { if (!QS || QS.phase === "shown") return; QS.line = startOf(); QS.hops = []; renderBody(); }
+function restart() { if (!QS || QS.phase === "shown" || QS.walking) return; QS.line = startOf(); QS.hops = []; if (QS.ruler) rulerPlace(QS.line, rulerDir()); renderBody(); }
 
 /* ---------- number line: 11 marks, in ones, tens or hundreds; the newest hop shows how many so far ---------- */
 const onGrid = v => v >= QS.lo && v <= QS.hi && (v - QS.lo) % QS.step === 0;
@@ -308,6 +323,7 @@ function fitLine(from, to, step) {              // move the window so a lesson h
 function drawLine() {
   const box = document.querySelector("#qbody .nlbox"); if (!box) return;
   if (QS.line == null) QS.line = startOf();
+  if (QS.ruler) return drawRuler(box);
   const lo = QS.lo, hi = QS.hi, st = QS.step, n = Math.round((hi - lo) / st) + 1;
   const Wd = Math.max(240, box.clientWidth), cell = Wd / n, X = v => cell / 2 + (v - lo) / st * cell;
   const digits = String(hi).length, font = Math.max(14, Math.min(40, cell * (digits > 2 ? 0.3 : 0.42))), tick = Math.max(14, Math.min(32, cell * .34));
@@ -334,18 +350,166 @@ function drawLine() {
   }
   if (onGrid(QS.line)) {
     const x = X(QS.line), fsz = r * 2.5;                   // the hopper is Mimi's or the knight's face
-    s += `<g class="hopper${QS.fresh ? " land" : ""}" pointer-events="none">${faceArt().replace("<svg ", `<svg x="${x - fsz / 2}" y="${base - fsz - 2}" width="${fsz}" height="${fsz}" `)}</g>`;
+    s += `<g class="hopper${QS.fresh ? " land" : ""}" pointer-events="none">${pawnSvg(x - fsz / 2, base - fsz - 2, fsz)}</g>`;
   }
   box.innerHTML = s + "</svg>";
   QS.fresh = false;
   box.querySelectorAll(".tick").forEach(t => t.onclick = () => hopTo(+t.dataset.n));
 }
 function hopTo(v) {
-  if (!QS || QS.phase === "shown" || QS.phase === "right" || QS.teaching || !onGrid(v) || v === QS.line) return;
-  QS.hopFrom = null; QS.hops.push([QS.line, v]); QS.line = v; QS.fresh = true; renderBody();
+  if (!QS || QS.phase === "shown" || QS.phase === "right" || QS.teaching || QS.walking || !onGrid(v) || v === QS.line) return;
+  QS.hopFrom = null;
+  if (QS.ruler) return rulerWalk(v, Math.abs(v - QS.line) === 10 ? 10 : 1);
+  QS.hops.push([QS.line, v]); QS.line = v; QS.fresh = true; renderBody();
+}
+
+/* ---------- the ones ruler for 2- and 3-digit sums (sums.5-9, tens and ones): one ten at a time in ones,
+   a thin tens strip above it, and hop-size buttons (+1, +10, +100). A +10 hop walks its ten ones. ---------- */
+const isRuler = q => !!q && !q.parent && (/^sums\.[5-9]$/.test(q.skill) || (q.skill === "cafe_tens.1" && q.line && q.line.step === 1));
+const rulerDir = () => endOf() < startOf() ? -1 : 1;
+function rulerSetup() {
+  const big = Q.scale >= 999 ? 100 : 10, s = P && P.engine && P.engine.skills[Q.skill];
+  const weak = !s || s.lvl < KidsEngine.LV.KNOWS || (s.recent && s.recent.length > 0 && s.recent[s.recent.length - 1] === 0);
+  Object.assign(QS, { ruler: true, big, top: big === 100 ? 1000 : 100, hop: weak ? 1 : 10, trail: [], strail: [], stars: [] });
+  rulerPlace(startOf(), rulerDir());
+}
+function rulerPlace(v, dir) {                      // put the hopper on v and the ruler on the ten that holds v
+  let lo = Math.floor(v / 10) * 10; if (v % 10 === 0 && dir < 0 && v > 0) lo -= 10;
+  lo = Math.max(0, Math.min(lo, QS.top - 10));
+  let slo = Math.floor(lo / 100) * 100; slo = Math.max(0, Math.min(slo, QS.top - 100));
+  Object.assign(QS, { line: v, lo, hi: lo + 10, step: 1, slo, trail: [], strail: [], stars: [] });
+}
+function rulerFollow(dir) {                        // slide the ruler (and the strip) when the hopper leaves it
+  if (QS.line >= QS.lo && QS.line <= QS.hi) return 0;
+  const was = QS.lo, keep = [QS.trail, QS.strail, QS.stars];
+  rulerPlace(QS.line, dir); [QS.trail, QS.strail, QS.stars] = keep;
+  return QS.lo > was ? 1 : -1;
+}
+function hopBy(dir) {
+  if (!QS || QS.walking || QS.teaching || QS.phase === "shown" || QS.phase === "right") return;
+  const to = QS.line + dir * QS.hop; if (to < 0 || to > QS.top) return;
+  QS.hopFrom = null; rulerWalk(to, QS.hop);
+}
+async function rulerWalk(to, z, alive = () => true) {   // z 1: one hop; z 10: ten steps of 1; z 100: ten steps of 10
+  const me = QS, from = QS.line, dir = to > from ? 1 : -1;
+  QS.walking = true; QS.trail = []; QS.strail = []; QS.stars = []; QS.hops.push([from, to, z]); QS.freshArc = true;
+  if (z === 1 || Math.abs(to - from) !== z) {
+    QS.line = to; if (to % 10 === 0) QS.stars = [to]; QS.slide = rulerFollow(dir); QS.fresh = true; drawLine(); QS.walking = false; return;
+  }
+  const unit = z / 10;
+  drawLine();
+  for (let k = 1; k <= 10; k++) {
+    await wait(k === 1 ? 160 : 90);
+    if (QS !== me || !alive()) { me.walking = false; me.lessonHop = null; if (QS === me) renderBody(); return; }   // stopped: show the child's own size again
+    const v = from + dir * k * unit;
+    if (z === 10) { QS.line = v; QS.trail.push(v); if (v % 10 === 0) QS.stars.push(v); QS.slide = rulerFollow(dir); }
+    else {                                         // a 100-hop: the dot walks ten tens on the strip; the ruler moves once, at the end
+      QS.strail.push(v); QS.sdot = v;
+      if (v < QS.slo || v > QS.slo + 100) QS.slo = Math.max(0, Math.min(QS.top - 100, Math.floor((dir > 0 ? v - 1 : v) / 100) * 100));
+      if (k === 10) { QS.sdot = null; QS.line = v; if (v % 10 === 0) QS.stars.push(v); QS.slide = rulerFollow(dir); }
+    }
+    QS.fresh = k === 10; drawLine();
+  }
+  QS.walking = false; QS.sdot = null;
+}
+async function rulerLesson(from, to, step, live) {     // lessons hop on the same ruler, counting each landing number
+  const dir = to > from ? 1 : -1, me = QS, stop = () => { me.lessonHop = null; if (QS === me && !me.walking) renderBody(); };
+  QS.hops = []; QS.hopFrom = from; rulerPlace(from, dir); QS.lessonHop = step; drawLine();
+  for (let v = from + dir * step; dir > 0 ? v <= to : v >= to; v += dir * step) {
+    if (!live()) return stop();
+    await rulerWalk(v, step, live);
+    if (!live()) return stop();
+    await Promise.all([say(String(v)), wait(450)]);
+  }
+  QS.lessonHop = null; drawLine();
+}
+async function rulerShow(me, s0, target) {           // "See The Answer": hundreds, then tens, then ones
+  rulerPlace(s0, target < s0 ? -1 : 1); QS.hops = []; QS.hopFrom = null; renderBody(); await wait(500);
+  let rem = target - s0; const dir = Math.sign(rem);
+  for (const z of [100, 10, 1]) while (Math.abs(rem) >= z) {
+    if (QS !== me) return;
+    await rulerWalk(QS.line + dir * z, z, () => QS === me); rem -= dir * z;
+    await wait(z === 1 ? 320 : 420);
+  }
+}
+const SIZE_ICON = {
+  1: `<svg viewBox="0 0 12 12" aria-hidden="true"><circle cx="6" cy="6" r="4.6"/></svg>`,
+  10: `<svg viewBox="0 0 36 16" aria-hidden="true"><rect x="1" y="1" width="34" height="14" rx="5" fill="none" stroke="currentColor" stroke-width="1.6"/>${Array.from({ length: 10 }, (_, i) => `<circle cx="${6 + (i % 5) * 6}" cy="${i < 5 ? 5.4 : 10.6}" r="2.2"/>`).join("")}</svg>`,
+  100: `<svg viewBox="0 0 18 18" aria-hidden="true"><rect x="1" y="1" width="16" height="16" rx="3" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M3.5 3.5h11v11h-11z" opacity=".5"/></svg>`
+};
+function drawRuler(box) {
+  const compact = box.clientWidth < 600;           // phones: the size buttons sit in the top left corner, beside the tens strip
+  box.classList.add("ruler"); box.classList.toggle("compact", compact);
+  const sizes = QS.big === 100 ? [1, 10, 100] : [1, 10], cur = QS.teaching && QS.lessonHop ? QS.lessonHop : QS.hop;
+  box.innerHTML = `<div class="hopsize" role="group" aria-label="Hop size">${sizes.map(z => `<button data-z="${z}" class="${z === cur ? "on" : ""}" aria-pressed="${z === cur}" aria-label="Hop ${z} at a time"><b>+${z}</b>${SIZE_ICON[z]}</button>`).join("")}</div><div class="nlsvg"></div>`;
+  box.querySelectorAll(".hopsize button").forEach(b => b.onclick = () => { if (QS.walking || QS.teaching) return; QS.hop = +b.dataset.z; renderBody(); });
+  const host = box.querySelector(".nlsvg");
+  rulerFollow(rulerDir());
+  const pick = box.querySelector(".hopsize"), corner = compact ? [pick.offsetWidth + 10, pick.offsetHeight + 4] : [0, 0];
+  rulerSvg(host, 1, corner);                       // short screens cap the height: then draw it flatter, not narrower
+  const svg = host.querySelector("svg"), maxH = parseFloat(getComputedStyle(svg).maxHeight), H0 = +svg.getAttribute("height");
+  if (maxH > 0 && H0 > maxH * 1.02) rulerSvg(host, Math.max(.55, maxH / H0), corner);
+  QS.fresh = false; QS.freshArc = false; QS.slide = 0;
+  host.querySelectorAll(".tick").forEach(t => t.onclick = () => hopTo(+t.dataset.n));
+}
+function rulerSvg(host, k, [sL, topH]) {
+  const lo = QS.lo, hi = QS.hi, slo = QS.slo, line = QS.line;
+  const clamp = (a, v, b) => Math.max(a, Math.min(b, v)), Wd = Math.max(200, host.clientWidth), c0 = Wd / 11;
+  const bigF = clamp(17, c0 * .5, 40) * k, oneF = Math.max(13, bigF * .64), tick = clamp(14, c0 * .38, 32) * k, lab = clamp(15, c0 * .3, 26) * k;
+  const arcH = Math.min(c0 * .6, 40) * k, sf = clamp(11, c0 * .3, 17) * Math.max(k, .8), fsz = clamp(28, c0 * .6, 54) * k;
+  const pad = Math.max(c0 / 2, String(QS.top).length * bigF * .31 + 4), cell = (Wd - 2 * pad) / 10;   // room for the end numbers
+  const sLabW = String(slo + 100).length * sf * .68, spad = Math.max(sL ? sLabW / 2 + 3 : pad, sLabW / 2 + 3), sW = Wd - sL - 2 * spad;
+  const X = v => pad + (v - lo) * cell, SX = v => sL + spad + (v - slo) / 100 * sW;
+  const ink = css("--line-ink") || "#333", hopC = css("--hop") || "#e07a2e", labC = css("--hop-label") || hopC;
+  const acc = css("--accent") || "#7ccfb8", accD = css("--accent-dark") || "#2f8a73", accS = css("--accent-soft") || "#e3f6f0";
+  const sy = 4 + sf + 8, y0 = Math.max(sy + 8 + (topH ? 6 : 10), topH), base = y0 + Math.max(lab + arcH * 1.15, fsz) + (topH ? 4 : 10), H = base + tick / 2 + bigF + (topH ? 6 : 12);
+  let s = `<svg viewBox="0 0 ${Wd} ${H}" height="${H}" role="img" aria-label="Number line from ${lo} to ${hi}. You are on ${line}." font-family="Lexend, sans-serif">`;
+  /* the tens strip: where this ten sits */
+  const every = sLabW > sW / 10 - 6 ? 20 : 10;
+  const inStrip = lo >= slo && lo + 10 <= slo + 100;
+  s += `<g class="strip">`;
+  if (inStrip) s += `<path class="zoom" d="M${SX(lo)} ${sy + 9} L${SX(lo + 10)} ${sy + 9} L${Wd - 2} ${y0} L2 ${y0} Z" fill="${acc}" opacity=".16"/>`;
+  s += `<line x1="${SX(slo)}" y1="${sy}" x2="${SX(slo + 100)}" y2="${sy}" stroke="${ink}" stroke-width="2" opacity=".55" stroke-linecap="round"/>`;
+  if (inStrip) s += `<rect class="tenbox" data-lo="${lo}" x="${SX(lo) - 3}" y="${sy - 8}" width="${SX(lo + 10) - SX(lo) + 6}" height="16" rx="6" fill="${acc}" fill-opacity=".35" stroke="${accD}" stroke-width="2.5"/>`;
+  for (let v = slo; v <= slo + 100; v += 10) {
+    s += `<line x1="${SX(v)}" y1="${sy - 4}" x2="${SX(v)}" y2="${sy + 4}" stroke="${ink}" stroke-width="1.6" opacity=".6"/>`;
+    const key = v === lo || v === lo + 10, near = Math.min(Math.abs(SX(v) - SX(lo)), Math.abs(SX(v) - SX(lo + 10))) < sLabW * 1.5;
+    if (!key && ((v - slo) % every !== 0 || (every > 10 && near))) continue;
+    const anchor = key && every > 10 ? (v === lo ? "end" : "start") : "middle", nx = anchor === "end" ? SX(v) + sLabW * .25 : anchor === "start" ? SX(v) - sLabW * .25 : SX(v);
+    s += `<text class="slab" x="${nx}" y="${4 + sf}" font-size="${sf}" font-weight="${key ? 800 : 600}" text-anchor="${anchor}" fill="${ink}" opacity="${key ? 1 : .7}">${v}</text>`;
+  }
+  QS.strail.forEach(v => { if (v >= slo && v <= slo + 100) s += `<circle class="sghost" cx="${SX(v)}" cy="${sy}" r="3" fill="${hopC}" opacity=".5"/>`; });
+  s += `<circle class="posdot" data-n="${line}" cx="${SX(clamp(slo, QS.sdot != null ? QS.sdot : line, slo + 100))}" cy="${sy}" r="${Math.max(4.5, sf * .36)}" fill="${hopC}" stroke="#fff" stroke-width="1.5"/></g>`;
+  /* the ruler in ones */
+  s += `<svg x="0" y="0" width="${Wd}" height="${H}" overflow="hidden"><g class="marks${QS.slide ? (QS.slide > 0 ? " slidef" : " slideb") : ""}">`;
+  s += `<line x1="4" y1="${base}" x2="${Wd - 4}" y2="${base}" stroke="${ink}" stroke-width="4" stroke-linecap="round"/>`;
+  const s0 = startOf();
+  QS.hops.forEach(([a, c, z], i) => {
+    if (Math.max(a, c) < lo || Math.min(a, c) > hi) return;
+    const last = i === QS.hops.length - 1, m = (X(a) + X(c)) / 2, h = arcH * (Math.abs(c - a) >= 10 ? 1.15 : .75), anim = last && QS.freshArc ? " new" : "";
+    s += `<path class="hopr${anim}" pathLength="1" d="M${X(a)} ${base - 4} Q${m} ${base - 4 - h * 1.5} ${X(c)} ${base - 4}" stroke="${hopC}" stroke-width="${Math.max(3, cell * .05)}" fill="none" stroke-linecap="round" opacity="${last ? 1 : .45}"/>`;
+    if (last) {
+      const d = c - (QS.hopFrom != null ? QS.hopFrom : s0), txt = d > 0 ? `+${d}` : d < 0 ? `−${-d}` : "0";
+      s += `<text class="hoplab" x="${clamp(lab * 1.4, m, Wd - lab * 1.4)}" y="${Math.max(topH + lab * .9, Math.min(base - 4 - h * .75 - 6, Math.abs(m - X(line)) < lab * 1.6 ? base - fsz - 6 : 1e9))}" font-size="${lab}" font-weight="800" text-anchor="middle" fill="${labC}">${txt}</text>`;
+    }
+  });
+  QS.trail.forEach((v, i) => { if (v >= lo && v <= hi) s += `<circle class="ghost${i === QS.trail.length - 1 && QS.walking ? " new" : ""}" data-n="${v}" cx="${X(v)}" cy="${base - 9}" r="${Math.max(3.5, cell * .075)}" fill="${hopC}" opacity=".55"/>`; });
+  for (let v = lo; v <= hi; v++) {
+    const ten = v % 10 === 0, here = v === line, ly = base + tick / 2 + bigF * .95;
+    s += `<g class="tick ${ten ? "ten" : "one"}" data-n="${v}"><rect x="${X(v) - cell / 2}" y="${base - tick}" width="${cell}" height="${H - base + tick}" fill="transparent"/>`;
+    if (QS.stars.includes(v)) s += `<g class="tenstar" data-n="${v}">${star(X(v), ly - bigF * .33, bigF * .95, "#ffe27a")}</g>`;
+    s += `<line x1="${X(v)}" y1="${base - (ten ? tick * .62 : tick * .34)}" x2="${X(v)}" y2="${base + (ten ? tick * .62 : tick * .34)}" stroke="${ink}" stroke-width="${ten ? 5 : 2.4}" stroke-linecap="round"/>`;
+    const txt = ten || here ? String(v) : String(v % 10), fs = ten ? bigF : oneF;
+    const hereF = Math.min(bigF, (cell * 1.75 - 8) / (txt.length * .62));
+    if (here) { const w = txt.length * hereF * .62 + 6; s += `<rect class="here" x="${X(v) - w / 2}" y="${ly - hereF * .86}" width="${w}" height="${hereF * 1.12}" rx="${hereF * .3}" fill="${accS}" stroke="${accD}" stroke-width="2"/>`; }
+    s += `<text x="${X(v)}" y="${ly - (ten || here ? 0 : (bigF - oneF) * .4)}" font-size="${here ? hereF : fs}" font-weight="${ten || here ? 800 : 600}" text-anchor="middle" fill="${ink}" opacity="${ten || here ? 1 : .78}">${txt}</text></g>`;
+  }
+  s += `<g class="hopper${QS.fresh ? " land" : ""}" pointer-events="none">${pawnSvg(X(line) - fsz / 2, base - fsz - 2, fsz)}</g></g></svg>`;
+  host.innerHTML = s + "</svg>";
 }
 async function showHops() {                    // "See The Answer": hop from the start to the answer when both are on the line
   const me = QS, s0 = startOf(), target = endOf();
+  if (QS.ruler) return rulerShow(me, s0, target);
   QS.line = s0; QS.hops = []; QS.hopFrom = null; renderBody(); await wait(500);
   if (!onGrid(s0) || !onGrid(target) || s0 === target) return;
   const dir = target > s0 ? 1 : -1, n = Math.abs(target - s0) / QS.step;
@@ -364,7 +528,7 @@ function placeBoard() {
 function closeBoard() { const bd = $("#board"); if (bd) bd.remove(); const bb = $("#boardbtns"); if (bb) bb.remove(); $("#app").classList.remove("lesson"); if (QS) { QS.board = false; QS.teachRun = (QS.teachRun || 0) + 1; QS.teaching = false; } }
 async function teach() {
   if (Q.parent) return;                          // a parent's own question has no lesson
-  clearDraw(); closeHint();
+  clearDraw(); closeHint(); if (window.QuestScene) QuestScene.react("lesson");
   let bd = $("#board");
   if (!bd) {
     bd = document.createElement("div"); bd.id = "board";
@@ -462,7 +626,9 @@ async function teach() {
   QS.line = startOf(); QS.hops = []; QS.hopFrom = null; drawLine();   // the hopper waits on the first number
   /* move the hopper on the real number line, one hop at a time, and count each landing number out loud */
   async function lineHops(from, to, step) {
-    step = Math.max(1, step || 1); fitLine(from, to, step);
+    step = Math.max(1, step || 1);
+    if (QS.ruler) return rulerLesson(from, to, step, live);   // the same ones ruler the child uses; a 10-hop shows its ten steps
+    fitLine(from, to, step);
     QS.line = from; QS.hopFrom = from; drawLine();
     const dir = to > from ? 1 : -1;
     for (let v = from + dir * step; dir > 0 ? v <= to : v >= to; v += dir * step) {
@@ -516,6 +682,7 @@ function key(k) {
 /* ---------- one answer is finished: tell the engine, pay coins, move the counters ---------- */
 function finished(correct) {
   if (QS.counted) return; QS.counted = true;
+  if (window.QuestScene) QuestScene.react(correct ? "right" : "wrong");
   addTime();
   const st = P.engine, d = dayLog();
   const taught = QS.tries > 0, helped = taught || QS.hinted;
@@ -620,6 +787,7 @@ function openHint() {
   const h = document.createElement("div"); h.className = "bubble";
   h.innerHTML = `<div class="bh"><button aria-label="Read the hint">${ICON.speaker}</button><h4>${Q.hint}</h4></div>`;
   h.querySelector("button").onclick = () => say(Q.hint);
+  if (window.QuestScene) QuestScene.react("hint");
   $("#work").appendChild(h);
   document.querySelectorAll("#qbody .bulb").forEach(b => b.innerHTML = ICON.close);
   say(Q.hint);
@@ -664,14 +832,14 @@ function overlay(html, cls = "") {
   });
 }
 async function showEnd(title, text) {
-  QS = null; stopVoice(); closeBoard(); save();
+  QS = null; stopVoice(); closeBoard(); save(); if (window.QuestScene) QuestScene.react("end");
   say(`${title} ${text}`);
   await overlay(`<div class="panel"><div class="mascot-big">${art("happy")}</div><h1>${title}</h1><p>${text}</p><button class="go">OK</button></div>`);
   doors();
 }
 /* the doors: each child taps their own picture; no other choice */
 async function doors() {
-  stopVoice(); closeBoard(); closeHint(); save(); QS = null; who = null; P = null;
+  stopVoice(); closeBoard(); closeHint(); save(); QS = null; who = null; P = null; if (window.QuestScene) QuestScene.clear();
   document.querySelectorAll(".over, .rewardhost").forEach(o => o.remove());
   const door = w => `<button class="go" data-theme="${PROFILES[w].theme}" data-v="${w}"><span class="art">${art("wave", PROFILES[w].theme)}</span>${PROFILES[w].name}<small>${PROFILES[w].world}</small></button>`;
   const w = await overlay(`<div class="panel"><h1>Kids Maths</h1><p>Tap your picture.</p><div class="pick">${door("marie")}${door("kennedy")}</div></div>`, "start");
@@ -689,7 +857,7 @@ function start(w) {
 /* ---------- start ---------- */
 $("#speak").innerHTML = ICON.speaker; $("#speak").onclick = () => QS && say(Q.say);
 $("#tile").onclick = tile;
-buildTools(); buildPad(); setupDraw();
+buildTools(); buildPad(); setupDraw(); if (window.QuestScene) QuestScene.mount($("#scene"));
 let wasNarrow = matchMedia(NARROW).matches;
 addEventListener("resize", () => {
   const nw = matchMedia(NARROW).matches; if (nw !== wasNarrow) { wasNarrow = nw; buildTools(); }
@@ -700,7 +868,10 @@ requestAnimationFrame(sizeDraw);
 drawDots(); mascot("stand");
 if (TRY && PROFILES[TRY]) { start(TRY); P.coins = Math.max(P.coins, 300); save(); drawCoins(false); playWorld(); } else doors();
 window.__game = { get Q() { return Q; }, get QS() { return QS; }, get P() { return P; }, get set() { return set; }, M, start, doors,
-  lesson() { if (!Q) return; closeBoard(); QS.tries = 1; return teach(); } };
+  lesson() { if (!Q) return; closeBoard(); QS.tries = 1; return teach(); },
+  ask(skill, a, b, op) {                            // tests: show one exact sum, e.g. ask("sums.7", 47, 38, "+")
+    const tpl = KS.templates(theme).find(t => KS.usable(t, skill, op)); if (!tpl) throw new Error("no story for " + skill);
+    nextQuestion(KS.build(skill, theme, tpl, a, b)); } };
 </script>
 </body>
 </html>

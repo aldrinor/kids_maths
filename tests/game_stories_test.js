@@ -418,6 +418,61 @@ KS.OLD_SKILLS.forEach(skill => KS.THEMES.forEach(theme => {
   });
 })();
 
+// ---------- question scene (22 Oct 2026): every possible question has a valid Q.scene ----------
+(function sceneChecks() {
+  const ACTS = new Set(KS.SCENE_ACTS), WHO = new Set(KS.SCENE_WHO), probs = [];
+  const int = x => Number.isInteger(x) && x >= 0;
+  const COINS = new Set(["toonie", "loonie", "dime", "nickel"]);
+  let n = 0;
+  function checkScene(Q) {
+    n++;
+    const S = Q.scene, tag = `${Q.tpl} ${Q.key}`;
+    const bad = m => { if (probs.length < 50) probs.push(`${tag}: ${m} ${JSON.stringify(S)}`); };
+    if (!S || typeof S !== "object") return bad("no scene");
+    if (!ACTS.has(S.act)) bad("unknown act");
+    const nouns = new Set(KS.SCENE_NOUNS[Q.theme]);
+    if (!nouns.has(S.noun)) bad("unknown noun");
+    if (S.noun2 !== undefined && !nouns.has(S.noun2)) bad("unknown noun2");
+    if (S.who !== undefined && !WHO.has(S.who)) bad("unknown who");
+    if ("ans" in S) bad("the scene must not carry the answer");
+    const need = (...k) => k.forEach(x => { if (!int(S[x])) bad("field " + x + " not a whole number"); });
+    switch (S.act) {
+      case "add": need("a", "b"); if (S.a + S.b !== Q.result) bad("a + b is not the result"); break;
+      case "sub": need("a", "b"); if (S.a - S.b !== Q.result) bad("a - b is not the result"); break;
+      case "need": need("a", "total"); if (S.total - S.a !== Q.ans) bad("total - a is not the answer"); break;
+      case "left": need("a", "left"); if (S.a - S.left !== Q.ans) bad("a - left is not the answer"); break;
+      case "compare": need("a", "b"); if (!["diff", "more", "fewer"].includes(S.ask)) bad("ask");
+        if (S.ask === "diff" && S.a - S.b !== Q.ans) bad("a - b"); if (S.ask === "more" && Math.max(S.a, S.b) !== Q.ans) bad("more"); if (S.ask === "fewer" && Math.min(S.a, S.b) !== Q.ans) bad("fewer"); break;
+      case "numeral": if (S.word !== KS.WORDS[Q.ans]) bad("word"); break;
+      case "groups": need("n", "per"); if (S.n * S.per !== Q.ans) bad("n x per"); if (!S.holder) bad("no holder"); break;
+      case "share": need("total"); if (S.mode === "each") { need("ways"); if (S.total / S.ways !== Q.ans) bad("total / ways"); }
+        else if (S.mode === "groups") { need("per"); if (S.total / S.per !== Q.ans) bad("total / per"); } else bad("mode"); if (!S.holder) bad("no holder"); break;
+      case "place": need("tens", "ones"); if (10 * S.tens + S.ones !== Q.ans) bad("tens and ones"); break;
+      case "bundle": need("n", "size"); if ((S.ask === "tens" ? Math.floor(S.n / 10) : S.n % 10) !== Q.ans) bad("bundle"); break;
+      case "money": { if (!Array.isArray(S.coins) || !S.coins.length) { bad("coins"); break; }
+        const v = { toonie: 2, loonie: 1, dime: 10, nickel: 5 }; let t = 0;
+        S.coins.forEach(([k, c]) => { if (!COINS.has(k) || !int(c)) bad("coin " + k); t += v[k] * c; }); if (t !== Q.ans) bad("coins do not add up"); break; }
+      case "change": need("price", "paid"); if (S.paid - S.price !== Q.ans) bad("paid - price"); break;
+      case "time": need("from"); if (S.dir === "span") { need("to"); if (S.to - S.from !== Q.ans) bad("span"); }
+        else { need("hours"); if ((S.dir === "later" ? S.from + S.hours : S.from - S.hours) !== Q.ans) bad("hours"); } break;
+      case "fraction": need("n", "parts"); if (S.n / S.parts !== Q.ans) bad("parts"); if (!S.holder) bad("no holder"); break;
+      case "count": if (!Array.isArray(S.seq) || S.seq.length !== 3 || S.seq[2] + 1 !== Q.ans) bad("seq"); break;
+      case "more_less": need("a"); if (S.a + S.dir !== Q.ans) bad("dir"); break;
+      case "make10": need("a", "total"); if (S.total - S.a !== Q.ans) bad("make10"); break;
+    }
+  }
+  KS.THEMES.forEach(theme => {
+    KS.OLD_SKILLS.forEach(skill => {
+      if (KS.allPairs && /^(sums\.[1-4]|kinder)/.test(skill)) KS.allPairs(skill).forEach(p => KS.templates(theme).filter(t => KS.usable(t, skill, p.op)).forEach(t => checkScene(KS.build(skill, theme, t, p.a, p.b))));
+      else { const rng = seeded(skill.length * 31 + theme.length); for (let i = 0; i < 400; i++) checkScene(KS.make(skill, theme, rng, "")); }
+    });
+  });
+  KS.KIND_IDS.forEach(id => KS.eachKindQuestion(id, checkScene));
+  // every template of every theme has its scene words
+  KS.THEMES.forEach(theme => KS.templates(theme).forEach(t => { if (!t.scene || !t.scene.noun) probs.push(t.id + ": no scene words"); }));
+  check(`scene: every question has a valid Q.scene`, n > 5000 ? probs : probs.concat("only " + n + " questions checked"));
+})();
+
 failures.forEach(f => console.log(f));
 console.log(`RESULT ${passed}/${total} passed (sentences ${sentenceList.length}, pieces ${KS.pieces().length})`);
 process.exit(passed === total ? 0 : 1);

@@ -1,0 +1,139 @@
+/* scene.css - the question scene row (22 Oct 2026). Loaded after theme.css; theme.css stays as it is.
+   The row sits between the top bar and the question, in the left column (the pencils keep their column).
+   Together the top bar and the scene take about the top quarter of the screen. Hidden on very short landscape screens. */
+
+/* ---------- layout: one more grid row, "scene" ---------- */
+#app { grid-template-rows: auto auto minmax(0, 1fr) auto; grid-template-areas: "top tools" "scene tools" "work tools" "keys keys"; }
+#scene { grid-area: scene; position: relative; overflow: hidden; pointer-events: none; height: clamp(80px, 16vh, 150px); z-index: 0;
+  border-bottom: 3px solid var(--panel-edge); }
+#scene[hidden], #scene.qs-off { display: none !important; }
+#app.has-scene #mascot { display: none; }                   /* Mimi is in the scene now */
+@media (max-width: 640px), (max-aspect-ratio: 3/4) and (max-width: 820px) {
+  #app { grid-template-rows: auto auto auto minmax(0, 1fr) auto; grid-template-areas: "top" "scene" "tools" "work" "keys"; }
+  #scene { height: clamp(84px, 18vh, 200px); }
+}
+/* short wide screens (laptops): the question area is wide and the story is a short block, so the scene keeps about a fifth */
+@media (max-height: 820px) and (orientation: landscape) and (min-width: 900px) { #scene { height: clamp(110px, 24vh, 190px); } }
+@media (max-height: 700px) and (orientation: portrait) { #scene { height: 15vh; } }
+@media (max-height: 600px) and (orientation: portrait) { #scene { height: 13vh; } }
+@media (max-height: 520px) and (orientation: landscape) { #scene { display: none !important; } }
+
+/* ---------- the cafe scene ---------- */
+#scene .qs-wall { position: absolute; inset: 0; background-repeat: repeat-x; background-size: auto 100%; background-position: center top; }
+#scene .qs-counter { position: absolute; left: 0; right: 0; bottom: 0; height: 30%; z-index: 3; background-repeat: repeat-x; background-size: auto 100%; background-position: center top; }
+/* the actors and the things stay together in the middle on wide screens */
+#scene .qs-inner { position: absolute; top: 0; bottom: 0; left: 50%; width: min(100%, calc(var(--H, 120px) * 6.4)); transform: translateX(-50%); }
+#scene .qs-mimi { position: absolute; z-index: 2; height: calc(var(--H) * 1.02); width: calc(var(--H) * 0.785); top: calc(var(--H) * 0.01); left: calc(var(--H) * -0.11);
+  transform-origin: 50% 70%; animation: qs-breathe 4.8s ease-in-out infinite; }
+#scene .qs-friend { position: absolute; z-index: 2; height: calc(var(--H) * 0.98); width: calc(var(--H) * 0.755); top: calc(var(--H) * 0.05); right: calc(var(--H) * -0.11);
+  transition: transform .8s ease, opacity .5s ease; }
+#scene .qs-friend.qs-away { transform: translateX(110%); opacity: 0; }
+#scene .qs-stage { position: absolute; z-index: 4; left: calc(var(--H) * 0.56); right: var(--right, calc(var(--H) * .1)); top: 4%; bottom: 25%;
+  display: flex; flex-wrap: nowrap; align-items: flex-end; align-content: flex-end; justify-content: center; gap: calc(var(--u, 30px) * 0.12) calc(var(--u, 30px) * 0.45); }
+#scene .qs-stage.qs-rows { flex-wrap: wrap; }
+#scene .qs-on > .qs-hold.qs-flat, #scene .qs-col > .qs-hold.qs-flat { height: max(6px, calc(var(--u) * 0.42)); aspect-ratio: auto !important; object-fit: fill; }
+#scene .qs-vase > .qs-hold { position: relative; z-index: 1; display: block; height: calc(var(--u) * 1.1); width: calc(var(--u) * 0.875); margin-top: calc(var(--u) * -0.62); }
+#scene .qs-back { position: absolute; z-index: 1; inset: 0; }
+#scene .qs-fx { position: absolute; z-index: 5; inset: 0; overflow: hidden; }
+@keyframes qs-breathe { 0%, 100% { transform: scale(1, 1); } 50% { transform: scale(1.006, 1.014); } }
+
+/* groups of things, how they come in */
+#scene .qs-g { position: relative; flex: none; display: flex; flex-direction: column; align-items: center; justify-content: flex-end;
+  transition: transform .6s cubic-bezier(.2, .7, .3, 1), opacity .45s ease; }
+#scene .qs-wait { visibility: hidden; opacity: 0; }
+#scene .qs-from-l { transform: translateX(calc(var(--H) * -0.45)); opacity: 0; transition: none; }
+#scene .qs-from-r { transform: translateX(calc(var(--H) * 0.45)); opacity: 0; transition: none; }
+#scene .qs-from-d { transform: translateY(calc(var(--H) * -0.12)); opacity: 0; transition: none; }
+#scene .qs-grid { display: grid; gap: calc(var(--u) * 0.04) calc(var(--u) * 0.02); align-items: end; justify-items: center; padding: 0 calc(var(--u) * 0.12); }
+#scene .qs-o { display: block; object-fit: contain; transition: opacity .45s ease, transform .6s ease, filter .3s ease; }
+#scene .qs-o.qs-gone { opacity: 0; transform: translateX(calc(var(--u) * 0.8)); }
+#scene .qs-o.qs-lit { filter: drop-shadow(0 0 calc(var(--u) * .08) #fff) drop-shadow(0 0 calc(var(--u) * .14) #f6c945); }
+#scene .qs-on > .qs-hold, #scene .qs-col > .qs-hold { display: block; width: 0; min-width: calc(100% + var(--u) * 0.3); height: auto; margin-top: calc(var(--u) * -0.12); }   /* as wide as the things on it, never wider */
+#scene .qs-in .qs-inbox { position: relative; display: flex; align-items: flex-end; justify-content: center; padding: calc(var(--u) * 0.2) calc(var(--u) * 0.18) calc(var(--u) * 0.14); }
+#scene .qs-in .qs-inbox > .qs-hold { position: absolute; left: 0; right: 0; bottom: 0; width: 100%; height: 100%; object-fit: fill; }
+#scene .qs-in .qs-inbox > :not(.qs-hold) { position: relative; }
+#scene .qs-by { flex-direction: row; align-items: flex-end; gap: 0; }
+#scene .qs-by .qs-hf { height: calc(var(--u) * 1.6); width: calc(var(--u) * 1.23); margin-right: calc(var(--u) * -0.3); }
+#scene .qs-col { display: flex; flex-direction: column; align-items: center; }
+#scene .qs-empty { justify-content: flex-end; }
+#scene .qs-soft { opacity: .45; }
+#scene .qs-stack { display: grid; }
+#scene .qs-stack > .qs-g { grid-area: 1 / 1; }
+#scene .qs-stack > .qs-g.qs-out { opacity: 0; }
+
+/* big amounts: trays of a hundred and boxes of ten (dots in the colour of the thing), then single ones */
+#scene .qs-place { display: flex; align-items: flex-end; gap: calc(var(--u) * 0.16); padding: 0 calc(var(--u) * 0.1); }
+#scene .qs-hs { display: grid; grid-auto-flow: column; gap: calc(var(--u) * 0.08); }
+#scene .qs-ts { display: flex; align-items: flex-end; gap: calc(var(--u) * 0.06); }
+#scene .qs-h, #scene .qs-t { display: block; border: 1.5px solid #563832; border-radius: 3px; background-color: #fffaf4;
+  background-image: radial-gradient(circle, var(--dot) 50%, transparent 56%); background-size: calc(var(--u) * 0.26) calc(var(--u) * 0.26); background-origin: content-box; padding: 1px; }
+#scene .qs-h { width: calc(var(--u) * 2.6 + 5px); height: calc(var(--u) * 2.6 + 5px); }
+#scene .qs-t { width: calc(var(--u) * 0.26 + 5px); height: calc(var(--u) * 2.6 + 5px); }
+
+/* sharing and packing */
+#scene .qs-heap { display: grid; gap: 0; padding: calc(var(--u) * 0.15) calc(var(--u) * 0.2) 0; }
+#scene .qs-heap .qs-blank { visibility: hidden; }
+#scene .qs-tenbox { padding: calc(var(--u) * 0.1); background: #fbd0dc; border: 2px solid #563832; border-radius: calc(var(--u) * 0.12); }
+#scene .qs-slots { display: grid; grid-template-columns: repeat(5, calc(var(--u) * 0.5)); gap: calc(var(--u) * 0.08); }
+#scene .qs-slots i { display: block; width: calc(var(--u) * 0.5); height: calc(var(--u) * 0.5); border-radius: 50%; border: 2px dashed #c4607c; background: #fff6f8; }
+
+/* signs, price tags, the clock and the round cake */
+#scene .qs-chalk { position: relative; }
+#scene .qs-word { position: absolute; left: 12%; right: 12%; top: 14%; height: 52%; display: grid; place-items: center; color: #fdfaf2;
+  font: 400 calc(var(--u) * 0.42) "Patrick Hand", "Comic Sans MS", cursive; }
+#scene .qs-tag { position: absolute; right: calc(var(--u) * -0.3); top: calc(var(--u) * -0.1); padding: calc(var(--u) * 0.05) calc(var(--u) * 0.18); border-radius: calc(var(--u) * 0.12);
+  background: #fffaf4; border: 2px solid #563832; color: #563832; font: 800 calc(var(--u) * 0.36) "Lexend", sans-serif; transform: rotate(8deg); white-space: nowrap; }
+#scene .qs-clock { position: relative; width: calc(var(--u) * 2.3); height: calc(var(--u) * 2.3); align-self: flex-start; }
+#scene .qs-clock img, #scene .qs-clock svg, #scene .qs-whole img, #scene .qs-whole svg { position: absolute; inset: 0; width: 100%; height: 100%; }
+#scene .qs-clock .qs-hr { transform-origin: 120px 130px; transform-box: view-box; transition: transform 1.6s ease-in-out; }
+#scene .qs-whole { position: relative; width: calc(var(--u) * 1.9); height: calc(var(--u) * 1.9); }
+
+/* the right-answer hearts: rise once and fade */
+#scene .qs-heart { position: absolute; bottom: 30%; width: calc(var(--H) * 0.2); margin-left: calc(var(--H) * -0.1); opacity: 0; animation: qs-rise 1.8s ease-out forwards; }
+@keyframes qs-rise { 0% { transform: translateY(0) scale(.6); opacity: 0; } 20% { opacity: 1; } 100% { transform: translateY(calc(var(--H) * -0.55)) scale(1); opacity: 0; } }
+
+/* ---------- the castle scene (Kennedy): sky, hills and a sandy path; the knight on the path at the left ----------
+   The backdrop picture (1600 x 400, the path from y 300 to y 370) is shown once, 6.4 rows wide (the width of the
+   actors' area) and 1.6 rows tall: the top of the sky is cut off and the path (y 335) stays under the feet at 87% of
+   the row. On very wide rows its edges fade into a plain sky-and-path band of the same colours: nothing repeats.
+   --K = the knight's height. */
+#scene[data-theme="castle"] { --feet: 13%; }
+#scene .qc-base { position: absolute; inset: 0; background: linear-gradient(#e6edf0 0%, #edf1ef 22%, #d2e6c8 40%, #c4e2b0 52%, #b4dc9c 66%,
+  #f0dfbc 73%, #e2c89c 100%); }
+#scene .qc-bg { position: absolute; top: calc(var(--H, 120px) * -0.47); left: 50%; width: calc(var(--H, 120px) * 6.4); height: calc(var(--H, 120px) * 1.6);
+  transform: translateX(-50%); background-size: 100% 100%; background-repeat: no-repeat;
+  -webkit-mask-image: linear-gradient(90deg, transparent 0, #000 7%, #000 93%, transparent 100%); mask-image: linear-gradient(90deg, transparent 0, #000 7%, #000 93%, transparent 100%); }
+#scene .qc-knight { position: absolute; z-index: 2; bottom: var(--feet); left: calc(var(--H) * 0.04); height: var(--K); width: calc(var(--K) * 0.77);
+  transform-origin: 50% 100%; animation: qs-breathe 4.8s ease-in-out infinite; transition: transform .6s ease; }
+#scene .qc-knight.qc-wide { width: calc(var(--K) * 1.0333); }               /* the bop pictures are 620 units wide, lined up by their left edge */
+#scene .qc-knight.qc-tilt { animation: none; transform: rotate(-4deg); }    /* "hmm": a kind head tilt with the shrug */
+#scene .qc-friend { position: absolute; z-index: 2; bottom: var(--feet); right: calc(var(--H) * 0.03); transition: transform .8s ease, opacity .5s ease; }
+#scene .qc-friend.qs-away { transform: translateX(110%); opacity: 0; }
+#scene[data-theme="castle"] .qs-stage { left: calc(var(--K) * 0.77 + var(--H) * 0.12); right: var(--right, calc(var(--H) * .1)); top: 5%; bottom: var(--feet);
+  gap: calc(var(--u, 30px) * 0.1) calc(var(--u, 30px) * 1.1); }
+#scene[data-theme="castle"] .qs-grid { gap: calc(var(--u) * 0.02) calc(var(--u) * 0.06); }
+#scene .qs-o.qc-flip { transform: scaleX(-1); }                             /* the goblin runs to the right */
+#scene .qs-o.qc-flip.qs-gone { transform: scaleX(-1) translateX(calc(var(--u) * -0.8)); }
+#scene .qc-sign { position: relative; }
+#scene .qc-big { display: block; }
+#scene .qc-word { position: absolute; left: 50%; transform: translateX(-50%); padding: calc(var(--u) * 0.04) calc(var(--u) * 0.2); border-radius: calc(var(--u) * 0.1);
+  background: #f7eed8; border: 2px solid #563832; color: #22324f; font: 700 calc(var(--u) * 0.3) "Lexend", sans-serif; white-space: nowrap; box-shadow: 0 2px 0 #c7a970; }
+#scene .qc-on-gate { top: 30%; }
+#scene .qc-on-door { top: 4%; }
+#scene .qc-on-shield { top: 64%; }
+#scene .qc-join { position: absolute; z-index: 3; bottom: var(--feet); right: max(0px, calc(var(--right) - var(--K) * 0.45)); height: var(--K); transition: transform .9s ease, opacity .5s ease; }
+#scene .qc-join.qc-lamb { height: calc(var(--K) * 0.567); }
+#scene .qc-join.qc-in { transform: translateX(60%); opacity: 0; transition: none; }
+#scene.qs-reduced .qc-knight { animation: none; }
+#scene.qs-reduced .qc-join, #scene.qs-reduced .qc-friend, #scene.qs-reduced .qc-knight { transition: opacity .2s ease; }
+@media (prefers-reduced-motion: reduce) { #scene .qc-knight { animation: none; } }
+
+/* tests (window.__demoFast): no transitions; reduced motion: still pictures and short fades */
+#scene.qs-fast *, #scene.qs-fast { transition: none !important; animation: none !important; }
+#scene.qs-fast .qs-heart { opacity: 1; }
+#scene.qs-reduced .qs-mimi { animation: none; }
+#scene.qs-reduced .qs-from-l, #scene.qs-reduced .qs-from-r, #scene.qs-reduced .qs-from-d { transform: none; }
+#scene.qs-reduced .qs-g, #scene.qs-reduced .qs-o, #scene.qs-reduced .qs-friend { transition: opacity .2s ease; }
+#scene.qs-reduced .qs-heart { animation: qs-fade 1.2s ease forwards; }
+@keyframes qs-fade { 0% { opacity: 0; } 30% { opacity: 1; } 100% { opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { #scene .qs-mimi { animation: none; } }

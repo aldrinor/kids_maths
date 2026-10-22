@@ -16,7 +16,7 @@
 
    Q fields: skill, theme, tpl, type, a, b, op ("+" or "-"), result (a op b), ans, missing (true when the
    child finds b, as in "8 + ? = 15"), kind ("typed"|"choice"), opts, story, ask, say, eq, correct, fact, hint,
-   line {lo,hi,step}, key, scale.
+   line {lo,hi,step}, key, scale, scene (what the scene above the question acts out; see game/scene/scene_core.js).
    Normal question: ans = result. Missing part: ans = b, and eq is "a + ? = result".
    Kinder.2 (numerals): a = the number, b = 0, ans = the number, eq is "seven = ?".
    The answer draw item {answer:true} means: write the full sentence of Q.eq with ? filled in by the missing
@@ -128,12 +128,50 @@
       ["K", U, "The tower door shows the number {w}.", "Which number is {w}?"]
     ]
   };
+  /* ---------- question scene (22 Oct 2026): what the small scene above the question acts out ----------
+     One entry per BANK row, in the same order: "noun", "noun+noun2" (two kinds of thing), "noun@who" (who has them).
+     The full list of acts, nouns and fields is written at the top of game/scene/scene_core.js. */
+  const SCENE_ROWS = {
+    cafe: ["cupcake", "cup", "cookie", "customer", "saucer", "coin", "tray", "muffin", "cupcake+cookie", "scoop", "cup",
+      "cup", "muffin",
+      "cup", "cookie", "coin", "chair", "cupcake",
+      "cupcake", "cup", "cookie@friend", "customer", "saucer", "coin", "tea_bag", "muffin", "cupcake", "scoop",
+      "cupcake@friend", "muffin", "cookie", "muffin",
+      "cup", "cookie", "customer",
+      "oven", "cake_box", "sign"],
+    castle: ["villager", "apple@horse", "shield", "arrow", "goblin", "plank", "coin", "sheep", "lantern@buddy", "stone", "brick", "villager", "coin", "arrow", "apple", "lantern",
+      "coin@buddy", "step",
+      "key", "apple@horse", "plank", "coin", "lantern", "sheep",
+      "villager", "apple@horse", "arrow", "goblin", "plank", "coin", "sheep", "lantern@buddy", "brick", "villager", "arrow@buddy",
+      "apple@buddy", "sack", "star@buddy", "step",
+      "apple@horse", "goblin", "coin",
+      "gate", "shield", "door"]
+  };
+  const SCENE_ACTS = ["add", "sub", "need", "left", "compare", "numeral", "groups", "share", "place", "bundle", "money", "change", "time", "fraction", "count", "more_less", "make10"];
+  const SCENE_NOUNS = {
+    cafe: ["cupcake", "cup", "cookie", "customer", "saucer", "coin", "tray", "muffin", "scoop", "chair", "tea_bag", "oven", "cake_box", "sign",
+      "biscuit", "flower", "roll", "candy", "lemon", "sticker", "grape", "strawberry", "napkin", "slice", "piece", "chocolate", "clock",
+      "cake", "tea", "pie", "sandwich", "cocoa"],
+    castle: ["villager", "apple", "shield", "arrow", "goblin", "plank", "coin", "sheep", "lantern", "stone", "brick", "step", "key", "sack", "star",
+      "gate", "door", "pillow", "carrot", "knight", "flag", "gem", "torch", "horse"]
+  };
+  const SCENE_WHO = ["mimi", "friend", "customer", "you", "buddy", "horse"];
+  // "cup@friend" -> { noun: "cup", who: "friend" }; "cupcake+cookie" -> { noun: "cupcake", noun2: "cookie" }; "cupcake:tray" -> { noun: "cupcake", holder: "tray" }
+  function sceneWords(s) {
+    const [things, who] = s.split("@"), [nouns, holder] = things.split(":"), [noun, noun2] = nouns.split("+"), out = { noun };
+    if (noun2) out.noun2 = noun2;
+    if (holder) out.holder = holder;
+    if (who) out.who = who;
+    return out;
+  }
+  THEMES.forEach(th => { if (SCENE_ROWS[th].length !== BANK[th].length) throw new Error("KS: SCENE_ROWS." + th + " must have one entry per BANK row"); });
+
   const TEMPLATES = {};
   THEMES.forEach(th => {
     const count = {};
-    TEMPLATES[th] = BANK[th].map(([type, [lo, hi], story, ask]) => {
+    TEMPLATES[th] = BANK[th].map(([type, [lo, hi], story, ask], i) => {
       count[type] = (count[type] || 0) + 1;
-      return { id: `${th}.${type}${count[type]}`, type, lo, hi, story, ask };
+      return { id: `${th}.${type}${count[type]}`, type, lo, hi, story, ask, scene: sceneWords(SCENE_ROWS[th][i]) };
     });
   });
 
@@ -247,6 +285,14 @@
     }
     Q.say = Q.story + " " + Q.ask;
     Q.correct = "Correct! " + Q.fact;
+    // the scene shows the things of the question, never the answer
+    const words = tpl.scene || { noun: theme === "cafe" ? "cupcake" : "apple" };
+    if (type === "K") Q.scene = Object.assign({ act: "numeral", word: Q.word }, words);
+    else if (type === "J" || type === "P") Q.scene = Object.assign({ act: "add", a, b, more: type === "P" }, words);
+    else if (type === "A") Q.scene = Object.assign({ act: "sub", a, b }, words);
+    else if (type === "C") Q.scene = Object.assign({ act: "compare", a, b, ask: "diff" }, words);
+    else if (type === "M") Q.scene = Object.assign({ act: "need", a, total: Q.result }, words);
+    else Q.scene = Object.assign({ act: "left", a, left: Q.result }, words);
     // The youngest group taps big buttons; everyone else types.
     Q.kind = skill.startsWith("kinder") || (theme === "castle" && sc <= 20) ? "choice" : "typed";
     if (Q.kind === "choice") {
@@ -410,6 +456,8 @@
       theme: "cafe", name, grade, group: "times", needs,
       all: () => sizes.flatMap(s => range(2, 10).map(n => ({ type: "G", n, s }))),
       bank: { G: TIMES_BANK },
+      sceneRows: { G: ["cupcake:tray", "cup:table", "cookie:customer", "muffin:box", "biscuit:plate", "flower:vase", "roll:tray", "saucer:pile", "sticker:child", "candy:jar", "lemon:bag", "chair:row"] },
+      scene: ({ n, s }) => ({ act: "groups", n, per: s }),
       q: ({ n, s }) => ({ v: { n, s }, nums: [n, s], ans: n * s, eq: `${n} × ${s} = ?`, op: "×", start: 0, end: n * s,
         line: { lo: 0, hi: 10 * s, step: s }, fact: `${n} groups of ${s} is ${n * s}.`, hint: `Skip count by ${s}, ${n} times.`, key: `${n}x${s}` }),
       lesson: ({ n, s }, Q) => {
@@ -447,6 +495,9 @@
       theme: "cafe", name, grade, group: "times", needs,
       all: () => ["S", "G"].flatMap(type => divisors.flatMap(d => range(2, 10).map(q => ({ type, d, q })))),
       bank: SHARE_BANK,
+      sceneRows: { S: ["cookie:plate", "grape:friend", "cupcake:box", "strawberry:cake", "muffin:table", "flower:vase"],
+        G: ["cookie:bag", "cupcake:box", "cup:pile", "chair:table", "roll:plate", "lemon:jug"] },
+      scene: ({ type, d, q }) => type === "S" ? { act: "share", mode: "each", total: d * q, ways: d } : { act: "share", mode: "groups", total: d * q, per: d },
       q: ({ type, d, q }) => { const t = d * q; return { v: { t, d }, nums: [t, d], ans: q, eq: `${t} ÷ ${d} = ?`, op: "÷", start: 0, end: t,
         line: { lo: 0, hi: 10 * d, step: d }, fact: type === "S" ? `${t} shared by ${d} is ${q} each.` : `${t} in groups of ${d} makes ${q} groups.`,
         hint: `Hop by ${d} up to ${t}. Count the hops.`, key: `${t}/${d}` }; },
@@ -483,6 +534,8 @@
     theme: "cafe", name: "Cafe: tens and ones", grade: 2, group: "count", needs: ["sums.3"],
     all: () => ["T", "D", "O"].flatMap(type => range(1, 9).flatMap(t => range(type === "D" ? 0 : 1, 9).map(o => ({ type, t, o })))),
     bank: TENS_BANK,
+    sceneRows: { T: ["cookie:box", "cup:pile", "muffin:tray", "coin:roll"], D: ["cupcake:box", "cookie:bag", "cup:pile", "strawberry:basket"], O: ["cupcake:box", "cookie:bag", "coin:pile", "napkin:pile"] },
+    scene: ({ type, t, o }) => type === "T" ? { act: "place", tens: t, ones: o } : { act: "bundle", n: 10 * t + o, size: 10, ask: type === "D" ? "tens" : "ones" },
     q: ({ type, t, o }) => {
       const n = 10 * t + o, fact = `${n} is ${pl(t, "ten")} and ${pl(o, "one")}.`, ones = { lo: 10 * t, hi: 10 * t + 10, step: 1 };
       if (type === "T") return { v: { t, o }, nums: [t, 10, o], ans: n, eq: `${t} tens + ${o} = ?`, op: "+", start: 10 * t, end: n, line: ones,
@@ -535,6 +588,8 @@
       range(1, 4).flatMap(a => range(1, 10 - 2 * a).map(b => ({ type: "L", a, b }))),
       range(1, 4).flatMap(a => range(1, (50 - 10 * a) / 5).map(b => ({ type: "N", a, b })))),
     bank: COIN_BANK,
+    sceneRows: { L: ["coin@customer", "coin@mimi", "coin", "coin@customer", "coin@mimi"], N: ["coin@customer", "coin@mimi", "coin", "coin@customer", "coin@mimi"] },
+    scene: ({ type, a, b }) => ({ act: "money", coins: type === "L" ? [["toonie", a], ["loonie", b]] : [["dime", a], ["nickel", b]] }),
     q: ({ type, a, b }) => {
       if (type === "L") { const t = 2 * a + b; return { v: { a, b }, nums: [a, b], ans: t, eq: `${a}×2 + ${b} = ?`, op: "+", start: 0, end: t, line: { lo: 0, hi: 10, step: 1 },
         fact: `${pl(a, "toonie")} and ${pl(b, "loonie")} make ${pl(t, "dollar")}.`, hint: "A toonie is 2 dollars. Count the toonies by 2, then the loonies by 1.", key: `${a}t${b}l` }; }
@@ -572,6 +627,8 @@
     theme: "cafe", name: "Cafe: change from 10 or 20 dollars", grade: 3, group: "money_time", needs: ["sums.2", "cafe_money.1"],
     all: () => range(1, 9).map(p => ({ type: "C", p, g: 10 })).concat(range(11, 19).map(p => ({ type: "C", p, g: 20 }))),
     bank: CHANGE_BANK,
+    sceneRows: { C: ["muffin@customer", "cake@customer", "tea@customer", "cupcake@customer", "pie@friend", "sandwich@customer", "roll@customer", "cocoa@customer", "sandwich@customer", "cookie@customer"] },
+    scene: ({ p, g }) => ({ act: "change", price: p, paid: g }),
     q: ({ p, g }) => ({ v: { p, g }, nums: [p, g], ans: g - p, eq: `${g} − ${p} = ?`, op: "-", start: p, end: g, line: { lo: g - 10, hi: g, step: 1 },
       fact: `The change from ${g} dollars for ${pl(p, "dollar")} is ${pl(g - p, "dollar")}.`, hint: `Count up from ${p} to ${g}.`, key: `${g}-${p}` }),
     lesson: ({ p, g }, Q) => ({ kind: "change", steps: [
@@ -613,6 +670,8 @@
       return out;
     },
     bank: HOURS_BANK,
+    sceneRows: { J: ["clock", "clock", "clock", "clock"], A: ["clock", "clock", "clock"], M: ["clock", "clock", "clock", "clock"] },
+    scene: ({ type, a, b }) => type === "M" ? { act: "time", from: a, to: a + b, dir: "span" } : { act: "time", from: a, hours: b, dir: type === "J" ? "later" : "earlier" },
     q: ({ type, a, b }) => {
       const r = type === "A" ? a - b : a + b, line = hourLine(a, r);
       if (type === "J") return { v: { a, b }, nums: [a, b], ans: r, eq: `${a} + ${b} = ?`, op: "+", start: a, end: r, line,
@@ -658,6 +717,8 @@
     theme: "cafe", name: "Cafe: half and quarter", grade: 3, group: "fractions", needs: ["cafe_share.1"],
     all: () => range(1, 10).map(k => ({ type: "H", n: 2 * k })).concat(range(1, 10).map(k => ({ type: "Q", n: 4 * k }))),
     bank: FRACTION_BANK,
+    sceneRows: { H: ["slice:cake", "cookie:tray", "muffin:tray", "piece:pie", "strawberry:cake"], Q: ["piece:pie", "cupcake:tray", "slice:cake", "cookie:tray", "chocolate:box"] },
+    scene: ({ type, n }) => ({ act: "fraction", n, parts: type === "H" ? 2 : 4 }),
     q: ({ type, n }) => {
       const parts = type === "H" ? 2 : 4, k = n / parts;
       return { v: { n }, nums: [n], ans: k, eq: `${n} ÷ ${parts} = ?`, op: "÷", start: 0, end: k, line: { lo: 0, hi: 10, step: 1 },
@@ -692,6 +753,8 @@
     theme: "castle", name: "Knight: counting to 20", grade: 0, group: "count", needs: ["kinder.2"], choice: true,
     all: () => range(1, 17).map(x => ({ type: "N", x })),
     bank: COUNT_BANK,
+    sceneRows: { N: ["step", "villager", "goblin", "sheep", "goblin", "apple@horse", "lantern", "stone", "shield@buddy", "flag", "goblin"] },
+    scene: ({ x }) => ({ act: "count", seq: [x, x + 1, x + 2] }),
     q: ({ x }) => { const y = x + 1, z = x + 2, n = x + 3; return { v: { x, y, z }, nums: [x, y, z], ans: n, eq: `${x}, ${y}, ${z}, ?`, op: "+", start: z, end: n,
       line: lineWindow(x, n), fact: `After ${z} comes ${n}.`, hint: `Count on from ${z}. Say the next number.`, key: `${x}`, pool: near(n, 1, 20) }; },
     lesson: ({ x }, Q) => ({ kind: "count", steps: [
@@ -723,6 +786,8 @@
     theme: "castle", name: "Knight: one more, one less", grade: 0, group: "count", needs: ["kinder.2"], choice: true,
     all: () => range(1, 9).map(a => ({ type: "O", a })).concat(range(2, 10).map(a => ({ type: "L", a }))),
     bank: MORE_LESS_BANK,
+    sceneRows: { O: ["villager", "goblin", "pillow@buddy", "sheep", "lantern", "carrot@horse"], L: ["goblin", "villager", "apple@horse", "arrow", "coin", "knight"] },
+    scene: ({ type, a }) => ({ act: "more_less", a, dir: type === "O" ? 1 : -1 }),
     q: ({ type, a }) => {
       const up = type === "O", r = up ? a + 1 : a - 1;
       return { v: { a }, nums: [a], ans: r, eq: `${a} ${up ? "+" : MINUS} 1 = ?`, op: up ? "+" : "-", start: a, end: r, line: lineWindow(a, r),
@@ -755,6 +820,9 @@
     theme: "castle", name: "Knight: which has more?", grade: 0, group: "count", needs: ["kinder.2"], choice: true,
     all: () => ["G", "F"].flatMap(type => range(1, 10).flatMap(a => range(1, 10).filter(b => b !== a).map(b => ({ type, a, b })))),
     bank: COMPARE_BANK,
+    sceneRows: { G: ["goblin+knight", "apple+carrot", "flag+flag", "villager+villager@buddy", "goblin+pillow", "sheep+horse"],
+      F: ["lantern+torch", "goblin+goblin", "coin+gem", "goblin+goblin@buddy", "star+star@buddy"] },
+    scene: ({ type, a, b }) => ({ act: "compare", a, b, ask: type === "G" ? "more" : "fewer" }),
     q: ({ type, a, b }) => {
       const hi = Math.max(a, b), lo = Math.min(a, b), more = type === "G", ans = more ? hi : lo;
       return { v: { a, b }, nums: [a, b], ans, eq: more ? `? > ${lo}` : `? < ${hi}`, op: more ? ">" : "<", start: 0, end: ans, line: { lo: 0, hi: 10, step: 1 },
@@ -791,6 +859,8 @@
     theme: "castle", name: "Knight: make 10", grade: 0, group: "add", needs: ["kinder.5"], choice: true,
     all: () => range(1, 9).map(a => ({ type: "M", a })),
     bank: MAKE10_BANK,
+    sceneRows: { M: ["knight@buddy", "villager", "pillow", "plank", "goblin", "apple@horse", "lantern", "sheep", "coin", "villager", "shield"] },
+    scene: ({ a }) => ({ act: "make10", a, total: 10 }),
     q: ({ a }) => ({ v: { a }, nums: [a, 10], ans: 10 - a, eq: `${a} + ? = 10`, op: "+", start: a, end: 10, line: { lo: 0, hi: 10, step: 1 },
       fact: `${a} and ${10 - a} make 10.`, hint: `Start at ${a} and hop up to 10.`, key: `${a}`, pool: near(10 - a, 1, 10) }),
     lesson: ({ a }, Q) => ({ kind: "make10", steps: [
@@ -815,6 +885,9 @@
     "kinder.compare": COMPARE_KIND,
     "kinder.make10": MAKE10_KIND
   };
+  Object.keys(KINDS).forEach(id => Object.keys(KINDS[id].bank).forEach(t => {
+    if (!KINDS[id].sceneRows || !KINDS[id].sceneRows[t] || KINDS[id].sceneRows[t].length !== KINDS[id].bank[t].length) throw new Error("KS: " + id + " needs one scene entry per " + t + " story");
+  }));
   const kindCache = {};
   const kindAll = skill => kindCache[skill] || (kindCache[skill] = KINDS[skill].all());
 
@@ -824,6 +897,7 @@
     const Q = { skill, theme: K.theme, tpl: `${skill}.${p.type}${ti + 1}`, type: p.type, p, a: d.start, op: d.op, result: d.end, ans: d.ans, missing: false,
       eq: d.eq, fact: d.fact, hint: d.hint, line: d.line, key: `${skill}:${p.type}:${d.key}`, scale: d.line.hi, nums: d.nums };
     Q.story = render(tpl[0], d.v); Q.ask = render(tpl[1], d.v);
+    Q.scene = Object.assign(K.scene(p), sceneWords(K.sceneRows[p.type][ti]));
     Q.say = Q.story + " " + Q.ask;
     Q.correct = "Correct! " + Q.fact;
     Q.kind = K.choice ? "choice" : "typed";
@@ -914,6 +988,6 @@
   }
 
   const KS = { SKILLS, THEMES, SCALE, WORDS, make, build, teach, sentences, pieces, templates: theme => TEMPLATES[theme].slice(), usable, allPairs, lineWindow,
-    OLD_SKILLS, KIND_IDS: Object.keys(KINDS), fits, kindTheme, extraSkills, kindAll, buildKind, kindBank: id => KINDS[id].bank, eachKindQuestion };
+    OLD_SKILLS, KIND_IDS: Object.keys(KINDS), SCENE_ACTS, SCENE_NOUNS, SCENE_WHO, fits, kindTheme, extraSkills, kindAll, buildKind, kindBank: id => KINDS[id].bank, eachKindQuestion };
   if (typeof module !== "undefined" && module.exports) module.exports = KS; else root.KS = KS;
 })(typeof window !== "undefined" ? window : globalThis);
