@@ -60,7 +60,10 @@ const PROFILES = {
   marie: { name: "Marie", theme: "cafe", world: "Kitty Café", old: "kittyBlocks.progress" },
   kennedy: { name: "Kennedy", theme: "castle", world: "Knight Castle", old: "kidsMaths.kennedy" }
 };
-const SAVE_KEY = w => "kidsMaths.game." + w;
+/* ?try=marie or ?try=kennedy: a parent preview of the play world. It uses its own practice save with spare coins,
+   so the children's real saves are never touched. */
+const TRY = new URLSearchParams(location.search).get("try");
+const SAVE_KEY = w => "kidsMaths.game." + (TRY ? "try_" : "") + w;
 let who = null, P = null, theme = "cafe";
 /* first time: copy the old app's save (engine progress, house, coins), then keep our own key; the old key is never written */
 function loadSave(w) {
@@ -695,7 +698,7 @@ addEventListener("resize", () => {
 addEventListener("pagehide", save);
 requestAnimationFrame(sizeDraw);
 drawDots(); mascot("stand");
-doors();
+if (TRY && PROFILES[TRY]) { start(TRY); P.coins = Math.max(P.coins, 300); save(); drawCoins(false); playWorld(); } else doors();
 window.__game = { get Q() { return Q; }, get QS() { return QS; }, get P() { return P; }, get set() { return set; }, M, start, doors,
   lesson() { if (!Q) return; closeBoard(); QS.tries = 1; return teach(); } };
 </script>
