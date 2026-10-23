@@ -55,6 +55,8 @@ def open_world_by_answering(pg):
     pg.wait_for_function("()=>__game.QS && __game.QS.phase==='ask' && !__game.QS.teaching", timeout=60000)
     pg.evaluate("()=>{__game.P.game.sincePlay=24}")
     pg.evaluate("""()=>{const Q=__game.Q; if(Q.kind==='choice'){__game.QS.pick=Q.ans}else{__game.QS.typed=String(Q.ans)}; document.getElementById('tile').click()}""")
+    pg.wait_for_function("()=>__game.QS.phase==='right'", timeout=8000)
+    pg.click("#tile")                                   # Next: no timer moves on by itself
     pg.wait_for_selector(".pw-host .cw", timeout=60000)
     pg.wait_for_timeout(300)
 
@@ -146,6 +148,7 @@ try:
         tap_pad(pg, "cafe:cafe_booth")
         ok("not enough coins: refused", coins(pg) == 3 and not D(pg, "owned").get("cafe:cafe_booth"))
         ok("not enough coins: still locked", pg.locator('.cw-pad[data-key="cafe:cafe_booth"].locked').count() == 1)
+        ok("not enough coins: a soft nudge, no shake", pg.evaluate("()=>{const p=document.querySelector('.cw-pad[data-key=\"cafe:cafe_booth\"]'); return p.classList.contains('cw-soft') && !p.classList.contains('cw-shake')}"))
         pg.evaluate("()=>{__game.P.coins=100}")
         # wallpaper: buy and apply
         tab(pg, "wall")

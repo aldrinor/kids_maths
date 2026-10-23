@@ -16,7 +16,7 @@
  *   plans   a picture card with 3 gentle goals ("buy a lamp", "grow a flower"...). Each finished goal gives a sticker.
  * Decorating: drag a thing from the bottom tray into the room (or tap it), drag things around, drag one back onto
  * the tray to put it away. Things not bought yet are soft and show their price (coin + number); a tap buys it when
- * there are enough coins, otherwise "Not yet. Keep playing maths!".
+ * there are enough coins, otherwise "Not yet. A few more coins and it is yours!".
  * Save: wctx.data.cafe (the page's P.world.cafe). Art: world/art/cafe/ (tools/draw_cafe_world_art.py) and the
  * café reward game's characters in rewards/art/cafe/.
  * Calm: soft sounds (Web Audio, silent when there is none), no flashing, nothing plays by itself.
@@ -215,7 +215,6 @@
     pop: function () { note(660, 880, 0, 0.12, 0.05); },
     plop: function () { note(520, 300, 0, 0.1, 0.06); },
     buy: function () { note(523, 523, 0, 0.14, 0.05); note(659, 659, 0.1, 0.14, 0.05); note(784, 784, 0.2, 0.22, 0.05); },
-    no: function () { note(330, 300, 0, 0.16, 0.04, "triangle"); note(262, 250, 0.16, 0.2, 0.04, "triangle"); },
     bell: function () { note(1046, 1046, 0, 0.5, 0.04); note(1318, 1318, 0.14, 0.6, 0.035); },
     chime: function () { [784, 988, 1175, 1568].forEach(function (fq, i) { note(fq, fq, i * 0.11, 0.4, 0.035); }); },
     water: function () { for (var i = 0; i < 5; i++) { note(900 + i * 70, 600, i * 0.07, 0.08, 0.025); } },
@@ -267,8 +266,8 @@
     "@keyframes cwbounce{40%{transform:translateY(-6%) scale(1.04)}}",
     ".cw-sway{animation:cwsway 1.2s ease}",
     "@keyframes cwsway{25%{transform:rotate(-3deg)}75%{transform:rotate(3deg)}}",
-    ".cw-shake{animation:cwshake .5s ease}",
-    "@keyframes cwshake{25%{transform:translateX(-5px)}75%{transform:translateX(5px)}}",
+    ".cw-soft{animation:cwsoft .7s ease}",
+    "@keyframes cwsoft{40%{transform:scale(1.03)}}",
     ".cw-it.lamp.on:before{content:'';position:absolute;left:-60%;right:-60%;top:20%;bottom:-40%;background:radial-gradient(closest-side,rgba(255,236,170,.55),rgba(255,236,170,0));pointer-events:none;z-index:-1}",
     ".cw-it.lamp.ceiling.on:before{top:60%;bottom:-120%}",
     ".cw-breathe{transform-origin:50% 100%;animation:cwbreathe 3.8s ease-in-out infinite}",
@@ -653,7 +652,7 @@
         var S = scenes[place]; if (S) { drawPads(S); }
         return true;
       }
-      anim(padEl, "cw-shake"); SND.no(); say("Not yet. Keep playing maths!");
+      anim(padEl, "cw-soft"); say("Not yet. A few more coins and it is yours!");
       return false;
     }
     function sparkleAt(target) {
@@ -770,10 +769,10 @@
     }
     function serveTreat(t, btn) {
       var waiting = friends.filter(function (f) { return f.state === "wait"; });
-      if (!waiting.length) { anim(btn, "cw-shake"); say("Ring the bell for a friend."); anim(cafe.box.querySelector(".cw-door"), "cw-sway"); return; }
+      if (!waiting.length) { anim(btn, "cw-soft"); say("Ring the bell for a friend."); anim(cafe.box.querySelector(".cw-door"), "cw-sway"); return; }
       var f = selFriend && selFriend.state === "wait" ? selFriend : waiting.length === 1 ? waiting[0] : null;
       if (!f) { waiting.forEach(function (o) { anim(o.el, "cw-bounce"); }); say("Tap a friend first."); return; }
-      if (f.want !== t) { anim(f.el, "cw-shake"); SND.no(); say("Hmm, I would like " + TREAT_NAME[f.want] + "."); return; }
+      if (f.want !== t) { anim(f.el, "cw-soft"); say("Hmm, I would like " + TREAT_NAME[f.want] + "."); return; }
       // the treat flies to the friend
       var r = btn.getBoundingClientRect(), fr = f.el.getBoundingClientRect(), fly = el("img", "cw-fx"); fly.src = img("treat_" + t); fly.alt = "";
       fly.style.cssText = "left:" + r.left + "px;top:" + r.top + "px;width:64px;height:64px";
@@ -941,7 +940,7 @@
     }
     function feedPet() {
       var k = follower();
-      if (!k) { anim(pets.tabs, "cw-bounce"); say("Adopt a pet first."); SND.no(); return; }
+      if (!k) { anim(pets.tabs, "cw-bounce"); say("Adopt a pet first."); return; }
       if (bowlFull) { return; }
       bowlFull = true; pets.bowl.querySelector("img").src = img("pet_bowl_full"); SND.plop();
       walkPet(k, 800 - 150, 860, function () {
@@ -1006,7 +1005,7 @@
         });
         window.speak = function (text) {
           var t = String(text);
-          if (/Do more sums/.test(t)) { t = "Not yet. Keep playing maths!"; }
+          if (/Do more sums/.test(t)) { t = "Not yet. A few more coins and it is yours!"; }
           say(t.replace(/\bstars\b/g, "coins").replace(/\bstar\b/g, "coin"));
         };
         window.tone = SND.tone;

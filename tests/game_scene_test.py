@@ -223,8 +223,8 @@ with sync_playwright() as p:
             pg.wait_for_function(f"()=>__game.P.game.answered==={i + 1}", timeout=8000)
             if has:
                 ok(f"{who} q{i + 1} right: the scene reacted 'right'", "right" in pg.evaluate("()=>QuestScene.reactions"), pg.evaluate("()=>QuestScene.reactions"))
-            pg.wait_for_function("()=>!__game.QS.teaching && document.querySelector('#boardbtns .bnext')", timeout=60000)
-            pg.evaluate("()=>{const b=document.querySelector('#boardbtns .bnext'); b.hidden=false; b.click()}")
+            pg.wait_for_function("()=>__game.QS.phase==='right' && !__game.QS.teaching", timeout=60000)
+            pg.click("#tile")
         pg.click("#tools .bin.home"); pg.wait_for_timeout(300)
         ok(f"{who} doors clear the scene", pg.evaluate("()=>document.querySelector('#scene').hidden"))
         ok(f"{who} no page errors", not errs, errs[:3])

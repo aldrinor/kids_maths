@@ -25,6 +25,12 @@ def answer(pg, right=True):
       document.getElementById('tile').click()}""", right)
 
 
+def tap_next(pg):
+    """after a clean right answer there is no lesson and no timer: Next waits for the child"""
+    pg.wait_for_function("()=>__game.QS && __game.QS.phase==='right'", timeout=8000)
+    pg.click("#tile")
+
+
 def wait_ask(pg, answered):
     pg.wait_for_function(f"()=>__game.QS && __game.QS.phase==='ask' && __game.P.game.answered==={answered} && !__game.QS.teaching", timeout=90000)
 
@@ -50,10 +56,13 @@ with sync_playwright() as p:
         ok(f"{who} story shown", len(pg.inner_text(".story")) > 20, pg.inner_text(".story"))
         ok(f"{who} no topic choice anywhere", pg.locator("text=/choose a topic|pick a topic/i").count() == 0)
         c0 = pg.evaluate("()=>__game.P.coins")
-        # 1 right first try: +2 coins, lesson plays, next comes by itself
+        # 1 right first try: +2 coins, no forced lesson, Next and "Watch how it works" wait for the child
         answer(pg, True)
-        pg.wait_for_selector("#board", timeout=8000)
+        pg.wait_for_function("()=>__game.QS.phase==='right'", timeout=8000)
+        pg.wait_for_timeout(1500)
+        ok(f"{who} right: no lesson forced, no auto-advance", pg.locator("#board").count() == 0 and pg.evaluate("()=>__game.P.game.answered") == 1 and "Next" in pg.inner_text("#tile"))
         ok(f"{who} right: +2 coins", pg.evaluate("()=>__game.P.coins") == c0 + 2)
+        pg.click("#tile")
         wait_ask(pg, 1)
         # 2 wrong then right: lesson, +1 coin
         c1 = pg.evaluate("()=>__game.P.coins")
@@ -64,9 +73,11 @@ with sync_playwright() as p:
         answer(pg, True)
         pg.wait_for_function("()=>__game.P.game.answered===2", timeout=8000)
         ok(f"{who} right after lesson: +1 coin", pg.evaluate("()=>__game.P.coins") == c1 + 1)
+        tap_next(pg)
         wait_ask(pg, 2)
-        # 3 wrong twice: Oops, See The Answer, Next; no coin
+        # 3 wrong twice: kind words, See The Answer, Next; 1 effort coin
         c2 = pg.evaluate("()=>__game.P.coins")
+        pg.evaluate("()=>{__game.QS.t0=Date.now()-6000}")        # a thought-about answer, not a rushed tap
         answer(pg, False)
         pg.wait_for_function("()=>!__game.QS.teaching && !document.querySelector('#boardbtns .again').hidden", timeout=90000)
         answer(pg, False)
@@ -75,13 +86,14 @@ with sync_playwright() as p:
         pg.wait_for_function("()=>!document.getElementById('tile').classList.contains('dim')", timeout=8000)
         pg.click("#tile"); pg.wait_for_timeout(300)
         ok(f"{who} answer shown", "correct answer" in pg.inner_text("#msg"))
-        ok(f"{who} wrong twice: no coin", pg.evaluate("()=>__game.P.coins") == c2)
+        ok(f"{who} wrong twice: 1 effort coin", pg.evaluate("()=>__game.P.coins") == c2 + 1)
         pg.click("#tile")
         wait_ask(pg, 3)
         # 4, 5: right; after the 5th the reward game shows
         for k in (4, 5):
             answer(pg, True)
             pg.wait_for_function(f"()=>__game.P.game.answered==={k}", timeout=8000)
+            tap_next(pg)
             if k == 4:
                 wait_ask(pg, 4)
         pg.wait_for_selector(".rewardhost", timeout=90000)

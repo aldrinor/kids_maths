@@ -13,7 +13,7 @@
      - Every question is a story (stories.js). The question screen is the agreed demo screen (../demo).
      - Coins for right answers. Every 5 answers a short reward game (game/rewards/: Mimi's Hot Chocolate, Ice Cream and Cookies in turn for Marie, Pony Stable, Goblin Rescue and Tower for Kitty in turn for Kennedy). Every 25 answers: play world (stage 2).
      - Own save per child (kidsMaths.game.<child>); the old app's save is read once and never written. -->
-<link rel="stylesheet" href="theme.css">
+<link rel="stylesheet" href="theme.css?v=2">
 <link rel="stylesheet" href="scene/scene.css">
 </head>
 <body>
@@ -48,46 +48,71 @@
 <script src="rewards/castle_kitty_tower.js"></script>
 <script src="world/world_core.js"></script>
 <!-- play worlds: world/cafe_world.js and world/castle_world.js are added when built -->
-<script src="world/cafe_world.js"></script>
+<script src="world/cafe_world.js?v=2"></script>
 <script src="world/castle_world.js"></script>
 <!-- the question scene above each question (game/scene/): the core, then one file per theme -->
 <script src="scene/scene_core.js"></script>
 <script src="scene/scene_cafe.js"></script>
 <script src="scene/scene_castle.js"></script>
+<script src="game_save.js?v=1"></script>
+<script src="choice_evidence.js?v=1"></script>
+<script src="focus_guard.js?v=1"></script>
 <script>
 "use strict";
 const $ = s => document.querySelector(s);
 const FAST = window.__demoFast ? 0.2 : 1;            // tests run the teaching faster
 const wait = ms => new Promise(r => setTimeout(r, ms * FAST));
-const DAY_LIMIT_MIN = 25, REWARD_EVERY = 5, PLAY_EVERY = 25, AUTO_NEXT_MS = 4000;
+const DAY_LIMIT_MIN = 25, REWARD_EVERY = 5, PLAY_EVERY = 25;
 
 /* ---------- the children: each has a door, a world and a save ---------- */
 const PROFILES = {
-  marie: { name: "Marie", theme: "cafe", world: "Kitty Café", old: "kittyBlocks.progress" },
-  kennedy: { name: "Kennedy", theme: "castle", world: "Knight Castle", old: "kidsMaths.kennedy" }
+  marie: { name: "Marie", theme: "cafe", world: "Kitty Café", old: "kittyBlocks.progress", streakNeed: 4 },
+  kennedy: { name: "Kennedy", theme: "castle", world: "Knight Castle", old: "kidsMaths.kennedy", streakNeed: 3 }   // streakNeed: same as the engine's streakNeed
 };
 /* ?try=marie or ?try=kennedy: a parent preview of the play world. It uses its own practice save with spare coins,
    so the children's real saves are never touched. */
 const TRY = new URLSearchParams(location.search).get("try");
 const SAVE_KEY = w => "kidsMaths.game." + (TRY ? "try_" : "") + w;
 let who = null, P = null, theme = "cafe";
+/* The save lives in localStorage. game_save.js checks it, repairs it, keeps a copy of anything it cannot read, and never overwrites a damaged save. */
+const store = (() => { try { const ls = window.localStorage; ls.getItem("kidsMaths.probe"); return ls; } catch (e) { return null; } })()
+  || (() => { const m = {}; return { getItem: k => (k in m ? m[k] : null), setItem: (k, v) => { m[k] = String(v); }, removeItem: k => { delete m[k]; } }; })();
+const storeIsReal = (() => { try { return window.localStorage === store; } catch (e) { return false; } })();
+let saveBlocked = false, saveWarnAt = 0, pendingNotes = [];
 /* first time: copy the old app's save (engine progress, house, coins), then keep our own key; the old key is never written */
-function loadSave(w) {
-  let p = null;
-  try { p = JSON.parse(localStorage.getItem(SAVE_KEY(w)) || "null"); } catch (e) {}
-  if (!p) {
-    let old = null; try { old = JSON.parse(localStorage.getItem(PROFILES[w].old) || "null"); } catch (e) {}
-    p = Object.assign({}, old || {});
-    p.importedFrom = old ? PROFILES[w].old : "";
-    p.coins = w === "marie" ? Number(old && old.stars) || 0 : Number(old && old.coins) || 0;   // Marie's stars become her coins
-  }
-  p.game = Object.assign({ answered: 0, sinceReward: 0, sincePlay: 0, rewardTurn: 0 }, p.game || {});
-  if (!p.engine || p.engine.profile !== w) p.engine = KidsEngine.createState(w);
-  if (!p.days || typeof p.days !== "object") p.days = {};
-  if (!Number.isFinite(p.coins)) p.coins = 0;
-  return p;
+function loadSave(w, forceFresh) {
+  const r = GameSave.load({ storage: store, key: SAVE_KEY(w), who: w, now: Date.now(), makeEngine: KidsEngine.createState, forceFresh: !!forceFresh,
+    importOld() {
+      let old = null; try { old = JSON.parse(store.getItem(PROFILES[w].old) || "null"); } catch (e) {}
+      if (!old || typeof old !== "object" || Array.isArray(old)) old = null;
+      const p = Object.assign({}, old || {});
+      p.importedFrom = old ? PROFILES[w].old : "";
+      p.coins = w === "marie" ? Number(old && old.stars) || 0 : Number(old && old.coins) || 0;   // Marie's stars become her coins
+      return p;
+    } });
+  saveBlocked = r.blocked || !!forceFresh;                 // a start that had to be redone never writes over the old save
+  if (!storeIsReal) r.notes.push("This browser is not letting the game keep saved progress. Maths still works, but it will be forgotten when this page closes.");
+  r.notes.forEach(t => GameSave.addNote(store, w, t, Date.now()));
+  pendingNotes = r.notes;
+  return r.p;
 }
-function save() { if (!who) return; try { localStorage.setItem(SAVE_KEY(who), JSON.stringify(P)); } catch (e) {} }
+/* a plain-words warning for the grown-up when a save did not work; it goes away when a save works again */
+function saveWarn(text) {
+  const now = Date.now(); if (document.getElementById("savewarn") || now - saveWarnAt < 300000) return;
+  saveWarnAt = now;
+  const d = document.createElement("div"); d.id = "savewarn"; d.setAttribute("role", "alert");
+  d.innerHTML = `<span>Grown-up note: ${text}</span><button aria-label="I have read this">OK</button>`;
+  d.querySelector("button").onclick = () => d.remove();
+  document.body.appendChild(d);
+}
+function save() {
+  if (!who) return true;
+  if (saveBlocked) { saveWarn("this play is not being saved, so the earlier saved progress stays safe. A grown-up should look at the game before the next play."); return false; }
+  const r = GameSave.write(store, SAVE_KEY(who), P);
+  if (!r.ok) { saveWarn("this device could not save the progress. Please do not close this page. Check that the browser allows saving and is not in a private window."); return false; }
+  const w = document.getElementById("savewarn"); if (w) w.remove();
+  return true;
+}
 const dayKey = t => KidsEngine.dayKey(t);
 function dayLog() {
   const d = dayKey(Date.now());
@@ -124,9 +149,18 @@ function fnv(text) {
   for (const by of bytes) { h ^= by; h = Math.imul(h, 0x01000193) >>> 0; }
   return h.toString(16).padStart(8, "0");
 }
-let actx = null, voiceList = null, playing = null, sayToken = 0;
-if (window.__noVoice) voiceList = {};      // tests: check the words, not the recordings
-else fetch("voice/manifest.json").then(r => r.ok ? r.json() : {}).then(m => voiceList = m).catch(() => voiceList = {});
+let actx = null, voiceList = null, playing = null, sayToken = 0, manifestPromise = null, manifestFailedAt = 0;
+/* the list of recorded clips: tried up to 3 times; if it still fails the system voice speaks, and a later say() tries again (at most every 20 s) */
+function loadManifest(tries = 3) {
+  return manifestPromise = (async () => {
+    for (let i = 0; i < tries; i++) {
+      try { const r = await fetch("voice/manifest.json"); if (r.ok) { const m = await r.json(); if (m && typeof m === "object" && !Array.isArray(m)) { voiceList = m; manifestFailedAt = 0; return true; } } } catch (e) {}
+      if (i < tries - 1) await new Promise(res => setTimeout(res, 500 * (i + 1) * FAST));
+    }
+    voiceList = voiceList || {}; manifestFailedAt = Date.now(); return false;
+  })();
+}
+if (window.__noVoice) voiceList = {}; else loadManifest();
 function audioCtx() {
   const AC = window.AudioContext || window.webkitAudioContext; if (!AC) return null;
   if (!actx) actx = new AC();
@@ -135,11 +169,19 @@ function audioCtx() {
 }
 const has = text => !!(voiceList && voiceList[fnv(text)]);
 const buffers = {};
-async function clip(text) {
+async function fetchClip(h, ctx) {
+  const r = await fetch(`voice/${h}.mp3`); if (!r.ok) throw new Error("clip " + r.status);
+  const b = await r.arrayBuffer();
+  return new Promise((ok, no) => ctx.decodeAudioData(b, ok, no));
+}
+async function clip(text) {                      // a failed clip is tried once more; only a good clip is kept
   const h = fnv(text), ctx = audioCtx();
   if (!ctx || !has(text)) return null;
-  if (!buffers[h]) buffers[h] = fetch(`voice/${h}.mp3`).then(r => r.arrayBuffer()).then(b => new Promise((ok, no) => ctx.decodeAudioData(b, ok, no)));
-  try { return await buffers[h]; } catch (e) { return null; }
+  for (let attempt = 0; attempt < 2; attempt++) {
+    if (!buffers[h]) buffers[h] = fetchClip(h, ctx);
+    try { return await buffers[h]; } catch (e) { delete buffers[h]; if (!attempt) await new Promise(res => setTimeout(res, 300 * FAST)); }
+  }
+  return null;
 }
 const player = new Audio(); player.preload = "auto";   // where Web Audio is missing; unlocked on the first tap
 let unlocked = false;
@@ -151,28 +193,27 @@ document.addEventListener("pointerdown", () => {
   }
 }, true);
 function stopVoice() { sayToken++; try { if (playing) playing.stop(); } catch (e) {} playing = null; try { player.pause(); } catch (e) {} try { speechSynthesis.cancel(); } catch (e) {} }
-async function playOne(text, me) {             // one recorded clip; resolves when it ends
+/* one recorded clip. Resolves true when it played (or was cut short on purpose), false when it could not be played */
+async function playOne(text, me) {
   if (!(window.AudioContext || window.webkitAudioContext)) {
-    return new Promise(res => {
-      player.muted = false; player.src = `voice/${fnv(text)}.mp3`; player.onended = () => res();
-      const p = player.play(); if (p) p.catch(() => res());
-      setTimeout(res, (600 + text.length * 62) * 2);
+    const once = () => new Promise(res => {
+      player.muted = false; player.src = `voice/${fnv(text)}.mp3`; player.onended = () => res(true); player.onerror = () => res(false);
+      const p = player.play(); if (p) p.catch(() => res(false));
+      setTimeout(() => res(true), (600 + text.length * 62) * 2);
     });
+    return (await once()) || (me !== sayToken) || await once();
   }
   const buf = await clip(text);
-  if (me !== sayToken || !buf) return;
+  if (me !== sayToken) return true;
+  if (!buf) return false;
   return new Promise(res => {
     const src = actx.createBufferSource(); src.buffer = buf; src.connect(actx.destination); playing = src;
-    src.onended = () => res(); src.start(); setTimeout(res, buf.duration * 1000 + 300);
+    src.onended = () => res(true); src.start(); setTimeout(() => res(true), buf.duration * 1000 + 300);
   });
 }
 const piecesOf = text => text.split(/(\d+)/).map(s => s.trim()).filter(s => /[a-z0-9]/i.test(s));   // a lone full stop is not spoken
-async function say(text) {
-  text = String(text); stopVoice(); const me = sayToken;
+function speakSystem(text) {                     // the voice of the device: used when there is no recording, or a recording failed
   const est = 600 + text.length * 62;
-  if (has(text)) return playOne(text, me);
-  const parts = piecesOf(text);
-  if (parts.length > 1 && parts.every(has)) { for (const p of parts) { if (me !== sayToken) return; await playOne(p, me); } return; }
   try {
     if (window.speechSynthesis) {
       const u = new SpeechSynthesisUtterance(text.replace(/−/g, " minus "));
@@ -182,6 +223,27 @@ async function say(text) {
     }
   } catch (e) {}
   return new Promise(r => setTimeout(r, est * FAST));
+}
+async function say(text) {
+  text = String(text); stopVoice(); let me = sayToken;
+  if (voiceList === null && manifestPromise) {   // the list is still loading: give it a moment, so the recorded voice is used
+    await Promise.race([manifestPromise, new Promise(r => setTimeout(r, 1500))]);
+    if (me !== sayToken) return;
+  } else if (manifestFailedAt && Date.now() - manifestFailedAt > 20000 && !window.__noVoice) loadManifest(1);   // try the list again in the background
+  if (has(text)) {
+    if (await playOne(text, me)) return;
+    if (me !== sayToken) return;
+    return speakSystem(text);                    // the clip failed twice: never go silent
+  }
+  const parts = piecesOf(text);
+  if (parts.length > 1 && parts.every(has)) {
+    for (let i = 0; i < parts.length; i++) {
+      if (me !== sayToken) return;
+      if (!(await playOne(parts[i], me))) { if (me !== sayToken) return; return speakSystem(parts.slice(i).join(" ")); }
+    }
+    return;
+  }
+  return speakSystem(text);
 }
 function chime() {
   const ctx = audioCtx(); if (!ctx) return;
@@ -246,6 +308,18 @@ function rubberSVG(down) {
 
 /* ---------- which question comes next: the engine picks a set of skills; each skill becomes a story ---------- */
 let set = null, si = 0, Q = null, QS = null, pen = PENS[0][0], prevKey = "";
+/* the hopper starts on the given number; if that number is also the answer the picture gives the answer away (a child who cannot read
+   sees the knight on 5 and 5 among the choices), so such a question is swapped for another one of the same skill (review item 3) */
+const startsOnAnswer = q => q.type !== "K" && Number.isFinite(q.a) && q.a === q.ans;     // "Which number is ...?" (K) starts at the left end instead
+function pickQuestion(skill) {
+  let prev = prevKey, q = null;
+  for (let i = 0; i < 40; i++) {
+    q = KS.make(skill, theme, Math.random, prev);
+    if (!q || !startsOnAnswer(q)) return q;
+    prev = q.key;
+  }
+  return q;
+}
 function nextQ() {
   for (let guard = 0; guard < 40; guard++) {
     if (!set || si >= set.items.length) {
@@ -258,7 +332,7 @@ function nextQ() {
       if (Number.isFinite(ans) && ans >= 0 && ans < 1000 && Number.isInteger(ans)) return { parent: item, kind: "typed", story: item.q, ask: "", say: item.q, ans, correct: `Correct! The answer is ${ans}.`, fact: `The answer is ${ans}.`, hint: "Take your time. You can draw to help." };
       si++; continue;                                    // an answer the keypad cannot type is skipped
     }
-    const q = KS.make(item, theme, Math.random, prevKey);
+    const q = pickQuestion(item);
     if (q) { prevKey = q.key; return q; }
     si++;                                                // no story for this skill yet
   }
@@ -284,10 +358,12 @@ function nextQuestion(given) {
   hideMsg(); tileTo("", "Check"); $("#tile").hidden = false;
   if (window.QuestScene) QuestScene.show(Q, theme);      // the scene above the question acts it out (before the body is measured)
   drawDots(); drawCoins(); renderBody(); mascot("stand");
+  const story = document.querySelector("#qbody .story");                     // a screen reader reads the new question
+  if (story && (!document.activeElement || document.activeElement === document.body)) { story.tabIndex = -1; story.focus({ preventScroll: true }); }
   setTimeout(() => say(Q.say), 250);
 }
 function boxCls() { return QS.mark === "right" ? "right" : QS.mark === "wrong" ? "wrong" : QS.phase === "ask" ? "active" : ""; }
-const startOf = () => Number.isFinite(Q.a) ? Q.a : QS.lo;
+const startOf = () => Number.isFinite(Q.a) && !(Q.type === "K" && Q.a === Q.ans) ? Q.a : QS.lo;   // "Which number is four?": the hopper must not stand on 4 before she answers
 const endOf = () => Number.isFinite(Q.result) ? Q.result : Q.ans;     // a missing part ends on the total, not on the answer
 function renderBody() {
   const b = $("#qbody"), bulb = `<button class="bulb" aria-label="Hint">${ICON.bulb}</button>`;
@@ -297,18 +373,25 @@ function renderBody() {
     : `${story}<div class="eq"><span class="box ${boxCls()}" id="ansBox">${QS.typed || "&nbsp;"}</span></div>`;
   const off = QS.phase === "shown" || QS.phase === "right" ? " disabled" : "";
   const sz = sign => QS.ruler ? `<b class="sz">${sign}${QS.hop}</b>` : "", hz = QS.ruler ? ` ${QS.hop}` : "";   // the hop size is on the button
+  const fa = document.activeElement, focusSel = fa && b.contains(fa) ? (fa.dataset.v ? `.opt[data-v="${fa.dataset.v}"]` : fa.classList.contains("watch") ? ".watch" : fa.classList.contains("bulb") ? ".bulb" : fa.dataset.h !== undefined ? `[data-h="${fa.dataset.h}"]` : "") : "";
+  const tileHad = fa === $("#tile");                      // a rebuild must not drop keyboard focus
   const tileEl = $("#tile"); tileEl.remove();             // Check sits in the row beside Restart; keep it while the body is rebuilt
+  const watch = QS.phase === "right" && QS.watchOk && !QS.board;           // a clean right answer: Next, or Watch how it works
+  const hopBtns = watch ? `<button class="watch" aria-label="Watch how it works"><span class="play">${ICON.play}</span>Watch how it works</button>`
+    : `<button data-h="-1"${off} aria-label="Hop back${hz}"><i class="ar">◀ </i>Back${sz("−")}</button><button data-h="1" class="fwd"${off} aria-label="Hop forward${hz}">Forward${sz("+")}<i class="ar"> ▶</i></button><button data-h="0"${off} aria-label="Start again"><i class="ar">↺ </i>Restart</button>`;
   b.innerHTML = `<div class="qtop">${top}</div><div class="room"></div>
     <div class="qbottom"><div class="nlbox" aria-label="Number line"></div>
-    <div class="hoprow"><button data-h="-1"${off} aria-label="Hop back${hz}"><i class="ar">◀ </i>Back${sz("−")}</button><button data-h="1" class="fwd"${off} aria-label="Hop forward${hz}">Forward${sz("+")}<i class="ar"> ▶</i></button><button data-h="0"${off} aria-label="Start again"><i class="ar">↺ </i>Restart</button></div></div>`;
+    <div class="hoprow">${hopBtns}</div></div>`;
   b.querySelector(".hoprow").appendChild(tileEl);
   b.classList.toggle("rulerq", !!QS.ruler);       // the ruler is a little taller: the empty gap above it gives way
   drawLine();
   b.querySelectorAll(".bulb").forEach(x => x.onclick = e => { e.stopPropagation(); document.querySelector(".bubble") ? closeHint() : openHint(); });
   b.querySelectorAll(".opt").forEach(x => x.onclick = () => { if (QS.phase !== "ask" || QS.teaching) return; QS.pick = +x.dataset.v; QS.mark = null; renderBody(); });
   if (QS.pick != null) b.querySelectorAll(`.opt[data-v="${QS.pick}"]`).forEach(x => x.classList.add("sel", ...(QS.mark ? [QS.mark] : [])));
+  b.querySelectorAll(".hoprow .watch").forEach(x => x.onclick = () => { if (QS && QS.phase === "right" && !QS.teaching) teach(); });
   b.querySelectorAll(".hoprow button[data-h]").forEach(x => x.onclick = () => { const h = +x.dataset.h; if (!h) restart(); else if (QS.ruler) hopBy(h); else hopTo(QS.line + h * QS.step); });
   if (QS.board) placeBoard();
+  if (tileHad) tileEl.focus({ preventScroll: true }); else if (focusSel) { const f = b.querySelector(focusSel); if (f) f.focus({ preventScroll: true }); }
 }
 function restart() { if (!QS || QS.phase === "shown" || QS.walking) return; QS.line = startOf(); QS.hops = []; if (QS.ruler) rulerPlace(QS.line, rulerDir()); renderBody(); }
 
@@ -525,7 +608,12 @@ function placeBoard() {
   Object.assign(bd.style, box); const bb = $("#boardbtns"); if (bb) Object.assign(bb.style, box);
   bd.style.setProperty("--rule", Math.max(28, Math.round(h / 6)) + "px");
 }
-function closeBoard() { const bd = $("#board"); if (bd) bd.remove(); const bb = $("#boardbtns"); if (bb) bb.remove(); $("#app").classList.remove("lesson"); if (QS) { QS.board = false; QS.teachRun = (QS.teachRun || 0) + 1; QS.teaching = false; } }
+function closeBoard() {
+  const bd = $("#board"); if (bd) bd.remove(); const bb = $("#boardbtns"); if (bb) bb.remove();
+  $("#app").classList.remove("lesson");
+  if (QS) { QS.board = false; QS.teachRun = (QS.teachRun || 0) + 1; QS.teaching = false; if (QS.phase === "right") $("#tile").hidden = false; }
+  if (bb) FocusGuard.leave(bb, "#tile");                     // after the screen is back, so focus can return to the button it came from
+}
 async function teach() {
   if (Q.parent) return;                          // a parent's own question has no lesson
   clearDraw(); closeHint(); if (window.QuestScene) QuestScene.react("lesson");
@@ -535,18 +623,21 @@ async function teach() {
     bd.innerHTML = `<canvas></canvas>`;
     $("#work").appendChild(bd);
     const bb = document.createElement("div"); bb.id = "boardbtns";    // buttons above the drawing layer; the board below it
-    bb.innerHTML = `<button class="bx" aria-label="Close the lesson" hidden>✕</button><div class="brow"><button class="again" hidden><span class="play">${ICON.play}</span>Watch again</button><button class="bnext" hidden>Next ➜</button></div>`;
+    bb.innerHTML = `<button class="bx" aria-label="Close the lesson">✕</button><div class="brow"><button class="again" hidden><span class="play">${ICON.play}</span>Watch again</button><button class="bnext" hidden>Next ➜</button></div>`;
     $("#work").appendChild(bb);
     bb.querySelector(".again").onclick = () => teach();
     bb.querySelector(".bnext").onclick = () => { if (QS && (QS.phase === "right" || QS.phase === "shown")) goNext(); };
-    bb.querySelector(".bx").onclick = () => { closeBoard(); $("#app").classList.remove("locked"); };
+    bb.querySelector(".bx").onclick = () => { stopVoice(); closeBoard(); $("#app").classList.remove("locked"); if (QS && QS.phase === "right") renderBody(); };
   }
   const bb = $("#boardbtns");
   QS.board = true; $("#app").classList.add("lesson"); placeBoard();
   const run = QS.teachRun = (QS.teachRun || 0) + 1, me = QS;
   const live = () => QS === me && me.teachRun === run;
-  bb.querySelector(".again").hidden = true; bb.querySelector(".bx").hidden = true; bb.querySelector(".bnext").hidden = true;
+  const nextOk = QS.phase === "right" || QS.phase === "shown";          // close and Next are there from the start, so she is never stuck in a lesson
+  bb.querySelector(".again").hidden = true; bb.querySelector(".bx").hidden = false; bb.querySelector(".bnext").hidden = !nextOk;
+  if (QS.phase === "right") $("#tile").hidden = true;                  // the lesson card has its own Next
   QS.teaching = true; $("#app").classList.add("locked");
+  FocusGuard.leave(bb); FocusGuard.enter(bb, { label: "Lesson", first: nextOk ? bb.querySelector(".bnext") : bb.querySelector(".bx") });
   const cv = bd.querySelector("canvas"), r = bd.getBoundingClientRect(), dpr = window.devicePixelRatio || 1;
   cv.width = Math.round(r.width * dpr); cv.height = Math.round(r.height * dpr);
   const g = cv.getContext("2d"); g.setTransform(dpr, 0, 0, dpr, 0, 0);
@@ -663,7 +754,6 @@ async function teach() {
   if (!live()) return;
   QS.teaching = false; $("#app").classList.remove("locked");
   bb.querySelector(".again").hidden = false; bb.querySelector(".bx").hidden = false; bb.querySelector(".bnext").hidden = QS.phase !== "right";
-  if (QS.phase === "right") afterRightLesson();
 }
 
 /* ---------- keypad: digits only ---------- */
@@ -688,25 +778,27 @@ function finished(correct) {
   const taught = QS.tries > 0, helped = taught || QS.hinted;
   const rush = !correct && QS.firstMs != null && QS.firstMs < 1500;
   const clean = correct && !helped;
+  QS.knewBefore = ((st.skills[Q.skill] || {}).lvl || 0) >= KidsEngine.LV.KNOWS;     // a skill she already knows gets no lesson offer (item 15)
   if (Q.parent) { P.parentLog = (P.parentLog || []).concat({ q: Q.parent.q, a: Q.parent.a, firstTry: clean, day: dayKey(Date.now()) }).slice(-100); st.parentQs.shift(); }
   else if (set.kind === "place") KidsEngine.placementRecord(st, M, Q.skill, clean);
-  else KidsEngine.record(st, M, { skill: Q.skill, correct, helped, taught, rush }, Date.now());
+  else {
+    const guard = ChoiceEvidence.before(st, Q.skill);
+    KidsEngine.record(st, M, { skill: Q.skill, correct, helped, taught, rush }, Date.now());
+    ChoiceEvidence.after(guard, st, P.game, { skill: Q.skill, kind: Q.kind, clean, rush, need: PROFILES[who].streakNeed });   // lucky taps on a choice question cannot promote a skill alone
+  }
   d.n++; if (clean) d.clean++;
   if (Q.skill) { const k = d.skills[Q.skill] || (d.skills[Q.skill] = [0, 0]); k[0]++; if (clean) k[1]++; }
-  const coins = clean ? 2 : correct ? 1 : 0;
+  const coins = clean ? 2 : 1;                              // clean 2; helped or taught 1; a wrong final answer after the lesson also earns 1 effort coin (the engine stays strict)
   P.coins += coins; P.game.answered++; P.game.sinceReward++; P.game.sincePlay++;
   save(); drawCoins(coins > 0); drawDots();
 }
 
-/* ---------- Check: right -> lesson -> next by itself; 1st wrong -> lesson; 2nd wrong -> Oops, See The Answer ---------- */
-const MSG_ICON = { right: "✓", shown: "✓", try: "!", wrong: "✗" };
+/* ---------- Check: right -> Next or "Watch how it works" (no timer); 1st wrong -> lesson; 2nd wrong -> kind words, See The Answer ---------- */
+const MSG_ICON = { right: "✓", shown: "✓", try: "!" };
 function msg(cls, text) { const m = $("#msg"); m.hidden = false; m.className = cls; m.innerHTML = `<b class="mi" aria-hidden="true">${MSG_ICON[cls]}</b><span>${text}</span>`; $("#top").classList.add("talking"); }
 function hideMsg() { $("#msg").hidden = true; $("#top").classList.remove("talking"); }
-async function afterRightLesson() {
-  const me = QS, run = QS.teachRun;
-  await wait(AUTO_NEXT_MS); if (QS === me && me.teachRun === run && !me.teaching) goNext();
-}
 function tileTo(cls, text) { const t = $("#tile"); t.className = cls; t.innerHTML = `<span>${text}</span>`; }
+const FINAL_WORDS = "Not yet. Let's see the answer.";
 async function tile() {
   if (!QS || QS.teaching) return;
   if (QS.phase === "ask") {
@@ -714,11 +806,11 @@ async function tile() {
     if (a == null) { say(Q.kind === "choice" ? "Tap an answer first." : "Type your answer first."); return; }
     if (QS.firstMs == null) QS.firstMs = Date.now() - QS.t0;
     if (a === Q.ans) {
-      QS.phase = "right"; QS.mark = "right"; finished(true); chime(); mascot("happy"); closeBoard(); renderBody(); $("#app").classList.add("locked");
-      msg("right", "Correct! Watch how it works."); $("#tile").hidden = true; band("correct");   // the only Next is on the lesson card
+      QS.phase = "right"; QS.mark = "right"; finished(true); chime(); mascot("happy"); closeBoard();
+      QS.watchOk = !Q.parent && !QS.knewBefore;
+      renderBody(); $("#app").classList.add("locked");
+      msg("right", "Correct!"); tileTo("next", "Next ➜"); $("#tile").hidden = false; band("correct");   // no lesson, no timer: she taps Next, or Watch how it works
       const me = QS; await say(Q.correct); if (QS !== me) return;
-      if (Q.parent) { await wait(1200); if (QS === me) goNext(); return; }
-      await wait(400); if (QS === me) teach();
       return;
     }
     QS.tries++; QS.mark = "wrong"; renderBody();
@@ -731,9 +823,8 @@ async function tile() {
       return;
     }
     QS.phase = "final"; finished(false); closeBoard(); renderBody(); $("#app").classList.add("locked");
-    msg("wrong", "That answer was incorrect."); tileTo("see dim", "See The Answer"); band("oops");
-    say("Oops. Let's see the answer.");
-    const me = QS; await wait(2000); if (QS === me) $("#tile").classList.remove("dim");
+    msg("try", FINAL_WORDS); tileTo("see", "See The Answer");      // the same kind words as the first miss: no cross, no grey bar, no dimmed button
+    say(FINAL_WORDS);
     return;
   }
   if (QS.phase === "final") {
@@ -750,8 +841,9 @@ async function goNext() {
   if (going) return; going = true;
   try {
     si++; closeBoard(); stopVoice();
-    if (P.game.sinceReward >= REWARD_EVERY) { P.game.sinceReward = 0; dayLog().sets++; save(); await reward(); }
-    if (P.game.sincePlay >= PLAY_EVERY) { P.game.sincePlay = 0; save(); await playWorld(); }
+    /* the counters go back to 0 only AFTER the game or world has finished, so a crash or a closed page in the middle loses nothing (item 7/19) */
+    if (P.game.sinceReward >= REWARD_EVERY) { await reward(); P.game.sinceReward = 0; P.game.rewardTurn = (P.game.rewardTurn || 0) + 1; dayLog().sets++; save(); drawDots(); }
+    if (P.game.sincePlay >= PLAY_EVERY) { await playWorld(); P.game.sincePlay = 0; save(); }
     if (overLimit()) return showEnd("See you tomorrow!", "That is all the maths for today. Well done!");
     nextQuestion();
   } finally { going = false; }
@@ -761,26 +853,31 @@ async function reward() {
   QS = null; drawDots();
   if (window.__noRewards || !window.RewardGames) return;
   const host = document.createElement("div"); host.className = "rewardhost"; document.body.appendChild(host);
-  /* the games of a theme take turns; the turn is saved, so it goes on after a reload */
-  const turn = P.game.rewardTurn || 0; P.game.rewardTurn = turn + 1; save();
+  /* the games of a theme take turns; the turn moves on (and is saved) once the game has finished */
+  const turn = P.game.rewardTurn || 0;
+  FocusGuard.enter(host, { label: "Reward game", trap: true });
   try { await RewardGames.play(host, { theme, fast: !!window.__demoFast, speak: say, turn }); } catch (e) {}
-  host.remove(); lastAct = Date.now();
+  host.remove(); FocusGuard.leave(host, "#tile"); lastAct = Date.now();
 }
 /* the play world after every 25 answers: 5 minutes to spend coins and play */
 async function playWorld() {
   QS = null; drawDots();
   if (window.__noWorld || !window.PlayWorlds || !PlayWorlds.has(theme)) return;
   P.world = P.world || {};
+  let host = null;
   try {
-    await PlayWorlds.open(document.body, { theme, minutes: 5, fast: !!window.__demoFast, speak: say, data: P.world,
+    const opening = PlayWorlds.open(document.body, { theme, minutes: 5, fast: !!window.__demoFast, speak: say, data: P.world,
       getCoins: () => P.coins, spendCoins: n => { if (P.coins < n) return false; P.coins -= n; drawCoins(true); return true; }, save });
+    host = document.querySelector(".pw-host"); if (host) FocusGuard.enter(host, { label: "Play world", trap: true });
+    await opening;
   } catch (e) { console.error(e); }
+  if (host) FocusGuard.leave(host, "#tile");
   drawCoins(false); lastAct = Date.now();
 }
 function band(kind) {
   const b = document.createElement("div"); b.className = "band " + kind;
-  b.innerHTML = kind === "correct" ? `${art("happy")}<span>Correct!</span>` : `<span>Oops…</span>`;
-  document.body.appendChild(b); setTimeout(() => b.remove(), kind === "correct" ? 1350 : 2050);
+  b.innerHTML = `${art("happy")}<span>Correct!</span>`;
+  document.body.appendChild(b); setTimeout(() => b.remove(), 1350);
 }
 function openHint() {
   closeHint(); if (QS) QS.hinted = QS.phase === "ask" ? true : QS.hinted;
@@ -790,9 +887,11 @@ function openHint() {
   if (window.QuestScene) QuestScene.react("hint");
   $("#work").appendChild(h);
   document.querySelectorAll("#qbody .bulb").forEach(b => b.innerHTML = ICON.close);
+  h.addEventListener("keydown", e => { if (e.key === "Escape") closeHint(); });
+  FocusGuard.enter(h, { label: "Hint", first: h.querySelector("button") });
   say(Q.hint);
 }
-function closeHint() { document.querySelectorAll(".bubble").forEach(b => b.remove()); document.querySelectorAll("#qbody .bulb").forEach(b => b.innerHTML = ICON.bulb); }
+function closeHint() { document.querySelectorAll(".bubble").forEach(b => { b.remove(); FocusGuard.leave(b, "#qbody .bulb"); }); document.querySelectorAll("#qbody .bulb").forEach(b => b.innerHTML = ICON.bulb); }
 
 /* ---------- drawing: pencil always ready, 6 colours, rubber, bin (no sounds) ---------- */
 function buildTools() {
@@ -828,7 +927,10 @@ function setupDraw() {
 function overlay(html, cls = "") {
   return new Promise(res => {
     const o = document.createElement("div"); o.className = ("over " + cls).trim(); o.innerHTML = html; document.body.appendChild(o);
-    o.querySelectorAll("button").forEach(b => b.onclick = () => { o.remove(); res(b.dataset.v); });
+    const h = o.querySelector("h1"); if (h) { h.id = "ovh" + (++svgId); o.setAttribute("aria-labelledby", h.id); }
+    FocusGuard.enter(o, { label: h ? "" : "Message", trap: true, first: cls.includes("start") ? o : undefined });   // the doors: focus the card (a screen reader reads its title), no ring on one child's door
+    o.setAttribute("role", "dialog"); o.setAttribute("aria-modal", "true");
+    o.querySelectorAll("button").forEach(b => b.onclick = () => { o.remove(); FocusGuard.leave(o, "#tile"); res(b.dataset.v); });
   });
 }
 async function showEnd(title, text) {
@@ -837,21 +939,42 @@ async function showEnd(title, text) {
   await overlay(`<div class="panel"><div class="mascot-big">${art("happy")}</div><h1>${title}</h1><p>${text}</p><button class="go">OK</button></div>`);
   doors();
 }
+/* a plain-words note for the grown-up: shown once when something about a save needed care, and kept until it is read */
+async function parentNote(lines) {
+  await overlay(`<div class="panel parentnote"><h1>Note for a grown-up</h1>${lines.map(t => `<p>${t}</p>`).join("")}<button class="go" data-v="ok">I have read this</button></div>`);
+  GameSave.clearNotes(store, lines);
+}
 /* the doors: each child taps their own picture; no other choice */
 async function doors() {
   stopVoice(); closeBoard(); closeHint(); save(); QS = null; who = null; P = null; if (window.QuestScene) QuestScene.clear();
   document.querySelectorAll(".over, .rewardhost").forEach(o => o.remove());
   const door = w => `<button class="go" data-theme="${PROFILES[w].theme}" data-v="${w}"><span class="art">${art("wave", PROFILES[w].theme)}</span>${PROFILES[w].name}<small>${PROFILES[w].world}</small></button>`;
-  const w = await overlay(`<div class="panel"><h1>Kids Maths</h1><p>Tap your picture.</p><div class="pick">${door("marie")}${door("kennedy")}</div></div>`, "start");
-  start(w);
+  for (;;) {
+    const notes = GameSave.notes(store);
+    const note = notes.length ? `<div class="grownote" role="status"><b>Note for a grown-up</b>${notes.map(n => `<p>${n.text}</p>`).join("")}<button class="go small" data-v="__clear">I have read this</button></div>` : "";
+    const w = await overlay(`<div class="panel"><h1>Kids Maths</h1><p>Tap your picture.</p><div class="pick">${door("marie")}${door("kennedy")}</div>${note}</div>`, "start");
+    if (w === "__clear") { GameSave.clearNotes(store); continue; }
+    return start(w);
+  }
 }
-function start(w) {
-  who = PROFILES[w] ? w : "marie"; P = loadSave(who); set = null; si = 0; prevKey = ""; lastAct = Date.now();
-  setTheme(PROFILES[who].theme); audioCtx(); sizeDraw(); save();
-  M.order.forEach(id => { M.map[id].ready = KS.SKILLS.includes(id) && KS.fits(id, theme); });   // cafe kinds are Marie's, knight kinds Kennedy's
-  if (P.engine.paused) return showEnd("Maths is resting.", "A grown-up paused maths for now.");
-  if (overLimit()) return showEnd("See you tomorrow!", "That is all the maths for today. Well done!");
-  nextQuestion();
+async function start(w, forceFresh) {
+  who = PROFILES[w] ? w : "marie"; set = null; si = 0; prevKey = ""; lastAct = Date.now();
+  try {
+    P = loadSave(who, forceFresh);
+    if (navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(() => {});      // ask the browser to keep the save (Safari may clear it after a week otherwise)
+    setTheme(PROFILES[who].theme); audioCtx(); sizeDraw(); save();
+    M.order.forEach(id => { M.map[id].ready = KS.SKILLS.includes(id) && KS.fits(id, theme); });   // cafe kinds are Marie's, knight kinds Kennedy's
+    if (pendingNotes.length) { const n = pendingNotes; pendingNotes = []; await parentNote(n); }
+    if (P.engine.paused) return showEnd("Maths is resting.", "A grown-up paused maths for now.");
+    if (overLimit()) return showEnd("See you tomorrow!", "That is all the maths for today. Well done!");
+    nextQuestion();
+  } catch (e) {
+    console.error(e);
+    /* the save made the game stumble: keep a copy, start fresh once; if that fails too, show a plain card, never a blank screen */
+    if (!forceFresh) return start(w, true);
+    await overlay(`<div class="panel"><h1>Something went wrong</h1><p>The game could not start. Nothing was lost. A grown-up can tell Dad. Tap the button to go back.</p><button class="go">Back</button></div>`);
+    doors();
+  }
 }
 
 /* ---------- start ---------- */
@@ -867,7 +990,8 @@ addEventListener("pagehide", save);
 requestAnimationFrame(sizeDraw);
 drawDots(); mascot("stand");
 if (TRY && PROFILES[TRY]) { start(TRY); P.coins = Math.max(P.coins, 300); save(); drawCoins(false); playWorld(); } else doors();
-window.__game = { get Q() { return Q; }, get QS() { return QS; }, get P() { return P; }, get set() { return set; }, M, start, doors,
+window.__game = { make: pickQuestion, get Q() { return Q; }, get saveBlocked() { return saveBlocked; }, get QS() { return QS; }, get P() { return P; }, get set() { return set; }, M, start, doors,
+  show(q) { nextQuestion(q); },
   lesson() { if (!Q) return; closeBoard(); QS.tries = 1; return teach(); },
   ask(skill, a, b, op) {                            // tests: show one exact sum, e.g. ask("sums.7", 47, 38, "+")
     const tpl = KS.templates(theme).find(t => KS.usable(t, skill, op)); if (!tpl) throw new Error("no story for " + skill);
