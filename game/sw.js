@@ -2,7 +2,7 @@
  * Scope: this folder (game/). It lets the game start with no internet after one visit, and keeps the voice clips and pictures close.
  *  - install: the app shell (every page, script and style the game page loads, listed in the FILES block) must all be saved, or the
  *    install fails and tries again later. The pictures (ART block) are saved one by one: one missing picture never stops the install.
- *  - pages, scripts, styles and pictures: stale-while-revalidate. The saved copy is shown at once, a fresh copy is fetched behind it
+ *  - pages, scripts and styles: network first (fresh copy at once; the saved copy only if the link is slow or gone). Pictures: stale-while-revalidate. The saved copy is shown at once, a fresh copy is fetched behind it
  *    and saved for next time. So an update arrives one visit after it is published, and nothing ever waits for a slow link.
  *  - voice clips (voice/<hash>.mp3): saved the first time they are played, then used first. They never change, so there is nothing to refresh.
  *    The 233 MB folder is never saved all at once. Only the newest VOICE_KEEP clips are kept.
@@ -490,6 +490,17 @@ async function voiceFirst(request) {
   return res;
 }
 
+/* pages, scripts and styles: the fresh copy first (so a fix reaches the child at once), the saved copy only when the network is slow (4 s) or gone */
+function networkFirst(event, request, navigate) {
+  const fresh = fetch(request).then(async res => {
+    if (res && res.status === 200) { const c = await caches.open(RUNTIME_CACHE); await c.put(request, res.clone()); }
+    return res;
+  });
+  event.waitUntil(fresh.catch(() => {}));
+  const slow = new Promise(resolve => setTimeout(resolve, 4000)).then(() => findSaved(request, navigate)).then(saved => saved || fresh);
+  return Promise.race([fresh.catch(() => null), slow]).then(res => res || findSaved(request, navigate)).then(res => res || fresh.catch(() => Response.error()));
+}
+
 function staleWhileRevalidate(event, request, navigate) {
   const fresh = fetch(request).then(async res => {
     if (res && (res.status === 200 || res.type === "opaque")) { const c = await caches.open(RUNTIME_CACHE); await c.put(request, res.clone()); }
@@ -508,5 +519,6 @@ self.addEventListener("fetch", event => {
   const fontsHost = /(^|\.)(fonts\.googleapis\.com|fonts\.gstatic\.com)$/.test(url.hostname);
   if (!sameOrigin && !fontsHost) return;
   if (sameOrigin && !url.pathname.startsWith(here.pathname) && !/\/(modules|topics)\//.test(url.pathname)) return;   // only this game's own files
-  event.respondWith(staleWhileRevalidate(event, request, request.mode === "navigate"));
+  const isCode = request.mode === "navigate" || /\.(html|js|css|json|webmanifest)$/.test(url.pathname);
+  event.respondWith(isCode ? networkFirst(event, request, request.mode === "navigate") : staleWhileRevalidate(event, request, request.mode === "navigate"));
 });
