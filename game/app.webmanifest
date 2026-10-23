@@ -1,0 +1,16 @@
+{
+  "name": "Kids Maths",
+  "short_name": "Kids Maths",
+  "description": "Maths stories for Marie and Kennedy.",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#fff4e0",
+  "theme_color": "#fff4e0",
+  "icons": [
+    { "src": "icons/icon_192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon_512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon_maskable_512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

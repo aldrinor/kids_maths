@@ -17,3 +17,5 @@
 .panel.pa .pa-wrong { color: #8a2c2c; font-weight: 700; }
 .panel.pa #pa-status { min-height: 1.5em; text-align: center; font-weight: 700; }
 .over.start .panel .linkbtn { margin: 18px auto 0; display: block; background: transparent; border: 0; color: #5d5470; font-size: 17px; text-decoration: underline; min-height: 48px; padding: 6px 16px; cursor: pointer; }
+.panel.pa .pa-device p, .panel.pa .pa-count p { margin: 6px 0; font-size: 18px; line-height: 1.4; }
+.panel.pa .pa-warn { font-weight: 700; border-left: 6px solid var(--primary-dark); padding-left: 10px; }

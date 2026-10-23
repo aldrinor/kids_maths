@@ -147,7 +147,7 @@
       "apple@horse", "goblin", "coin",
       "gate", "shield", "door"]
   };
-  const SCENE_ACTS = ["add", "sub", "need", "left", "compare", "numeral", "groups", "share", "place", "bundle", "money", "change", "time", "fraction", "count", "more_less", "make10"];
+  const SCENE_ACTS = ["add", "sub", "need", "left", "compare", "numeral", "groups", "share", "place", "bundle", "money", "change", "time", "fraction", "count", "more_less", "make10", "pattern", "size", "tap_count"];
   const SCENE_NOUNS = {
     cafe: ["cupcake", "cup", "cookie", "customer", "saucer", "coin", "tray", "muffin", "scoop", "chair", "tea_bag", "oven", "cake_box", "sign",
       "biscuit", "flower", "roll", "candy", "lemon", "sticker", "grape", "strawberry", "napkin", "slice", "piece", "chocolate", "clock",
@@ -870,6 +870,258 @@
     ] })
   };
 
+  /* =====================================================================================
+     Round of 22 Oct 2026 (plan items 23 and 24): number bonds to 9, patterns and size for Kennedy, optional counting for Marie,
+     and number patterns (a Grade 3 gap). Three new ways a question can look, all described by fields on Q:
+       Q.picOpts  true when the answer buttons are PICTURES. The button values are 1, 2, 3 (which picture); Q.pics[v] says what to draw:
+                  { src } a picture file under game/, or { bar: { len, dir } } a plain bar ("h" long, "v" tall). Q.optSay[v] is what the game
+                  says when Kennedy taps it. Q.strip lists the pictures of a pattern row in order (the screen adds a "?" after them).
+       Q.tray     { noun, n, boxes } a tray of n things Marie taps one by one (boxes = how many in each box of ten). The things show no number,
+                  and the screen never shows a running count: a tap only marks that one thing. The answer is typed.
+       Q.noLine   true: the number line and the hop buttons are not shown (hops would count for her, or mean nothing for a picture answer).
+     ===================================================================================== */
+  const PIC = {
+    flag_red: { src: "world/art/castle/flag_red.png", name: "red flag" }, flag_blue: { src: "world/art/castle/flag_blue.png", name: "blue flag" },
+    apple: { src: "rewards/art/castle/apple_1.png", name: "apple" }, carrot: { src: "scene/art/castle/item_carrot.png", name: "carrot" },
+    star: { src: "scene/art/castle/item_star.png", name: "star" }, gem: { src: "scene/art/castle/item_gem.png", name: "gem" },
+    torch: { src: "scene/art/castle/item_torch.png", name: "torch" }, lantern: { src: "scene/art/castle/item_lantern.png", name: "lantern" },
+    shield: { src: "scene/art/castle/item_shield.png", name: "shield" }, coin: { src: "scene/art/castle/coin.png", name: "coin" },
+    arrow: { src: "scene/art/castle/item_arrow.png", name: "arrow" }, key: { src: "rewards/art/castle_extra/cage_key.png", name: "key" }
+  };
+  const picName = id => PIC[id].name;
+  const withThe = id => "the " + picName(id);
+  // the plain picture of one cafe thing, for the tray Marie taps (file under game/)
+  const TRAY_ART = {
+    cupcake: "world/art/cafe/treat_cupcake.png", cookie: "world/art/cafe/treat_cookie.png", muffin: "scene/art/cafe/item_muffin.png",
+    biscuit: "scene/art/cafe/item_biscuit.png", roll: "scene/art/cafe/item_roll.png", candy: "scene/art/cafe/item_candy.png",
+    flower: "scene/art/cafe/item_flower.png", grape: "scene/art/cafe/item_grape.png", lemon: "scene/art/cafe/item_lemon.png", sandwich: "scene/art/cafe/item_sandwich.png"
+  };
+  const PLURAL = { cupcake: "cupcakes", cookie: "cookies", muffin: "muffins", biscuit: "biscuits", roll: "rolls", candy: "candies", flower: "flowers", grape: "grapes", lemon: "lemons", sandwich: "sandwiches" };
+
+  /* ----- number bonds to 6, 7, 8 and 9 (Kennedy) ----- */
+  const BONDS_BANK = { M: [
+    ["You have {a|buddy knight|buddy knights}. Your team needs {t}.", "How many more buddies do you need?"],
+    ["You saved {a|villager}. There are {t} to save.", "How many more must you save?"],
+    ["You have {a|pillow}. Your team needs {t} pillows.", "How many more pillows do you need?"],
+    ["The bridge needs {t} planks. You have {a|plank}.", "How many more planks do you need?"],
+    ["You bopped {a|goblin} with a pillow. {t} goblins came to play.", "How many more goblins can you bop?"],
+    ["Your horse wants {t} apples. It has {a|apple}.", "How many more apples does it want?"],
+    ["You lit {a|lantern}. The road needs {t}.", "How many more must you light?"],
+    ["The pen holds {t} sheep. You led {a|sheep|sheep} in.", "How many more sheep can come in?"],
+    ["The chest needs {t} coins. You put in {a|coin}.", "How many more coins fill the chest?"],
+    ["{t} villagers need a ride. {a|villager} sat in the cart.", "How many more need a ride?"],
+    ["You have {a|shield}. Your team needs {t} shields.", "How many more shields do you need?"]
+  ] };
+  const BONDS_KIND = {
+    theme: "castle", name: "Knight: number bonds to 9", grade: 0, group: "add", needs: ["kinder.5"], choice: true,
+    all: () => range(6, 9).flatMap(t => range(1, t - 1).map(a => ({ type: "M", a, t }))),
+    bank: BONDS_BANK,
+    sceneRows: { M: ["knight@buddy", "villager", "pillow", "plank", "goblin", "apple@horse", "lantern", "sheep", "coin", "villager", "shield"] },
+    scene: ({ a, t }) => ({ act: "make10", a, total: t }),
+    q: ({ a, t }) => ({ v: { a, t }, nums: [a, t], ans: t - a, eq: `${a} + ? = ${t}`, op: "+", start: a, end: t, line: { lo: 0, hi: 10, step: 1 },
+      fact: `${a} and ${t - a} make ${t}.`, hint: `Start at ${a} and hop up to ${t}.`, key: `${t}:${a}`, pool: near(t - a, 1, t) }),
+    lesson: ({ a, t }, Q) => ({ kind: "bonds", steps: [
+      { say: `We have ${a}. We want ${t}. How many more?`, draw: [rowOf(0, Q.eq)] },
+      { say: `Start at ${a}. Hop up to ${t}.`, draw: [], line: [a, t, 1] },
+      { say: `You hopped ${Q.ans}.`, draw: [rowOf(1, `${a} + ${Q.ans} = ${t}`)] }
+    ] })
+  };
+
+  /* ----- patterns (Kennedy): AB and ABB, answered by tapping a picture ----- */
+  // each story row: three things [A, B, other]; the row's scene shows A and B
+  const PATTERN_ROWS = [["flag_red", "flag_blue", "star"], ["apple", "carrot", "coin"], ["star", "gem", "apple"], ["torch", "lantern", "shield"], ["shield", "coin", "star"], ["arrow", "key", "gem"]];
+  const PATTERN_ASK = "Which one comes next in the pattern?";
+  const PATTERN_BANK = {
+    A: [
+      ["The knight hangs flags on the castle wall.", PATTERN_ASK], ["Your horse has a snack line.", PATTERN_ASK], ["Stars and gems sit on the shelf.", PATTERN_ASK],
+      ["Torches and lanterns light the path.", PATTERN_ASK], ["Shields and coins lie on the table.", PATTERN_ASK], ["Arrows and keys hang on the hook.", PATTERN_ASK]
+    ],
+    B: [
+      ["The knight hangs more flags on the wall.", PATTERN_ASK], ["Your horse has a new snack line.", PATTERN_ASK], ["More stars and gems sit on the shelf.", PATTERN_ASK],
+      ["More torches and lanterns light the path.", PATTERN_ASK], ["More shields and coins lie on the table.", PATTERN_ASK], ["More arrows and keys hang on the hook.", PATTERN_ASK]
+    ]
+  };
+  const PATTERN_UNIT = { A: [1, 2], B: [1, 2, 2] };
+  const PATTERN_KIND = {
+    theme: "castle", name: "Knight: what comes next?", grade: 0, group: "shapes", needs: ["kinder.2"], choice: true, picAnswer: true,
+    all: () => range(4, 6).map(len => ({ type: "A", len })).concat(range(4, 7).map(len => ({ type: "B", len }))),
+    bank: PATTERN_BANK,
+    sceneRows: { A: ["flag+flag", "apple+carrot", "star+gem", "torch+lantern", "shield+coin", "arrow+key"], B: ["flag+flag", "apple+carrot", "star+gem", "torch+lantern", "shield+coin", "arrow+key"] },
+    scene: ({ type, len }) => ({ act: "pattern", seq: range(0, len - 1).map(i => PATTERN_UNIT[type][i % PATTERN_UNIT[type].length]) }),
+    q: ({ type, len }) => {
+      const unit = PATTERN_UNIT[type], seq = range(0, len - 1).map(i => unit[i % unit.length]), ans = unit[len % unit.length];
+      return { v: {}, nums: [], ans, eq: seq.map(i => "AB"[i - 1]).join(" ") + " ?", op: "", start: 0, end: ans, line: { lo: 0, hi: 10, step: 1 },
+        fact: "", hint: "Say the pattern. Which one comes after the last one?", key: `${type}:${len}`, pool: [1, 2, 3], want: 2 };
+    },
+    decorate: (Q, p, ti) => {
+      const items = PATTERN_ROWS[ti], unit = PATTERN_UNIT[p.type];
+      Q.picOpts = true; Q.noLine = true; Q.key += ":" + ti;
+      Q.pics = { 1: { src: PIC[items[0]].src, name: picName(items[0]) }, 2: { src: PIC[items[1]].src, name: picName(items[1]) }, 3: { src: PIC[items[2]].src, name: picName(items[2]) } };
+      Q.optSay = { 1: withThe(items[0]), 2: withThe(items[1]), 3: withThe(items[2]) };
+      Q.strip = range(0, p.len - 1).map(i => unit[i % unit.length]);
+      Q.unitWords = unit.map(i => picName(items[i - 1]));
+      Q.fact = `The pattern repeats. So ${withThe(items[Q.ans - 1])} comes next.`;
+      Q.tapSay = `Tap ${withThe(items[Q.ans - 1])}.`;
+    },
+    lesson: ({ type }, Q) => ({ kind: "pattern", steps: [
+      { say: "Look at the pattern. Some of the pictures repeat.", draw: [rowOf(0, Q.eq)] },
+      { say: `It goes ${Q.unitWords.join(", ")}, and then again.`, draw: [rowOf(1, PATTERN_UNIT[type].map(i => "AB"[i - 1]).join(" "))] }
+    ] })
+  };
+
+  /* ----- size and length (Kennedy): tap the longest, the shortest or the tallest ----- */
+  const SIZE_TRIPLES = (() => { const out = []; for (let x = 2; x <= 9; x++) for (let y = x + 2; y <= 9; y++) for (let z = y + 2; z <= 9; z++) out.push([x, y, z]); return out; })();
+  const SIZE_PERMS = [[0, 1, 2], [0, 2, 1], [1, 0, 2], [1, 2, 0], [2, 0, 1], [2, 1, 0]];
+  const SIZE_WORD = { L: "longest", S: "shortest", T: "tallest" };
+  const SIZE_BANK = {
+    L: [
+      ["The knight has three planks for the bridge.", "Which plank is the longest?"], ["Three planks lie by the river.", "Which plank is the longest?"],
+      ["Three keys hang on the hook.", "Which key is the longest?"], ["Three steps lead up to the door.", "Which step is the longest?"]
+    ],
+    S: [
+      ["The knight has three planks for the bridge.", "Which plank is the shortest?"], ["Three planks lie by the river.", "Which plank is the shortest?"],
+      ["Three keys hang on the hook.", "Which key is the shortest?"], ["Three steps lead up to the door.", "Which step is the shortest?"]
+    ],
+    T: [
+      ["Three torches stand by the gate.", "Which torch is the tallest?"], ["Three lanterns hang in a row.", "Which lantern is the tallest?"],
+      ["Three carrots grow in the garden.", "Which carrot is the tallest?"], ["Three arrows stand in the target.", "Which arrow is the tallest?"]
+    ]
+  };
+  const SIZE_HINT = { L: "Line them up. Which one goes the furthest?", S: "Line them up. Which one stops first?", T: "Stand them side by side. Which one reaches the highest?" };
+  const SIZE_KIND = {
+    theme: "castle", name: "Knight: longest, shortest, tallest", grade: 0, group: "shapes", needs: ["kinder.2"], choice: true, picAnswer: true,
+    all: () => ["L", "S", "T"].flatMap(type => SIZE_TRIPLES.flatMap(t => SIZE_PERMS.map(pm => ({ type, lens: pm.map(i => t[i]) })))),
+    bank: SIZE_BANK,
+    sceneRows: { L: ["plank", "plank", "key", "step"], S: ["plank", "plank", "key", "step"], T: ["torch", "lantern", "carrot", "arrow"] },
+    scene: ({ type, lens }) => ({ act: "size", sizes: lens.slice(), dir: type === "T" ? "v" : "h", ask: SIZE_WORD[type] }),
+    q: ({ type, lens }) => {
+      const best = type === "S" ? Math.min(...lens) : Math.max(...lens), ans = lens.indexOf(best) + 1;
+      return { v: {}, nums: [], ans, eq: `${SIZE_WORD[type]} = ?`, op: "", start: 0, end: ans, line: { lo: 0, hi: 10, step: 1 },
+        fact: `This one is the ${SIZE_WORD[type]}.`, hint: SIZE_HINT[type], key: `${type}:${lens.join("")}`, pool: [1, 2, 3], want: 2 };
+    },
+    decorate: (Q, p, ti) => {
+      const dir = p.type === "T" ? "v" : "h";
+      Q.picOpts = true; Q.noLine = true; Q.key += ":" + ti;
+      Q.pics = {}; Q.optSay = {};
+      p.lens.forEach((len, i) => { Q.pics[i + 1] = { bar: { len, dir } }; Q.optSay[i + 1] = "This one."; });
+      Q.tapSay = `Tap the ${SIZE_WORD[p.type]} one.`;
+    },
+    lesson: ({ type }, Q) => ({ kind: "size", steps: [
+      { say: "Put them side by side. Start them at the same place.", draw: [rowOf(0, Q.eq)] },
+      { say: type === "T" ? "Look at where each one ends at the top." : "Look at where each one ends.", draw: [] }
+    ] })
+  };
+
+  /* ----- counting by tapping (Marie, optional: see game/counting_need.js) ----- */
+  const TAP_ROWS = ["cupcake", "cookie", "muffin", "biscuit", "roll", "candy", "flower", "grape", "lemon", "sandwich"];
+  const TAP_STORY = [
+    "Mimi puts cupcakes on the big tray.", "Mimi lays out cookies for the shop.", "Mimi lines up muffins to cool.", "Mimi stacks biscuits for the tea party.",
+    "Mimi bakes rolls for the morning.", "Mimi sets candies in the jar.", "Mimi picks flowers for the tables.", "Mimi washes grapes for the fruit plate.",
+    "Mimi slices lemons for the tea.", "Mimi makes sandwiches for lunch."
+  ];
+  const TAP_BANK = { T: TAP_STORY.map((s, i) => [s, `Tap each one once as you count. How many ${PLURAL[TAP_ROWS[i]]} are there?`]) };
+  function tapCountKind(name, lo, hi, grade, needs) {
+    return {
+      theme: "cafe", name, grade, group: "count", needs, optional: true,
+      all: () => range(lo, hi).map(n => ({ type: "T", n })),
+      bank: TAP_BANK,
+      sceneRows: { T: TAP_ROWS.slice() },
+      scene: () => ({ act: "tap_count" }),
+      q: ({ n }) => ({ v: {}, nums: [], ans: n, eq: "all = ?", op: "", start: 0, end: n, line: { lo: 0, hi: 10, step: 1 }, fact: "",
+        hint: "Touch each one once. Do not skip one, and do not touch one twice.", key: `${n}` }),
+      decorate: (Q, p, ti) => {
+        const noun = TAP_ROWS[ti], boxes = []; for (let left = p.n; left > 0; left -= 10) boxes.push(Math.min(10, left));
+        Q.noLine = true; Q.key += ":" + ti;
+        Q.tray = { noun, n: p.n, boxes, src: TRAY_ART[noun] };
+        Q.fact = `There are ${p.n} ${PLURAL[noun]}.`;
+      },
+      lesson: ({ n }, Q) => ({ kind: "tapcount", steps: [
+        { say: "Touch each one just once. Move along in order.", draw: [rowOf(0, Q.eq)] },
+        { say: n > 20 ? "Count the full boxes of ten first. Then count the ones left over." : "Take your time. Keep your place.", draw: [] }
+      ] })
+    };
+  }
+
+  /* ----- number patterns (Marie, Grade 3: increasing and decreasing patterns, skip counting from any start) ----- */
+  const NUMPAT_BANK = {
+    U: [
+      ["Mimi lines up trays. They hold {a}, {b}, {c} cookies. The pattern goes on.", "How many cookies does the next tray hold?"],
+      ["Mimi saves coins each day: {a}, {b}, {c}. The pattern goes on.", "How many coins does she save next?"],
+      ["The jars hold {a}, {b}, {c} candies. The pattern goes on.", "How many candies does the next jar hold?"],
+      ["Mimi sells {a}, {b}, {c} muffins on three days. The pattern goes on.", "How many muffins does she sell next?"],
+      ["Tables seat {a}, {b}, {c} guests. The pattern goes on.", "How many guests does the next table seat?"],
+      ["The shelves hold {a}, {b}, {c} cups. The pattern goes on.", "How many cups does the next shelf hold?"]
+    ],
+    D: [
+      ["Mimi packs boxes with {a}, {b}, {c} cookies. The pattern goes on.", "How many cookies go in the next box?"],
+      ["The plate has {a}, then {b}, then {c} grapes left. The pattern goes on.", "How many grapes are left next?"],
+      ["Mimi has {a}, then {b}, then {c} cups left to wash. The pattern goes on.", "How many cups are left to wash next?"],
+      ["The jar holds {a}, then {b}, then {c} candies. The pattern goes on.", "How many candies are in the jar next?"],
+      ["Mimi sells muffins and has {a}, then {b}, then {c} left. The pattern goes on.", "How many muffins are left next?"],
+      ["The tray holds {a}, then {b}, then {c} rolls. The pattern goes on.", "How many rolls are on the tray next?"]
+    ]
+  };
+  const NUMPAT_KIND = {
+    theme: "cafe", name: "Cafe: number patterns", grade: 3, group: "shapes", needs: ["sums.3"],
+    all: () => [2, 3, 4, 5, 10].flatMap(step => range(1, 40).filter(a => a + 3 * step <= 100).map(a => ({ type: "U", a, step }))
+      .concat(range(30, 99).filter(a => a - 3 * step >= 0).map(a => ({ type: "D", a, step })))),
+    bank: NUMPAT_BANK,
+    sceneRows: { U: ["cookie", "coin", "candy", "muffin", "chair", "cup"], D: ["cookie", "grape", "cup", "candy", "muffin", "roll"] },
+    scene: ({ type, a, step }) => (type === "U" ? { act: "add", a: a + 2 * step, b: step } : { act: "sub", a: a - 2 * step, b: step }),
+    q: ({ type, a, step }) => {
+      const up = type === "U", s = up ? step : -step, b = a + s, c = a + 2 * s, ans = a + 3 * s;
+      return { v: { a, b, c }, nums: [a, b, c], ans, eq: `${a}, ${b}, ${c}, ?`, op: up ? "+" : "-", start: c, end: ans, line: lineWindow(c, ans),
+        fact: `It goes ${up ? "up" : "down"} by ${step} each time. ${c} ${up ? "plus" : "minus"} ${step} is ${ans}.`,
+        hint: "Look at how much it changes each time.", key: `${type}:${a}:${step}` };
+    },
+    lesson: ({ type, step }, Q) => ({ kind: "numpat", steps: [
+      { say: "Look at how much it changes each time.", draw: [rowOf(0, Q.eq)] },
+      { say: `It changes by ${step}. Hop ${step} ${type === "U" ? "forward" : "back"} from ${Q.a}.`, draw: [], line: [Q.a, Q.ans, step] }
+    ] })
+  };
+
+  /* ----- days, weeks, months and years (Marie, Grade 3 "relationships between units of time"): a repeated-groups question ----- */
+  const UNIT_TIME = { W: { per: 7, unit: "week", of: "day", ns: [2, 3, 4, 5] }, Y: { per: 12, unit: "year", of: "month", ns: [2, 3, 4] }, D: { per: 24, unit: "day", of: "hour", ns: [2, 3] } };
+  const TIME2_BANK = {
+    W: [
+      ["A week has 7 days. Mimi bakes every day for {n|week}.", "How many days does Mimi bake?"],
+      ["A week has 7 days. The shop stays open for {n|week}.", "How many days is the shop open?"],
+      ["A week has 7 days. Mimi plants herbs for {n|week}.", "How many days does she plant herbs?"],
+      ["A week has 7 days. The party plans take {n|week}.", "How many days do the plans take?"]
+    ],
+    Y: [
+      ["A year has 12 months. Mimi has had her cafe for {n|year}.", "How many months is that?"],
+      ["A year has 12 months. The old oven worked for {n|year}.", "How many months did it work?"],
+      ["A year has 12 months. Mimi saved coins for {n|year}.", "How many months did she save?"],
+      ["A year has 12 months. The garden has grown for {n|year}.", "How many months has it grown?"]
+    ],
+    D: [
+      ["A day has 24 hours. Mimi's soup simmers for {n|day}.", "How many hours does it simmer?"],
+      ["A day has 24 hours. The bread dough rests for {n|day}.", "How many hours does it rest?"],
+      ["A day has 24 hours. Mimi's friend visits for {n|day}.", "How many hours does she stay?"],
+      ["A day has 24 hours. The cake stays fresh for {n|day}.", "How many hours does it stay fresh?"]
+    ]
+  };
+  const TIME2_KIND = {
+    theme: "cafe", name: "Cafe: days, weeks, months and hours", grade: 3, group: "money_time", needs: ["cafe_time.1"],
+    all: () => Object.keys(UNIT_TIME).flatMap(type => UNIT_TIME[type].ns.map(n => ({ type, n }))),
+    bank: TIME2_BANK,
+    sceneRows: { W: ["cookie:tray", "cupcake:tray", "flower:vase", "muffin:box"], Y: ["coin:jar", "cookie:tray", "cupcake:tray", "flower:vase"], D: ["cookie:tray", "muffin:box", "cupcake:tray", "roll:plate"] },
+    scene: ({ type, n }) => ({ act: "groups", n, per: UNIT_TIME[type].per, holder: "tray" }),
+    q: ({ type, n }) => {
+      const u = UNIT_TIME[type], ans = n * u.per;
+      return { v: { n }, nums: [u.per, n], ans, eq: `${n} × ${u.per} = ?`, op: "×", start: 0, end: ans, line: { lo: 0, hi: 10 * u.per, step: u.per },
+        fact: `${pl(n, u.unit)} is ${ans} ${u.of}s.`, hint: `Skip count by ${u.per}, ${n} times.`, key: `${type}:${n}` };
+    },
+    lesson: ({ type, n }, Q) => {
+      const u = UNIT_TIME[type];
+      return { kind: "units", steps: [
+        { say: `Each ${u.unit} has ${u.per} ${u.of}s. So we use ${u.per}, ${n} times.`, draw: [rowOf(0, Q.eq)] },
+        { say: `Skip count by ${u.per}. Hop ${n} times.`, draw: [], line: [0, Q.ans, u.per] }
+      ] };
+    }
+  };
+
   const KINDS = {
     "cafe_tens.1": TENS_KIND,
     "cafe_times.1": timesKind("Cafe: equal groups of 2, 5 and 10", [2, 5, 10], 2, ["sums.3"]),
@@ -883,7 +1135,14 @@
     "kinder.count20": COUNT_KIND,
     "kinder.more_less": MORE_LESS_KIND,
     "kinder.compare": COMPARE_KIND,
-    "kinder.make10": MAKE10_KIND
+    "kinder.make10": MAKE10_KIND,
+    "kinder.bonds": BONDS_KIND,
+    "knight_pattern.1": PATTERN_KIND,
+    "knight_size.1": SIZE_KIND,
+    "cafe_count.1": tapCountKind("Cafe: counting by tapping, up to 20", 3, 20, 1, []),
+    "cafe_count.2": tapCountKind("Cafe: counting by tapping, up to 50", 21, 50, 2, ["cafe_count.1"]),
+    "cafe_pattern.1": NUMPAT_KIND,
+    "cafe_time.2": TIME2_KIND
   };
   Object.keys(KINDS).forEach(id => Object.keys(KINDS[id].bank).forEach(t => {
     if (!KINDS[id].sceneRows || !KINDS[id].sceneRows[t] || KINDS[id].sceneRows[t].length !== KINDS[id].bank[t].length) throw new Error("KS: " + id + " needs one scene entry per " + t + " story");
@@ -899,6 +1158,7 @@
     Q.story = render(tpl[0], d.v); Q.ask = render(tpl[1], d.v);
     Q.scene = Object.assign(K.scene(p), sceneWords(K.sceneRows[p.type][ti]));
     Q.say = Q.story + " " + Q.ask;
+    if (K.decorate) { K.decorate(Q, K.pOf ? K.pOf(p) : p, ti); Q.say = Q.story + " " + Q.ask; }   // pictures, a tray, names in the fact (round of 22 Oct 2026)
     Q.correct = "Correct! " + Q.fact;
     Q.kind = K.choice ? "choice" : "typed";
     if (K.choice) {
@@ -921,7 +1181,9 @@
   }
   function teachKind(Q, right) {
     const L = KINDS[Q.skill].lesson(Q.p, Q);
-    const steps = L.steps.concat({ say: right ? Q.fact : `${Q.fact} ${Q.kind === "typed" ? "Type" : "Tap"} ${Q.ans}.`, draw: [{ answer: true }] });
+    const tail = Q.picOpts ? { say: right ? Q.fact : `${Q.fact} ${Q.tapSay}`, draw: [] }            // a picture answer cannot be written on the board
+      : { say: right ? Q.fact : `${Q.fact} ${Q.kind === "typed" ? "Type" : "Tap"} ${Q.ans}.`, draw: [{ answer: true }] };
+    const steps = L.steps.concat(tail);
     return { kind: L.kind, steps };
   }
   // Every question a kind can make (all numbers x every story of that type).
@@ -937,12 +1199,15 @@
   // New skills for the engine's skill map: KidsEngine.buildSkillMap(topics, KS.extraSkills()). Fresh objects each call.
   // Kept out of the game: plain counting (Aldrin, 19 Oct 2026: both children already count well; sums first, no counting games).
   const OFF = ["kinder.count20"];
+  // Optional skills (Marie's counting by tapping): in the engine's skill map, but the game marks them ready only when a grown-up asks or
+  // the record shows counting slips (game/counting_need.js). KS.fits is still true for her theme; the game checks KS.optional too.
+  const optional = id => !!(KINDS[id] && KINDS[id].optional);
   const extraSkills = () => Object.keys(KINDS).filter(id => !OFF.includes(id)).map(id => ({ id, name: KINDS[id].name, grade: KINDS[id].grade, group: KINDS[id].group,
     needs: KINDS[id].needs.slice(), play: { src: "story" }, ready: true }));
 
   /* ---------- every sentence and every piece ---------- */
   function addQuestionTexts(Q, put) {
-    [Q.say, Q.correct, Q.fact, Q.hint].forEach(put);
+    [Q.say, Q.correct, Q.fact, Q.hint].concat(Object.values(Q.optSay || {})).forEach(put);   // optSay: what Kennedy hears when he taps a picture
     [true, false].forEach(r => teach(Q, r).steps.forEach(s => put(s.say)));
   }
   let sentenceCache = null, pieceCache = null;
@@ -987,7 +1252,7 @@
     return pieceCache;
   }
 
-  const KS = { SKILLS, THEMES, SCALE, WORDS, make, build, teach, sentences, pieces, templates: theme => TEMPLATES[theme].slice(), usable, allPairs, lineWindow,
+  const KS = { optional, PIC, TRAY_ART, SKILLS, THEMES, SCALE, WORDS, make, build, teach, sentences, pieces, templates: theme => TEMPLATES[theme].slice(), usable, allPairs, lineWindow,
     OLD_SKILLS, KIND_IDS: Object.keys(KINDS), SCENE_ACTS, SCENE_NOUNS, SCENE_WHO, fits, kindTheme, extraSkills, kindAll, buildKind, kindBank: id => KINDS[id].bank, eachKindQuestion };
   if (typeof module !== "undefined" && module.exports) module.exports = KS; else root.KS = KS;
 })(typeof window !== "undefined" ? window : globalThis);

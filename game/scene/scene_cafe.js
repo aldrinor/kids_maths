@@ -304,6 +304,11 @@
       return [[200, () => reveal(S, whole, "d")], [600, () => { pose(S, "carry"); reveal(S, items || slices, "l"); }], [900, () => pose(S, "stand")]];
     }
   };
+  // counting by tapping (Marie, 22 Oct 2026): Mimi shows ONE of the things and looks at it with her. The amount is never drawn here: the tray below the story is hers to count.
+  ACTS.tap_count = (S, Q, sc) => {
+    const it = group(S.ctx, icons(S.ctx, sc.noun, 1, 1.9), null, "thing"); add(S, it); fit(S);
+    return [[200, () => reveal(S, it, "d")], [500, () => pose(S, "count")], [1600, () => pose(S, "stand")]];
+  };
   // castle acts, if a cafe question ever carries one: show the things plainly
   ACTS.count = (S, Q, sc) => { const g = group(S.ctx, icons(S.ctx, "cupcake", sc.seq[2]), "tray", "a", sc.seq[2]); add(S, g); fit(S); return [[200, () => reveal(S, g, "l")]]; };
   ACTS.more_less = (S, Q, sc) => ACTS.need(S, Q, { noun: "cupcake", a: sc.a });

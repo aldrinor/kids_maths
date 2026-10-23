@@ -319,6 +319,20 @@
       return [[200, () => { reveal(S, A, "l"); helpCome(S); }], [700, () => pose(S, "point")], [1600, () => pose(S, "stand")]];
     }
   };
+  /* ----- round of 22 Oct 2026: patterns and size (Kennedy). The scene shows the things of the question, never the answer. ----- */
+  ACTS.pattern = (S, Q, sc) => {
+    // the pattern so far, one thing at a time, left to right (the next one is what he is asked: it is never drawn)
+    const flags = sc.noun === "flag" && sc.noun2 === "flag", kinds = [sc.noun, sc.noun2 || sc.noun];
+    const gs = sc.seq.map((v, i) => group(icons(S.ctx, kinds[v - 1], 1, 1, 1, flags ? (v === 1 ? "red" : "blue") : undefined), "p" + i, 1));
+    add(S, ...gs);
+    return [[200, () => pose(S, "point")]].concat(gs.map(g => [S.ctx.reduced ? 120 : 300, () => reveal(S, g, "d")]), [[700, () => pose(S, "stand")]]);
+  };
+  ACTS.size = (S, Q, sc) => {
+    // three of the same thing in three sizes, standing side by side on the path: bigger number = longer or taller, in true proportion
+    const gs = sc.sizes.map((len, i) => { const g = group(h("div", "qs-grid"), "s" + i, len); g.firstChild.appendChild(thing(S.ctx, sc.noun, 0.4 + 0.6 * len / 9, i)); return g; });
+    add(S, ...gs);
+    return [[200, () => pose(S, "point")]].concat(gs.map(g => [S.ctx.reduced ? 120 : 400, () => reveal(S, g, "d")]), [[700, () => pose(S, "stand")]]);
+  };
   // any other act (a cafe act, if a castle question ever carries one): show the first amount plainly
   const plain = (S, Q, sc) => ACTS.need(S, Q, { noun: sc.noun || "apple", a: Math.max(1, sc.a || sc.n || sc.total || 1) });
 

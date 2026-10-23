@@ -4,6 +4,12 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="robots" content="noindex">
+<link rel="manifest" href="app.webmanifest">
+<meta name="theme-color" content="#fff4e0">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Kids Maths">
+<link rel="apple-touch-icon" href="icons/apple_touch_icon_180.png">
 <title>Kids Maths</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Lexend:wght@400;500;600;700;800&family=Sniglet:wght@400;800&family=Germania+One&family=Patrick+Hand&display=swap">
@@ -18,7 +24,8 @@
      - Own save per child (kidsMaths.game.<child>); the old app's save is read once and never written. -->
 <link rel="stylesheet" href="theme.css?v=3">
 <link rel="stylesheet" href="kid_mode.css?v=3">
-<link rel="stylesheet" href="parent_area.css?v=1">
+<link rel="stylesheet" href="parent_area.css?v=2">
+<link rel="stylesheet" href="new_skills.css?v=1">
 <link rel="stylesheet" href="scene/scene.css?v=1">
 <link rel="stylesheet" href="journey.css?v=2">
 </head>
@@ -37,7 +44,7 @@
 <script src="../modules/knight_art.js"></script>
 <script src="../modules/engine.js?v=2"></script>
 <script src="../topics/kinder.js"></script>
-<script src="stories.js"></script>
+<script src="stories.js?v=2"></script>
 <!-- reward games (game/rewards/): the shared core and kits, then one file per game -->
 <link rel="stylesheet" href="rewards/reward_styles.css">
 <script src="rewards/reward_kit_spring.js"></script>
@@ -58,18 +65,20 @@
 <script src="world/castle_world.js?v=2"></script>
 <!-- the question scene above each question (game/scene/): the core, then one file per theme -->
 <script src="scene/scene_core.js"></script>
-<script src="scene/scene_cafe.js"></script>
-<script src="scene/scene_castle.js"></script>
+<script src="scene/scene_cafe.js?v=2"></script>
+<script src="scene/scene_castle.js?v=2"></script>
 <script src="game_save.js?v=2"></script>
 <script src="kid_mode.js?v=3"></script>
 <script src="choice_evidence.js?v=2"></script>
 <script src="answer_log.js?v=1"></script>
-<script src="miss_study.js?v=1"></script>
+<script src="miss_study.js?v=2"></script>
 <script src="mastery_bkt.js?v=1"></script>
 <script src="hint_ladder.js?v=1"></script>
 <script src="parent_report.js?v=2"></script>
 <script src="progress_file.js?v=1"></script>
-<script src="parent_area.js?v=1"></script>
+<script src="counting_need.js?v=1"></script>
+<script src="device_status.js?v=1"></script>
+<script src="parent_area.js?v=2"></script>
 <script src="focus_guard.js?v=1"></script>
 <script src="journey.js?v=2"></script>
 <script>
@@ -96,7 +105,7 @@ let who = null, P = null, theme = "cafe";
 const store = (() => { try { const ls = window.localStorage; ls.getItem("kidsMaths.probe"); return ls; } catch (e) { return null; } })()
   || (() => { const m = {}; return { getItem: k => (k in m ? m[k] : null), setItem: (k, v) => { m[k] = String(v); }, removeItem: k => { delete m[k]; } }; })();
 const storeIsReal = (() => { try { return window.localStorage === store; } catch (e) { return false; } })();
-let saveBlocked = false, saveWarnAt = 0, pendingNotes = [];
+let saveBlocked = false, saveWarnAt = 0, pendingNotes = [], lastSaveOk = null, lastSaveAt = 0;   // lastSaveOk: null before the first save of this visit
 /* first time: copy the old app's save (engine progress, house, coins), then keep our own key; the old key is never written */
 function loadSave(w, forceFresh) {
   const r = GameSave.load({ storage: store, key: SAVE_KEY(w), who: w, now: Date.now(), makeEngine: KidsEngine.createState, forceFresh: !!forceFresh,
@@ -127,6 +136,7 @@ function save() {
   if (!who) return true;
   if (saveBlocked) { saveWarn("this play is not being saved, so the earlier saved progress stays safe. A grown-up should look at the game before the next play."); return false; }
   const r = GameSave.write(store, SAVE_KEY(who), P);
+  lastSaveOk = !!r.ok; if (r.ok) lastSaveAt = Date.now();
   if (!r.ok) { saveWarn("this device could not save the progress. Please do not close this page. Check that the browser allows saving and is not in a private window."); return false; }
   const w = document.getElementById("savewarn"); if (w) w.remove();
   return true;
@@ -242,6 +252,33 @@ function speakSystem(text) {                     // the voice of the device: use
   } catch (e) {}
   return new Promise(r => setTimeout(r, est * FAST));
 }
+/* Warm the voice pieces of a text before they are needed (plan item 25, review item 28): a long number sentence is joined from about five clips,
+   and each clip used to be fetched only when its turn came, so a slow link left gaps. Now every piece is asked for at once, as soon as a question
+   appears, and kept (decoded where there is Web Audio, in the browser cache where there is not). */
+const warmDone = new Set();
+function warmText(text) {
+  text = String(text || "").trim(); if (!text || warmDone.has(text)) return;
+  const parts = has(text) ? [text] : (() => { const ps = piecesOf(text); return ps.length > 1 && ps.every(has) ? ps : []; })();
+  if (!parts.length) return;
+  warmDone.add(text); if (warmDone.size > 600) warmDone.clear();
+  parts.forEach(t => {
+    if (window.__warmLog) window.__warmLog.push(t);                // tests only
+    if (window.AudioContext || window.webkitAudioContext) clip(t).catch(() => {}); else fetch(`voice/${fnv(t)}.mp3`).catch(() => {});
+  });
+}
+async function warmQuestion(q, me) {
+  if (window.__noVoice || !q) return;
+  if (voiceList === null && manifestPromise) await Promise.race([manifestPromise, new Promise(r => setTimeout(r, 1500))]);
+  if (!voiceList) return;
+  warmText(q.say);                                                  // the question first, at once
+  const later = () => {
+    if (me && QS !== me) return;
+    [q.correct, q.fact, q.hint].forEach(warmText);
+    (q.opts || []).forEach(o => warmText(q.picOpts && q.optSay ? q.optSay[o] : String(o)));      // what Kennedy hears when he taps
+    if (!q.parent && q.skill) { try { KS.teach(q, false).steps.forEach(st => warmText(st.say)); } catch (e) {} }   // the lesson after a miss
+  };
+  setTimeout(later, 400);
+}
 async function say(text) {
   text = String(text); stopVoice(); let me = sayToken;
   if (window.__sayLog) window.__sayLog.push(text);                  // tests only: what was spoken
@@ -250,12 +287,14 @@ async function say(text) {
     if (me !== sayToken) return;
   } else if (manifestFailedAt && Date.now() - manifestFailedAt > 20000 && !window.__noVoice) loadManifest(1);   // try the list again in the background
   if (has(text)) {
+    warmText(text);
     if (await playOne(text, me)) return;
     if (me !== sayToken) return;
     return speakSystem(text);                    // the clip failed twice: never go silent
   }
   const parts = piecesOf(text);
   if (parts.length > 1 && parts.every(has)) {
+    warmText(text);                                                 // every piece is asked for now, not one by one
     for (let i = 0; i < parts.length; i++) {
       if (me !== sayToken) return;
       if (!(await playOne(parts[i], me))) { if (me !== sayToken) return; return speakSystem(parts.slice(i).join(" ")); }
@@ -387,17 +426,36 @@ function nextQuestion(given, carry) {
   drawDots(); drawCoins(); renderBody(); mascot("stand");
   const story = document.querySelector("#qbody .story");                     // a screen reader reads the new question
   if (story && (!document.activeElement || document.activeElement === document.body)) { story.tabIndex = -1; story.focus({ preventScroll: true }); }
+  warmQuestion(Q, QS);                                                        // the voice pieces are fetched now, so a slow link has no gaps
   const me = QS, lead = QS.lead, tries0 = QS.tries, still = () => QS === me && me.tries === tries0 && me.phase === "ask" && !me.submitting;     // a child who has already answered is not talked over
   setTimeout(async () => { if (!still()) return; if (lead) { await say(lead); if (!still()) return; } say(Q.say); }, 250);
 }
 function boxCls() { return QS.mark === "right" ? "right" : QS.mark === "wrong" ? "wrong" : QS.phase === "ask" ? "active" : ""; }
 const startOf = () => Number.isFinite(Q.a) && !(Q.type === "K" && Q.a === Q.ans) ? Q.a : QS.lo;   // "Which number is four?": the hopper must not stand on 4 before she answers
 const endOf = () => Number.isFinite(Q.result) ? Q.result : Q.ans;     // a missing part ends on the total, not on the answer
+const escHtml = t => String(t).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
+/* picture answers (patterns, size) and the counting tray: see the fields in game/stories.js (Q.picOpts, Q.pics, Q.strip, Q.tray, Q.noLine) */
+const picHtml = pc => pc.src ? `<img src="${pc.src}" alt="">` : `<span class="bar ${pc.bar.dir}" style="--len:${pc.bar.len}"></span>`;
+const optInner = o => Q.picOpts ? `<span class="optpic">${picHtml(Q.pics[o])}</span>` : String(o);
+const optAttrs = o => Q.picOpts ? ` aria-label="${escHtml(Q.pics[o].name || "A bar")}"` : "";
+const stripHtml = () => Q.strip ? `<div class="patstrip" role="img" aria-label="A pattern of pictures">${Q.strip.map(i => picHtml(Q.pics[i])).join("")}<span class="patq" aria-hidden="true">?</span></div>` : "";
+function trayHtml() {                                       // every thing is a button that only marks itself; nothing shows how many are marked
+  const t = Q.tray; QS.marked = QS.marked || []; let i = 0;
+  return `<div class="counttray" role="group" aria-label="The things to count. Tap each one once.">${t.boxes.map(n => `<div class="tbox">${Array.from({ length: n }, () => {
+    const k = i++, on = !!QS.marked[k];
+    return `<button class="tapitem${on ? " on" : ""}" data-i="${k}" aria-pressed="${on}" aria-label="${escHtml(t.noun)}"><img src="${t.src}" alt=""></button>`;
+  }).join("")}</div>`).join("")}</div>`;
+}
+function tapItem(k, el) {
+  if (!QS || QS.phase !== "ask" || QS.teaching || QS.submitting) return;
+  QS.marked = QS.marked || []; QS.marked[k] = !QS.marked[k];
+  el.classList.toggle("on", QS.marked[k]); el.setAttribute("aria-pressed", String(QS.marked[k]));
+}
 function renderBody() {
   const b = $("#qbody"), bulb = `<button class="bulb" aria-label="Hint">${ICON.bulb}</button>`;
   const story = `<div class="story">${Q.story}${Q.ask ? `<br><b>${Q.ask}</b>` : ""}<span class="inbulb">${bulb}</span></div>`;
   const top = Q.kind === "choice"
-    ? `${story}<div class="bars">${Q.opts.map((o, i) => `<button class="opt" data-v="${o}">${KidMode.on() ? "" : `<small>${"abc"[i]})</small>`}${o}</button>`).join("")}</div>`
+    ? `${story}${stripHtml()}<div class="bars">${Q.opts.map((o, i) => `<button class="opt${Q.picOpts ? " pic " + (Q.pics[o].bar ? Q.pics[o].bar.dir : "img") : ""}" data-v="${o}"${optAttrs(o)}>${KidMode.on() ? "" : `<small>${"abc"[i]})</small>`}${optInner(o)}</button>`).join("")}</div>`
     : `${story}<div class="eq"><span class="box ${boxCls()}" id="ansBox">${QS.typed || "&nbsp;"}</span></div>`;
   const off = QS.phase === "shown" || QS.phase === "right" ? " disabled" : "";
   const sz = sign => QS.ruler ? `<b class="sz">${sign}${QS.hop}</b>` : "", hz = QS.ruler ? ` ${QS.hop}` : "";   // the hop size is on the button
@@ -405,12 +463,12 @@ function renderBody() {
   const tileHad = fa === $("#tile");                      // a rebuild must not drop keyboard focus
   const tileEl = $("#tile"); tileEl.remove();             // Check sits in the row beside Restart; keep it while the body is rebuilt
   const watch = QS.phase === "right" && QS.watchOk && !QS.board;           // a clean right answer: Next, or Watch how it works
-  const kid = KidMode.on(), tapQ = kid && Q.kind === "choice", altOn = altShown(), solo = tapQ || altOn || (kid && watch);   // Kennedy on a tap question: picture buttons only, no Back / Forward / Restart
+  const kid = KidMode.on(), tapQ = kid && Q.kind === "choice", altOn = altShown(), solo = tapQ || altOn || !!Q.noLine || (kid && watch);   // Kennedy on a tap question: picture buttons only, no Back / Forward / Restart
   const w = (word, kidWord = "") => kid ? kidWord : word;       // words on buttons are for readers; Kennedy gets arrows and numbers
   const hopBtns = watch ? `<button class="watch" aria-label="Watch how it works"><span class="play">${ICON.play}</span>${w("Watch how it works")}</button>`
-    : tapQ || altOn ? "" : `<button data-h="-1"${off} aria-label="Hop back${hz}"><i class="ar">◀ </i>${w("Back")}${sz("−")}</button><button data-h="1" class="fwd"${off} aria-label="Hop forward${hz}">${w("Forward")}${sz("+")}<i class="ar"> ▶</i></button><button data-h="0"${off} aria-label="Start again"><i class="ar">↺ </i>${w("Restart")}</button>`;
-  b.innerHTML = `<div class="qtop">${top}</div><div class="room"></div>
-    <div class="qbottom"><div class="nlbox" aria-label="Number line"></div>
+    : tapQ || altOn || Q.noLine ? "" : `<button data-h="-1"${off} aria-label="Hop back${hz}"><i class="ar">◀ </i>${w("Back")}${sz("−")}</button><button data-h="1" class="fwd"${off} aria-label="Hop forward${hz}">${w("Forward")}${sz("+")}<i class="ar"> ▶</i></button><button data-h="0"${off} aria-label="Start again"><i class="ar">↺ </i>${w("Restart")}</button>`;
+  b.innerHTML = `<div class="qtop">${top}</div><div class="room">${Q.tray ? trayHtml() : ""}</div>
+    <div class="qbottom"><div class="nlbox${Q.noLine ? " noline" : ""}"${Q.noLine ? "" : ` aria-label="Number line"`}></div>
     <div class="hoprow${solo ? " solo" : ""}">${hopBtns}</div></div>`;
   b.querySelector(".hoprow").appendChild(tileEl);
   b.classList.toggle("rulerq", !!QS.ruler);       // the ruler is a little taller: the empty gap above it gives way
@@ -418,6 +476,7 @@ function renderBody() {
   b.querySelectorAll(".bulb").forEach(x => x.onclick = e => { e.stopPropagation(); document.querySelector(".bubble") ? closeHint() : openHint(); });
   b.querySelectorAll(".opt").forEach(x => x.onclick = () => { if (QS.phase !== "ask" || QS.teaching || QS.submitting) return; if (KidMode.on()) return kidSubmit(+x.dataset.v, true); QS.pick = +x.dataset.v; QS.mark = null; renderBody(); });
   if (QS.pick != null) b.querySelectorAll(`.opt[data-v="${QS.pick}"]`).forEach(x => x.classList.add("sel", ...(QS.mark ? [QS.mark] : [])));
+  b.querySelectorAll(".tapitem").forEach(x => x.onclick = () => tapItem(+x.dataset.i, x));
   b.querySelectorAll(".hoprow .watch").forEach(x => x.onclick = () => { if (QS && QS.phase === "right" && !QS.teaching) teach(); });
   b.querySelectorAll(".hoprow button[data-h]").forEach(x => x.onclick = () => { const h = +x.dataset.h; if (!h) restart(); else if (QS.ruler) hopBy(h); else hopTo(QS.line + h * QS.step); });
   if (QS.board) placeBoard();
@@ -437,6 +496,7 @@ function fitLine(from, to, step) {              // move the window so a lesson h
 const altShown = () => !!QS && !!QS.alt && !QS.board && (QS.phase === "ask" || QS.phase === "right") && !!HintLadder.picture(Q);
 function drawLine() {
   const box = document.querySelector("#qbody .nlbox"); if (!box) return;
+  if (Q.noLine) { box.innerHTML = ""; return; }                  // counting trays and picture answers have no number line
   if (altShown()) { const p = HintLadder.picture(Q); box.innerHTML = `<div class="altpic">${p.svg}</div>`; return; }
   if (QS.line == null) QS.line = startOf();
   if (QS.ruler) return drawRuler(box);
@@ -624,6 +684,7 @@ function rulerSvg(host, k, [sL, topH]) {
   host.innerHTML = s + "</svg>";
 }
 async function showHops() {                    // "See The Answer": hop from the start to the answer when both are on the line
+  if (Q.noLine) { renderBody(); return; }                      // no line to hop on: just show the answer in its place
   const me = QS, s0 = startOf(), target = endOf();
   if (QS.ruler) return rulerShow(me, s0, target);
   QS.line = s0; QS.hops = []; QS.hopFrom = null; renderBody(); await wait(500);
@@ -811,7 +872,7 @@ async function kidSubmit(v, send) {
   const me = QS; me.submitting = true;
   if (me.firstMs == null && send) me.firstMs = Date.now() - me.t0;              // the thinking time is the time before the tap, not the time to speak
   if (Q.kind === "choice") { me.pick = v; me.mark = null; renderBody(); }
-  await Promise.race([say(String(v)), new Promise(r => setTimeout(r, 2500))]);
+  await Promise.race([say(Q.kind === "choice" && Q.picOpts && Q.optSay && Q.optSay[v] ? Q.optSay[v] : String(v)), new Promise(r => setTimeout(r, 2500))]);
   if (QS !== me) return;
   me.submitting = false;
   if (send && me.phase === "ask" && !me.teaching) tile();
@@ -1123,7 +1184,24 @@ async function parentNote(lines) {
 /* the card for grown-ups: a check first, then the report, the downloads and the progress file (parent_area.js) */
 function openGrownups() {
   return ParentArea.open({ store, saveKey: w => SAVE_KEY(w), logKey: w => LOG_KEY(w), names: { marie: PROFILES.marie.name, kennedy: PROFILES.kennedy.name }, M,
-    KidsEngine, GameSave, AnswerLog, ProgressFile, ParentReport, MissStudy, FocusGuard });
+    KidsEngine, GameSave, AnswerLog, ProgressFile, ParentReport, MissStudy, FocusGuard, DeviceStatus, CountingNeed,
+    device: () => DeviceStatus.collect({ navigator, caches: window.caches, saveBlocked: saveBlocked || lastSaveOk === false, standalone: matchMedia("(display-mode: standalone)").matches || navigator.standalone === true }) });
+}
+/* Marie's counting skills: the grown-up's choice (auto, on, off: counting_need.js) and what her answer record says.
+   When they are on, both skills go on her focus list, so the engine asks them in order (up to 20, then up to 50). A grown-up note is left once when the record turned them on. */
+function countingFor(w) {
+  if (w !== "marie" || !P) return { on: false, why: "none" };
+  const st = P.engine, pref = CountingNeed.read(store);
+  const d = CountingNeed.decide(pref.mode, log ? log.all() : [], CountingNeed.learning(st, KidsEngine.LV.KNOWS));
+  if (!Array.isArray(st.focus)) st.focus = [];
+  if (d.on) CountingNeed.IDS.forEach(id => { if (!st.focus.includes(id)) st.focus.push(id); });
+  else st.focus = st.focus.filter(id => !CountingNeed.IDS.includes(id));
+  if (d.on && d.why === "record" && !pref.noted) {
+    CountingNeed.write(store, { noted: true });
+    const t = `${PROFILES[w].name} made a few counting slips lately (answers one or two away). Counting practice by tapping was added to her questions. You can change this in For grown-ups.`;
+    GameSave.addNote(store, w, t, Date.now());                  // shown on the doors card for a grown-up, not to the child
+  }
+  return d;
 }
 /* the doors: each child taps their own picture; no other choice */
 async function doors() {
@@ -1147,7 +1225,8 @@ async function start(w, forceFresh) {
     if (log.damaged) { const t = `${PROFILES[who].name}'s record of answers was damaged. A safe copy was kept on this device and a new record started. Play and progress are not affected.`; GameSave.addNote(store, who, t, Date.now()); pendingNotes.push(t); }
     if (navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(() => {});      // ask the browser to keep the save (Safari may clear it after a week otherwise)
     KidMode.set(who); setTheme(PROFILES[who].theme); audioCtx(); sizeDraw(); save(); updateBadge();
-    M.order.forEach(id => { M.map[id].ready = KS.SKILLS.includes(id) && KS.fits(id, theme); });   // cafe kinds are Marie's, knight kinds Kennedy's
+    const counting = countingFor(who);                           // Marie's optional counting-by-tapping skills (counting_need.js): on only when a grown-up asks or the record shows slips
+    M.order.forEach(id => { M.map[id].ready = KS.SKILLS.includes(id) && KS.fits(id, theme) && (!KS.optional(id) || counting.on); });   // cafe kinds are Marie's, knight kinds Kennedy's
     if (pendingNotes.length) { const n = pendingNotes; pendingNotes = []; await parentNote(n); }
     if (P.engine.paused) return showEnd("Maths is resting.", "A grown-up paused maths for now.");
     if (overLimit()) return dayEnd();
@@ -1174,6 +1253,11 @@ addEventListener("pagehide", save);
 requestAnimationFrame(sizeDraw);
 drawDots(); mascot("stand");
 if (TRY && PROFILES[TRY]) { start(TRY); P.coins = Math.max(P.coins, 300); save(); drawCoins(false); playWorld(); } else doors();
+/* offline use (plan item 22): the helper in sw.js saves the game on this device after one visit. Not registered under the automatic tests (they stub the page), unless a test sets window.__swTest. */
+if ("serviceWorker" in navigator && /^https?:$/.test(location.protocol) && (!navigator.webdriver || window.__swTest)) {
+  const register = () => navigator.serviceWorker.register("sw.js", { scope: "./" }).catch(e => console.warn("offline helper not started", e));
+  if (document.readyState === "complete") register(); else addEventListener("load", register);
+}
 window.__game = { make: pickQuestion, get Q() { return Q; }, get log() { return log; }, hint: openHint, grownups: openGrownups, get saveBlocked() { return saveBlocked; }, get QS() { return QS; }, get P() { return P; }, get set() { return set; }, M, start, doors,
   show(q) { nextQuestion(q); },
   lesson() { if (!Q) return; closeBoard(); QS.tries = 1; return teach(); },

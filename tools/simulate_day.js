@@ -80,7 +80,7 @@ function realTimes(file) {
 function simulate(who, o, rules, real) {
   const theme = THEME[who], rng = seeded(o.seed + (who === "kennedy" ? 1000 : 0));
   const M = E.buildSkillMap((window.MathTopics || []).filter(t => t.id === "kinder"), KS.extraSkills());
-  M.order.forEach(id => { M.map[id].ready = KS.SKILLS.includes(id) && KS.fits(id, theme); });
+  M.order.forEach(id => { M.map[id].ready = KS.SKILLS.includes(id) && KS.fits(id, theme) && !KS.optional(id); });   // the optional counting skills are off unless a grown-up or the record asks (counting_need.js)
   M.order.forEach(id => { M.map[id].needs = M.map[id].needs.filter(n => M.map[n] && M.map[n].ready); });
   const st = E.createState(who), practice = {}, ability = o.ability[who];
   const think = (kind) => { const r = real && real[who]; const v = kind === "choice" ? (r && r.tap) || o.thinkTap : (r && r.typed) || o.thinkTyped; return v; };

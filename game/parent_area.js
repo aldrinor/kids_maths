@@ -4,10 +4,13 @@
  *  1. A grown-up check first: one multiplication a young child cannot do (12 to 19 times 12 to 19). Wrong: try again, or go back.
  *  2. The report: a weekly paragraph for each child, the most common wrong answers skill by skill, and what a grown-up can do.
  *  3. Three buttons: save the report as a text file, save the progress file, load a progress file (asks first, keeps a copy).
- * The card only reads. It never changes a child's save except when a grown-up loads a progress file and says yes.
+ *  4. "Saved on this device": plain lines about saving, keeping and offline use (device_status.js), and Marie's counting practice: Let the game decide,
+ *     Always on, or Off (counting_need.js). The choice is the only thing here that changes by itself; it is kept in its own small key, not in a save.
+ * Apart from that choice, the card only reads. It never changes a child's save except when a grown-up loads a progress file and says yes.
  *
  *   ParentArea.open(ctx) -> Promise that ends when the card is closed.
- *   ctx = { store, saveKey(who), logKey(who), names, M, KidsEngine, GameSave, AnswerLog, ProgressFile, ParentReport, MissStudy, FocusGuard, rng }
+ *   ctx = { store, saveKey(who), logKey(who), names, M, KidsEngine, GameSave, AnswerLog, ProgressFile, ParentReport, MissStudy, FocusGuard, rng,
+ *           DeviceStatus, device() -> Promise of facts, CountingNeed }
  */
 (function (root) {
   "use strict";
@@ -66,6 +69,18 @@
         enter("#pa-gate");
       }
 
+      /* Marie's counting practice: the grown-up's choice, and what the record says right now, in plain words */
+      function countingHtml(children) {
+        if (!ctx.CountingNeed) return "";
+        const CN = ctx.CountingNeed, pref = CN.read(ctx.store), marie = children.find(c => c.who === "marie");
+        const c = CN.check(marie ? marie.entries : []), d = CN.decide(pref.mode, marie ? marie.entries : [], CN.learning(marie && marie.save && marie.save.engine, ctx.KidsEngine.LV.KNOWS));
+        const now = d.on ? (d.why === "grown-up" ? "It is on because you turned it on." : d.why === "learning" ? "It is on now. She has started it, and it stays on until she knows it." : "It is on now, because her record shows counting slips.") : (pref.mode === "off" ? "It is off." : "It is off now. Her record shows no counting trouble.");
+        const label = { auto: "Let the game decide", on: "Always on", off: "Off" };
+        return `<p>Marie taps each thing once while she counts, up to 20 and then up to 50. Nothing counts for her and no running number shows.
+          In the automatic setting it starts when at least ${CN.SLIPS_NEEDED} of her last ${CN.WINDOW} adding and taking-away answers were one or two away.</p>
+          <p id="pa-cnt-state" role="status">${esc(now)} Counting slips lately: ${c.slips} in the last ${c.window} answers.</p>
+          <div class="pa-row" role="group" aria-label="Counting practice">${CN.MODES.map(m => `<button class="go small${pref.mode === m ? "" : " alt"}" data-mode="${m}" aria-pressed="${pref.mode === m}">${label[m]}</button>`).join("")}</div>`;
+      }
       function showMain(message) {
         const children = WHO.map(w => readChild(ctx, w)), secs = ctx.ParentReport.sections(children, now());
         const body = secs.map((s, i) => `<section><h2>${esc(s.title)}</h2>${s.lines.map(l => `<p>${esc(l.trim())}</p>`).join("")}</section>`).join("");
@@ -78,10 +93,20 @@
             <label class="go small filebtn" for="pa-file">Load a progress file</label>
           </div>
           <div id="pa-confirm"></div>
+          <section class="pa-device" aria-labelledby="pa-dev-h"><h2 id="pa-dev-h">Saved on this device</h2><div id="pa-dev" role="status">Checking.</div></section>
+          <section class="pa-count" id="pa-count" aria-labelledby="pa-cnt-h"><h2 id="pa-cnt-h">Counting practice for ${esc(ctx.names.marie || "Marie")}</h2>${countingHtml(children)}</section>
           <div class="pa-body" tabindex="0" aria-label="The report">${body}</div>
           <div class="pa-row"><button class="go small alt" id="pa-close">Close</button></div></div>`;
         o.setAttribute("aria-labelledby", "pa-h");
         o.querySelector("#pa-close").onclick = close;
+        if (ctx.device && ctx.DeviceStatus) ctx.device().then(f => {
+          const el = o.querySelector("#pa-dev"); if (!el) return;
+          el.innerHTML = ctx.DeviceStatus.lines(f).map(l => `<p class="${l.ok ? "" : "pa-warn"}">${esc(l.text)}</p>`).join("");
+        }).catch(() => { const el = o.querySelector("#pa-dev"); if (el) el.textContent = "Saved on this device. The extra details could not be read."; });
+        o.querySelectorAll("#pa-count [data-mode]").forEach(btn => btn.onclick = () => {
+          const ok = ctx.CountingNeed.write(ctx.store, { mode: btn.dataset.mode });
+          showMain(ok ? "Counting practice was changed. It starts the next time Marie plays." : "The choice could not be saved on this device.");
+        });
         o.querySelector("#pa-text").onclick = () => {
           download(`kids_maths_report_${stamp(now())}.txt`, "text/plain;charset=utf-8", ctx.ParentReport.text(children, now()));
           say("The report was saved as a text file in your downloads.");

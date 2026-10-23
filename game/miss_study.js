@@ -72,6 +72,7 @@
 
   function classify(Q, given) {
     if (!Q || !Number.isFinite(given) || !Number.isFinite(Q.ans)) return "guess";
+    if (Q.picOpts) return "guess";                                   // picture answers (patterns, size) are numbered 1, 2, 3 only to tell them apart: being "one away" means nothing
     const ans = Q.ans, d = Math.abs(given - ans);
     if (Q.kind === "choice") return d <= 2 ? "choice_near" : "choice_far";
     const nums = shownNumbers(Q);
