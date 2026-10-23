@@ -1147,7 +1147,7 @@
   function g3Kind(meta, T) {
     const ids = Object.keys(T);
     return {
-      theme: "cafe", name: meta.name, grade: 3, group: meta.group, needs: meta.needs, choice: !!meta.choice,
+      theme: "cafe", name: meta.name, grade: meta.grade || 3, group: meta.group, needs: meta.needs, choice: meta.choice === "mixed" ? "mixed" : !!meta.choice, ordered: !!meta.ordered,
       all: () => ids.flatMap(type => {
         const D = T[type], tb = toolbox(rng32(hashText(meta.name + type))), seen = new Set(), out = [];
         for (let i = 0; i < 8000 && out.length < (D.n || 40); i++) {
@@ -1161,10 +1161,20 @@
       sceneRows: Object.fromEntries(ids.map(t => [t, T[t].bank.map(b => b[2])])),
       scene: p => T[p.type].scene(p),
       q: p => { const d = T[p.type].q(p); return Object.assign({ op: "", start: 0, line: LINE_OFF }, d, { end: d.ans }); },
-      decorate: (Q, p) => {
+      decorate: (Q, p, ti) => {
         const d = T[p.type].q(p);
         Q.noLine = true;
-        ["range", "opposite", "noNear", "parity"].forEach(f => { if (d[f] !== undefined && d[f] !== false) Q[f] = d[f]; });
+        ["range", "opposite", "noNear", "parity", "slips", "figure"].forEach(f => { if (d[f] !== undefined && d[f] !== false) Q[f] = d[f]; });
+        // word, solid, fraction and small-picture answer buttons (round of 23 Oct 2026, round 2). The buttons are numbered 1, 2, 3 only to tell them apart; Q.pics[v] says what to draw:
+        // { word, say } a word, { frac: "1/3", say } a fraction, { solid } a solid, { fig } a small figure. Q.optSay[v] is what is spoken for the button.
+        if (d.words) {
+          Q.picOpts = true; Q.pics = {}; Q.optSay = {};
+          d.words.forEach((w, i) => { const e = typeof w === "string" ? { word: w } : w; Q.pics[i + 1] = Object.assign({ name: e.say || e.word || e.frac || e.solid }, e); Q.optSay[i + 1] = e.say || e.word || e.frac || e.solid; });
+          Q.tapSay = `Tap ${Q.optSay[d.ans]}.`;
+        }
+        if (d.helpFig) Q.hintPic = { figure: d.helpFig.fig, help: d.helpFig.help || true };
+        else if (d.figure) Q.hintPic = { figure: d.figure, help: true };
+        if (T[p.type].deco) T[p.type].deco(Q, p, ti);
         // the second help picture (game/hint_ladder.js): place-value blocks of the numbers in the story, or a pile put in pairs. It shows amounts, never the answer.
         if (meta.pic && !T[p.type].noPic && d.nums.length >= 1 && d.nums.length <= 4) Q.hintPic = { blocks: d.nums.slice() };
         if (d.hintPic) Q.hintPic = d.hintPic;
@@ -1738,6 +1748,685 @@
   };
   const G3_BILLS3_KIND = g3Kind({ name: "Cafe: paying, change and swapping bills", group: "money_time", needs: ["cafe_bills.1", "cafe_money.2"], choice: false, lessonKind: "paying" }, PAY_TYPES);
 
+  /* =====================================================================================
+     Round of 23 Oct 2026, round 2 (Grade 3 gaps, round 2): measurement in standard units, 3D objects, data and graphs, simple chance, fractions beyond halves and quarters.
+     Fifteen new skills for Marie (cafe). They follow the round of 23 Oct (g3Kind): a story kind with cafe wording, a skill-map entry with needs, a hint, a lesson,
+     number sets from a fixed seed. What is new:
+       Q.figure     the picture the question is about (a ruler, a jug, a bar graph, a row of pictures, tally marks, a spinner, a jar, a solid, a cake in parts, a number
+                    line of fractions) as plain data. game/figure.js draws it UNDER the story, not in the scene strip (the strip can step aside on a small screen). The scene
+                    stays a calm "lineup" with no numbers. A figure never prints a value on a bar and never prints the answer as a caption.
+       word buttons the answer is a word, a fraction, a solid or a small figure: q() returns words: [...] and ans = the place of the right one (1, 2, 3), g3Kind decorate
+                    sets Q.picOpts / Q.pics / Q.optSay / Q.tapSay. ordered: true keeps the buttons in the order of the list (the chance words).
+       Q.slips      { class: [given answers] } a wrong answer that shows a known mix-up (MissStudy: unit_size, other_part, scale_slip, bigger_parts, one_group).
+       helpFig      { fig, help } the second hint: the same figure with a guide (a line across, cells to count, groups tinted).
+     ===================================================================================== */
+  const cap1 = s => s.charAt(0).toUpperCase() + s.slice(1);
+  const NUMW = ["zero", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine", "ten", "eleven", "twelve"];
+  const wordQ = (labels, right) => ({ words: labels, ans: right + 1, pool: labels.map((_, i) => i + 1).filter(i => i !== right + 1), want: labels.length - 1 });
+  const lineup = (n, holder) => () => ({ act: "lineup", n, holder });
+
+  /* ----- measurement: units, ruler, jug, comparing, adding (cafe_measure.1 to .4) ----- */
+  const UNIT = { cm: ["centimetre", "centimetres"], m: ["metre", "metres"], g: ["gram", "grams"], kg: ["kilogram", "kilograms"], ml: ["millilitre", "millilitres"], L: ["litre", "litres"] };
+  const FAMILY = { cm: "len", m: "len", g: "mass", kg: "mass", ml: "cap", L: "cap" };
+  const FAM_UNITS = { len: ["cm", "m"], mass: ["g", "kg"], cap: ["ml", "L"] };
+  const uw = (n, u) => `${n} ${n === 1 ? UNIT[u][0] : UNIT[u][1]}`;
+  const BIG_UNIT = { m: 1, kg: 1, L: 1 };
+  const ITEMS = {
+    cm: ["the teaspoon", "the straw", "a cookie", "a pencil", "the menu card", "a tea bag"],
+    m: ["the cafe door", "the long counter", "the cafe floor", "the garden path", "the front window", "the cafe wall"],
+    g: ["a cookie", "a tea bag", "a strawberry", "a spoon of sugar", "a grape", "a slice of bread"],
+    kg: ["a bag of flour", "a sack of sugar", "a box of lemons", "a big pumpkin", "a bag of rice", "a crate of apples"],
+    ml: ["a spoon of honey", "a small cup of cream", "a cup of tea", "a glass of juice", "a spoon of milk", "a cup of cocoa"],
+    L: ["the big soup pot", "a jug of lemonade", "a bucket of water", "the tea urn", "the big milk can", "a tank of water"]
+  };
+  const HOW = { len: x => `how long ${x} is`, mass: x => `how heavy ${x} is`, cap: x => `how much ${x} holds` };
+  const UNIT_BANK = [
+    ["Mimi wants to know {how}.", "Which unit is best? Tap it.", "cup:table"],
+    ["A customer asks {how}.", "Which unit should Mimi use? Tap it.", "cookie:tray"],
+    ["The cafe needs to know {how}.", "Which unit fits best? Tap it.", "tea_bag:box"]
+  ];
+  const SIZE_HINT_TXT = { len: "A small thing is measured in centimetres. A big thing is measured in metres.", mass: "A light thing is measured in grams. A heavy thing is measured in kilograms.", cap: "A small amount is measured in millilitres. A big amount is measured in litres." };
+  const FAM_HINT_TXT = "Length is centimetres or metres. Mass is grams or kilograms. Capacity is millilitres or litres.";
+  const FAM_NAME = { len: "length", mass: "mass", cap: "capacity" };
+  const unitLabel = u => ({ word: u, say: UNIT[u][1] });
+  function unitType(kind) {
+    return {
+      n: 80, min: 12,
+      gen: tb => {
+        const u = kind === "fam" ? tb.pick(Object.keys(UNIT)) : tb.pick(FAM_UNITS[kind]), k = tb.int(0, ITEMS[u].length - 1);
+        const otherFams = Object.keys(FAM_UNITS).filter(f => f !== FAMILY[u]);
+        if (kind === "fam") return { u, k, a: tb.pick(FAM_UNITS[otherFams[0]]), b: tb.pick(FAM_UNITS[otherFams[1]]) };
+        return { u, k, s: FAM_UNITS[kind].find(x => x !== u), o: tb.pick(FAM_UNITS[tb.pick(otherFams)]) };
+      },
+      bank: UNIT_BANK, scene: lineup(1, "jar"),
+      q: ({ u, k, a, b, s, o }) => {
+        const item = ITEMS[u][k], fam = FAMILY[u], labels = kind === "fam" ? [u, a, b] : [u, s, o];
+        return Object.assign(wordQ(labels.map(unitLabel), 0), { v: { how: HOW[fam](item) }, nums: [], eq: "unit = ?",
+          fact: kind === "fam" ? `${cap1(UNIT[u][1])} are the unit for this.` : `${cap1(item)} is ${BIG_UNIT[u] ? "big" : "small"}, so ${UNIT[u][1]} fit best.`,
+          hint: kind === "fam" ? FAM_HINT_TXT : SIZE_HINT_TXT[kind], key: `${u}:${k}`, slips: kind === "fam" ? undefined : { unit_size: [2] } });
+      },
+      les: ({ u, k }) => kind === "fam" ? [FAM_HINT_TXT, `This is about ${FAM_NAME[FAMILY[u]]}. So the unit is ${UNIT[u][1]}.`, `${FAM_NAME[FAMILY[u]]} : ${u}`]
+        : [SIZE_HINT_TXT[kind], `${cap1(ITEMS[u][k])} is ${BIG_UNIT[u] ? "big" : "small"}. So the unit is ${UNIT[u][1]}.`, `${BIG_UNIT[u] ? "big" : "small"} : ${u}`]
+    };
+  }
+  const G3_UNITS_KIND = g3Kind({ name: "Cafe: which unit to measure with", group: "shapes", needs: ["sums.4"], choice: true, lessonKind: "units" },
+    { UF: unitType("fam"), UL: unitType("len"), UM: unitType("mass"), UC: unitType("cap") });
+
+  // reading a ruler and a jug: the figure is the question. The ruler is numbered at 0, 5, 10 and 15 only; the jug at 500 and 1000 only.
+  const RULER_THINGS = ["ribbon", "straw", "spoon", "pencil", "biscuit", "candle", "cake knife", "string"];
+  const RULER_BANK = [
+    ["Mimi lays a {x} on a ruler. One end is at zero.", "How many centimetres long is it? Type the number.", "cake_box:table"],
+    ["A {x} lies along the ruler. It starts at zero.", "How long is it in centimetres?", "cookie:tray"],
+    ["Mimi measures a {x} with a ruler. She starts at zero.", "How many centimetres is the {x}?", "cup:table"]
+  ];
+  const RULER2_BANK = [
+    ["A {x} and a {y} lie on a ruler. Both start at zero.", "How many centimetres longer is the {x} than the {y}?", "cake_box:table"],
+    ["Mimi lays a {x} and a {y} on a ruler. They start at the same place.", "How much longer is the {x} than the {y}? Answer in centimetres.", "cookie:tray"],
+    ["Look at the ruler. It has a {x} and a {y} on it.", "How many centimetres longer is the {x}?", "cup:table"]
+  ];
+  const RULER_COLORS = ["#f4a0b8", "#8ccf9a", "#f1cb55", "#9fc6ee"];
+  const rulerFig = bars => ({ t: "ruler", max: 15, bars: bars.map(([name, len], i) => ({ name, len, color: RULER_COLORS[i % RULER_COLORS.length] })) });
+  const JUG_LIQUIDS = ["milk", "juice", "water", "lemonade", "cream", "tea"];
+  const JUG_BANK = [
+    ["Mimi pours {x} into a jug. The jug has lines every 100 millilitres.", "How many millilitres are in the jug? Type the number.", "cup:table"],
+    ["A jug holds some {x}. Each line on the jug is 100 millilitres.", "How many millilitres of {x} are in it?", "cup:table"],
+    ["Mimi looks at the {x} in the jug. The lines go up by 100 millilitres.", "How much {x} is in the jug, in millilitres?", "cup:tray"]
+  ];
+  const JUG2_BANK = [
+    ["Mimi has two jugs. One has {x}. The other has {y}.", "How many millilitres more {m} is there than {l}?", "cup:table"],
+    ["Look at the two jugs. One holds {x} and one holds {y}.", "How much more {m} is there than {l}? Answer in millilitres.", "cup:table"],
+    ["Mimi pours {x} into one jug and {y} into another.", "How many millilitres more {m} than {l}?", "cup:tray"]
+  ];
+  const G3_READ_KIND = g3Kind({ name: "Cafe: reading a ruler and a jug", group: "shapes", needs: ["cafe_measure.1", "sums.5"], choice: false, lessonKind: "readscale" }, {
+    RL: {
+      n: 60, min: 12, gen: tb => ({ x: tb.pick(RULER_THINGS), len: tb.int(2, 14) }), bank: RULER_BANK, scene: lineup(1, "tray"),
+      q: ({ x, len }) => ({ v: { x }, nums: [], ans: len, eq: "length = ?", fact: `The ${x} ends at the ${len} mark, so it is ${uw(len, "cm")} long.`, hint: "Start at zero. Count each centimetre up to the end of the object.",
+        key: `${x}:${len}`, figure: rulerFig([[x, len]]), helpFig: { fig: rulerFig([[x, len]]), help: true } }),
+      les: ({ x, len }) => ["Put the zero mark at the start. Count each centimetre along to the end.", `The ${x} is ${uw(len, "cm")} long.`, `0 to ${len}`]
+    },
+    RD: {
+      n: 60, min: 12, gen: tb => { const a = tb.int(4, 14), b = tb.int(2, a - 1), i = tb.int(0, RULER_THINGS.length - 1), j = (i + tb.int(1, RULER_THINGS.length - 1)) % RULER_THINGS.length; return { a, b, x: RULER_THINGS[i], y: RULER_THINGS[j] }; },
+      bank: RULER2_BANK, scene: lineup(2, "tray"),
+      q: ({ a, b, x, y }) => ({ v: { x, y }, nums: [], ans: a - b, eq: "longer by = ?", fact: `The ${x} is ${uw(a, "cm")} and the ${y} is ${uw(b, "cm")}. ${a} minus ${b} is ${a - b}.`,
+        hint: "Read how long each one is. Then take the short one away from the long one.", key: `${x}:${y}:${a}:${b}`, figure: rulerFig([[x, a], [y, b]]), helpFig: { fig: rulerFig([[x, a], [y, b]]), help: true } }),
+      les: ({ a, b, x }, Q) => ["Read the length of each one. The difference is the long one take away the short one.", `${a} minus ${b} is ${Q.ans}. The ${x} is ${uw(Q.ans, "cm")} longer.`, `${a} ${MINUS} ${b}`]
+    },
+    JL: {
+      n: 60, min: 8, gen: tb => ({ x: tb.pick(JUG_LIQUIDS), lv: tb.int(1, 9) * 100 }), bank: JUG_BANK, scene: lineup(1, "jug"),
+      q: ({ x, lv }) => ({ v: { x }, nums: [], ans: lv, eq: "millilitres = ?", fact: `The ${x} reaches the ${lv} line. There are ${uw(lv, "ml")}.`, hint: "Find the line where the top of the liquid is. The lines go up by 100 from the bottom.",
+        key: `${x}:${lv}`, figure: { t: "jug", max: 1000, levels: [lv] }, helpFig: { fig: { t: "jug", max: 1000, levels: [lv] }, help: true } }),
+      les: ({ lv }) => ["Look where the top of the liquid is. Count the lines up from the bottom. Each line is 100.", `${pl(lv / 100, "line")} ${lv === 100 ? "is" : "are"} ${lv} millilitres.`, `${lv / 100} × 100`]
+    },
+    JD: {
+      n: 60, min: 8, gen: tb => { const i = tb.int(0, JUG_LIQUIDS.length - 1), j = (i + tb.int(1, JUG_LIQUIDS.length - 1)) % JUG_LIQUIDS.length, a = tb.int(1, 9), b = tb.int(1, 9); return a === b ? null : { x: JUG_LIQUIDS[i], y: JUG_LIQUIDS[j], a: a * 100, b: b * 100 }; },
+      bank: JUG2_BANK, scene: lineup(2, "jug"),
+      q: ({ x, y, a, b }) => { const m = a > b ? x : y, l = a > b ? y : x, d = Math.abs(a - b), fig = { t: "jug", max: 1000, levels: [a, b], names: [x, y] };
+        return { v: { x, y, m, l }, nums: [], ans: d, eq: "more = ?", fact: `${Math.max(a, b)} minus ${Math.min(a, b)} is ${d}. There is ${uw(d, "ml")} more ${m}.`,
+          hint: "Read the level of each jug. Then take the smaller away from the bigger.", key: `${x}:${y}:${a}:${b}`, figure: fig, helpFig: { fig, help: true } }; },
+      les: ({ a, b }, Q) => ["Read the level of each jug. The difference is the bigger take away the smaller.", `${Math.max(a, b)} minus ${Math.min(a, b)} is ${Q.ans}.`, `${Math.max(a, b)} ${MINUS} ${Math.min(a, b)}`]
+    }
+  });
+
+  // comparing and adding in ONE unit (never a change of unit). The unit is in the number set (p.u): the story says "35 centimetres".
+  const MEAS = {
+    len: { pairs: { cm: [["ribbon", "string"], ["straw", "stirrer"], ["pencil", "spoon"], ["menu card", "napkin"]], m: [["rope", "garden hose"], ["tablecloth", "carpet"], ["counter", "shelf"], ["fence", "path"]] },
+      range: { cm: [8, 60, 1], m: [2, 20, 1] }, more: "longer", less: "shorter" },
+    mass: { pairs: { g: [["bag of nuts", "bag of raisins"], ["bar of chocolate", "block of butter"], ["jar of jam", "jar of honey"], ["pie", "cake"]], kg: [["bag of flour", "bag of sugar"], ["pumpkin", "melon"], ["box of lemons", "box of apples"], ["bag of rice", "bag of oats"]] },
+      range: { g: [100, 900, 10], kg: [2, 20, 1] }, more: "heavier", less: "lighter" },
+    cap: { pairs: { ml: [["cup of tea", "cup of cocoa"], ["glass of juice", "glass of milk"], ["bowl of soup", "bowl of stew"], ["jug of cream", "jug of syrup"]], L: [["bucket", "tub"], ["soup pot", "stew pot"], ["milk can", "juice can"], ["water tank", "big jug"]] },
+      range: { ml: [100, 800, 50], L: [2, 30, 1] }, more: "holds more", less: "holds less" }
+  };
+  const SUM_RANGE = { cm: [10, 58, 1], m: [3, 19, 1], g: [100, 480, 10], kg: [2, 19, 1], ml: [100, 450, 50], L: [2, 19, 1] };
+  const mnum = (tb, [lo, hi, st]) => lo + st * tb.int(0, Math.floor((hi - lo) / st));
+  function cmpType(fam, wantMore) {
+    const M = MEAS[fam], word = wantMore ? M.more : M.less, askTail = fam === "cap" ? word : "is " + word;
+    return {
+      n: 60, min: 20,
+      gen: tb => { const u = tb.pick(Object.keys(M.range)), a = mnum(tb, M.range[u]), b = mnum(tb, M.range[u]), k = tb.int(0, M.pairs[u].length - 1); return a === b ? null : { u, a, b, k }; },
+      bank: [
+        ["The {x} is {ua}. The {y} is {ub}.", `Which one ${askTail}? Tap that number.`, "cookie:tray"],
+        ["Mimi checks two things. The {x} is {ua}. The {y} is {ub}.", `Which one ${askTail}? Tap that number.`, "cup:table"],
+        ["A customer asks about the {x} and the {y}. The {x} is {ua}. The {y} is {ub}.", `Which one ${askTail}? Tap that number.`, "muffin:tray"]
+      ],
+      scene: lineup(2, "table"),
+      q: ({ u, a, b, k }) => { const [x, y] = M.pairs[u][k], ans = wantMore ? Math.max(a, b) : Math.min(a, b), other = wantMore ? Math.min(a, b) : Math.max(a, b);
+        return { v: { x, y, ua: uw(a, u), ub: uw(b, u) }, nums: [a, b], ans, eq: (wantMore ? "most" : "least") + " = ?", fact: `${ans} ${UNIT[u][1]} is ${wantMore ? "more" : "less"} than ${other}.`,
+          hint: `Both are in ${UNIT[u][1]}. The ${wantMore ? "bigger" : "smaller"} number is the one that ${askTail}.`, key: `${u}:${a}:${b}:${k}`, pool: [other], want: 1, opposite: other, noNear: true }; },
+      les: ({ u }, Q) => [`Both numbers are in ${UNIT[u][1]}, so we can compare them. We want the ${wantMore ? "bigger" : "smaller"} number.`, `${Q.ans} is the ${wantMore ? "bigger" : "smaller"} one.`, `${Q.nums[0]} or ${Q.nums[1]}`]
+    };
+  }
+  const G3_MEASURE_CMP_KIND = g3Kind({ name: "Cafe: which is longer, heavier or holds more", group: "shapes", needs: ["cafe_measure.1", "cafe_compare.1"], choice: true, pic: true, lessonKind: "compare3" }, {
+    ML: cmpType("len", true), MS: cmpType("len", false), MH: cmpType("mass", true), MG: cmpType("mass", false), MC: cmpType("cap", true), MD: cmpType("cap", false)
+  });
+  function sumType(fam, add) {
+    const M = MEAS[fam], ASK = {
+      len: add ? "How many {up} long are they if you put them end to end?" : "How many {up} longer is the {x}?",
+      mass: add ? "How many {up} do they weigh together?" : "How many {up} heavier is the {x}?",
+      cap: add ? "How many {up} do they hold together?" : "How many {up} more does the {x} hold?"
+    }[fam], rows = ["cookie:tray", "cup:table", "muffin:tray"];
+    return {
+      n: 60, min: 20,
+      gen: tb => { const u = tb.pick(Object.keys(M.range)), a = mnum(tb, SUM_RANGE[u]), b = mnum(tb, SUM_RANGE[u]), k = tb.int(0, M.pairs[u].length - 1); return (add ? a !== b : a > b) ? { u, a, b, k } : null; },
+      bank: [["The {x} is {ua}. The {y} is {ub}.", ASK, rows[0]], ["Mimi checks the {x} and the {y}. The {x} is {ua}. The {y} is {ub}.", ASK, rows[1]], ["A customer asks about the {x} and the {y}. The {x} is {ua}. The {y} is {ub}.", ASK, rows[2]]],
+      scene: lineup(2, "table"),
+      q: ({ u, a, b, k }) => { const [x, y] = M.pairs[u][k], ans = add ? a + b : a - b;
+        return { v: { x, y, ua: uw(a, u), ub: uw(b, u), up: UNIT[u][1] }, nums: [a, b], ans, eq: add ? "in all = ?" : "more = ?", op: add ? "+" : "-",
+          fact: add ? `${a} plus ${b} is ${ans}. That is ${uw(ans, u)}.` : `${a} minus ${b} is ${ans}. That is ${uw(ans, u)} more.`,
+          hint: add ? "Put the two numbers together. Add them." : "Take the smaller number away from the bigger number.", key: `${u}:${a}:${b}:${k}` }; },
+      les: ({ u, a, b }, Q) => add ? ["We put the two together, so we add. The unit stays the same.", `${a} plus ${b} is ${uw(Q.ans, u)}.`, `${a} + ${b}`]
+        : ["We want how much more, so we take away. The unit stays the same.", `${a} minus ${b} is ${uw(Q.ans, u)}.`, `${a} ${MINUS} ${b}`]
+    };
+  }
+  const G3_MEASURE_SUM_KIND = g3Kind({ name: "Cafe: adding and comparing lengths, masses and capacities", group: "shapes", needs: ["cafe_measure.3", "sums.7"], choice: false, pic: true, lessonKind: "units_sum" }, {
+    AL: sumType("len", true), BL: sumType("len", false), AM: sumType("mass", true), BM: sumType("mass", false), AC: sumType("cap", true), BC: sumType("cap", false)
+  });
+
+  /* ----- 3D objects (cafe_solid.1 and .2): names, then faces, edges and corners of solids with flat sides only ----- */
+  const SOLID_NAME = { cube: "cube", rect_prism: "rectangular prism", cylinder: "cylinder", cone: "cone", sphere: "sphere", sq_pyramid: "square pyramid", tri_prism: "triangular prism" };
+  const SOLID_IDS = Object.keys(SOLID_NAME);
+  const SOLID_CLUE = {
+    cube: "It has six faces. All of them are squares.", rect_prism: "It looks like a cake box. All six faces are rectangles.", cylinder: "It has two flat circles and one curved side.",
+    cone: "It has one flat circle and one pointed top.", sphere: "It is round all over. It has no flat faces.", sq_pyramid: "It has a square bottom. Four triangles meet at a point on top.",
+    tri_prism: "It has two triangle ends and three rectangle sides."
+  };
+  const SOLID_THING = {
+    cube: ["a sugar cube", "a dice", "a cube of ice"], rect_prism: ["a cake box", "a box of tea bags", "a loaf of bread"], cylinder: ["a tin of cocoa", "a tall candle", "a tin of tea"],
+    cone: ["an ice cream cone", "a party hat", "a sugar cone"], sphere: ["an orange", "a ball of ice cream", "a gumball"]
+  };
+  const SHORT = { cube: "cube", rect_prism: "rect prism", cylinder: "cylinder", cone: "cone", sphere: "sphere", sq_pyramid: "sq pyramid", tri_prism: "tri prism" };
+  const solidLabel = s => ({ word: SOLID_NAME[s], say: SOLID_NAME[s] });
+  const solidPick = s => ({ solid: s, say: "This one.", name: SOLID_NAME[s] });
+  const threeSolids = (tb, s, pool) => { const o = tb.shuffle(pool.filter(x => x !== s)); return [o[0], o[1]]; };
+  const NAME_BANK = [
+    ["Mimi sees this shape on the shelf.", "What is it called? Tap its name.", "cake_box:table"],
+    ["Mimi finds this shape in the cafe.", "Which solid is it? Tap its name.", "cup:table"],
+    ["A customer holds up this shape.", "What is the name of this solid? Tap it.", "cookie:tray"]
+  ];
+  const PICK_BANK = [
+    ["Mimi has three shapes on the shelf.", "Which one is the {n}? Tap it.", "cake_box:table"],
+    ["Three solids sit on the counter.", "Which one is the {n}? Tap it.", "cup:table"],
+    ["Mimi lines up three shapes.", "Tap the {n}.", "cookie:tray"]
+  ];
+  const CLUE_BANK = [
+    ["Mimi is thinking of a solid. {c}", "Which solid is it? Tap its name.", "cup:table"],
+    ["A customer describes a solid. {c}", "What is the solid? Tap its name.", "cookie:tray"],
+    ["Here is a riddle about a solid. {c}", "Which solid is it? Tap its name.", "cake_box:table"]
+  ];
+  const THING_BANK = [
+    ["Mimi sees {t} on the shelf.", "Which solid does it look like? Tap its name.", "cake_box:table"],
+    ["A customer is carrying {t}.", "Which solid does it look like? Tap its name.", "cup:table"],
+    ["Mimi picks up {t}.", "What solid is it shaped like? Tap its name.", "cookie:tray"]
+  ];
+  const NAME_HINT = "Think about the flat faces and the round parts. Which solid has them?";
+  const G3_SOLID_NAMES_KIND = g3Kind({ name: "Cafe: the names of solids", group: "shapes", needs: ["sums.2"], choice: true, lessonKind: "solids" }, {
+    NA: {
+      n: 60, min: 12, gen: tb => { const s = tb.pick(SOLID_IDS), [a, b] = threeSolids(tb, s, SOLID_IDS); return { s, a, b }; }, bank: NAME_BANK, scene: lineup(1, "box"),
+      q: ({ s, a, b }) => Object.assign(wordQ([s, a, b].map(solidLabel), 0), { v: {}, nums: [], eq: "name = ?", fact: `It is a ${SOLID_NAME[s]}.`, hint: NAME_HINT, key: `${s}:${a}:${b}`, figure: { t: "solid", shape: s } }),
+      les: ({ s }) => [`Look at the faces. ${SOLID_CLUE[s]}`, `So it is a ${SOLID_NAME[s]}.`, SHORT[s]]
+    },
+    NP: {
+      n: 60, min: 12, gen: tb => { const s = tb.pick(SOLID_IDS), [a, b] = threeSolids(tb, s, SOLID_IDS); return { s, a, b }; }, bank: PICK_BANK, scene: lineup(3, "box"),
+      q: ({ s, a, b }) => Object.assign(wordQ([s, a, b].map(solidPick), 0), { v: { n: SOLID_NAME[s] }, nums: [], eq: "tap = ?", fact: `This one is the ${SOLID_NAME[s]}.`, hint: NAME_HINT, key: `${s}:${a}:${b}` }),
+      les: ({ s }) => [`Look for the solid that fits. ${SOLID_CLUE[s]}`, `The ${SOLID_NAME[s]} is the one that fits.`, SHORT[s]]
+    },
+    NC: {
+      n: 60, min: 12, gen: tb => { const s = tb.pick(SOLID_IDS), [a, b] = threeSolids(tb, s, SOLID_IDS); return { s, a, b }; }, bank: CLUE_BANK, scene: lineup(1, "box"),
+      q: ({ s, a, b }) => Object.assign(wordQ([s, a, b].map(solidLabel), 0), { v: { c: SOLID_CLUE[s] }, nums: [], eq: "name = ?", fact: `It is a ${SOLID_NAME[s]}.`, hint: NAME_HINT, key: `${s}:${a}:${b}` }),
+      les: ({ s }) => [`Think about the clue. ${SOLID_CLUE[s]}`, `So it is a ${SOLID_NAME[s]}.`, SHORT[s]]
+    },
+    NB: {
+      n: 60, min: 12, gen: tb => { const ids = Object.keys(SOLID_THING), s = tb.pick(ids), o = tb.shuffle(ids.filter(x => x !== s)); return { s, a: o[0], b: o[1], i: tb.int(0, 2) }; }, bank: THING_BANK, scene: lineup(1, "basket"),
+      q: ({ s, a, b, i }) => Object.assign(wordQ([s, a, b].map(solidLabel), 0), { v: { t: SOLID_THING[s][i] }, nums: [], eq: "name = ?", fact: `${cap1(SOLID_THING[s][i])} is shaped like a ${SOLID_NAME[s]}.`, hint: "Picture the thing in your mind. Which solid is it shaped like?", key: `${s}:${a}:${b}:${i}` }),
+      les: ({ s, i }) => [`Picture ${SOLID_THING[s][i]}. ${SOLID_CLUE[s]}`, `So it is shaped like a ${SOLID_NAME[s]}.`, SHORT[s]]
+    }
+  });
+
+  // faces, edges and corners: only solids with flat sides (the curved solids differ between books). The test keeps its own table.
+  const SOLID_FACTS = { cube: { f: 6, e: 12, c: 8, sq: 6 }, rect_prism: { f: 6, e: 12, c: 8, rect: 6 }, sq_pyramid: { f: 5, e: 8, c: 5, sq: 1, tri: 4 }, tri_prism: { f: 5, e: 9, c: 6, tri: 2, rect: 3 } };
+  const FLAT_IDS = Object.keys(SOLID_FACTS);
+  const PART_WORD = { f: ["face", "faces"], e: ["edge", "edges"], c: ["corner", "corners"] };
+  const PART_DEF = { f: "A face is a flat side.", e: "An edge is where two faces meet.", c: "A corner is where edges meet." };
+  const PART_BANK = {
+    f: [["Mimi looks at a {n}. A face is a flat side.", "How many faces does it have? Type the number.", "cake_box:table"], ["This solid is a {n}. A face is a flat side.", "How many faces does it have?", "cup:table"], ["A customer holds a {n}. A face is a flat side.", "How many faces does it have?", "cookie:tray"]],
+    e: [["Mimi looks at a {n}. An edge is where two faces meet.", "How many edges does it have? Type the number.", "cake_box:table"], ["This solid is a {n}. An edge is where two faces meet.", "How many edges does it have?", "cup:table"], ["A customer holds a {n}. An edge is where two faces meet.", "How many edges does it have?", "cookie:tray"]],
+    c: [["Mimi looks at a {n}. A corner is where edges meet.", "How many corners does it have? Type the number.", "cake_box:table"], ["This solid is a {n}. A corner is where edges meet.", "How many corners does it have?", "cup:table"], ["A customer holds a {n}. A corner is where edges meet.", "How many corners does it have?", "cookie:tray"]]
+  };
+  function partType(part) {
+    const others = ["f", "e", "c"].filter(x => x !== part);
+    return {
+      n: 40, min: 4, gen: tb => ({ s: tb.pick(FLAT_IDS) }), bank: PART_BANK[part], scene: lineup(1, "box"),
+      q: ({ s }) => { const F = SOLID_FACTS[s], ans = F[part]; return { v: { n: SOLID_NAME[s] }, nums: [], ans, eq: PART_WORD[part][1] + " = ?", fact: `A ${SOLID_NAME[s]} has ${pl(ans, PART_WORD[part][0], PART_WORD[part][1])}.`,
+        hint: part === "f" ? "Count each flat side one at a time. Do not forget the bottom." : part === "e" ? "Count the edges at the top, the bottom and the sides." : "Count the corners at the top and at the bottom.",
+        key: s, figure: { t: "solid", shape: s }, slips: { other_part: others.map(x => F[x]).filter(x => x !== ans) } }; },
+      les: ({ s }, Q) => [`${PART_DEF[part]} Count them one at a time and keep your place.`, `A ${SOLID_NAME[s]} has ${pl(Q.ans, PART_WORD[part][0], PART_WORD[part][1])}.`, `${SHORT[s]} : ${Q.ans}`]
+    };
+  }
+  const FACE_KIND = { sq: ["square", "squares"], rect: ["rectangle", "rectangles"], tri: ["triangle", "triangles"] };
+  const FACE_PAIRS = [["cube", "sq"], ["rect_prism", "rect"], ["sq_pyramid", "sq"], ["sq_pyramid", "tri"], ["tri_prism", "tri"], ["tri_prism", "rect"]];
+  const FACETYPE_BANK = [
+    ["Mimi looks at a {n}.", "How many of its faces are {k}?", "cake_box:table"], ["This solid is a {n}.", "Count its faces that are {k}. How many are there?", "cup:table"], ["A customer holds a {n}.", "How many {k} are among its faces?", "cookie:tray"]
+  ];
+  const FLAT_BANK = [
+    ["Mimi looks at a {n}.", "How many flat faces does it have? Type the number.", "cake_box:table"], ["This solid is a {n}.", "How many flat faces does it have?", "cup:table"], ["A customer holds a {n}.", "How many flat faces does it have?", "cookie:tray"]
+  ];
+  const G3_SOLID_PARTS_KIND = g3Kind({ name: "Cafe: faces, edges and corners of solids", group: "shapes", needs: ["cafe_solid.1", "sums.4"], choice: false, lessonKind: "solid_parts" }, {
+    FF: partType("f"), FE: partType("e"), FC: partType("c"),
+    FT: {
+      n: 40, min: 4, gen: tb => { const [s, k] = tb.pick(FACE_PAIRS); return { s, k }; }, bank: FACETYPE_BANK, scene: lineup(1, "box"),
+      q: ({ s, k }) => { const ans = SOLID_FACTS[s][k]; return { v: { n: SOLID_NAME[s], k: FACE_KIND[k][1] }, nums: [], ans, eq: FACE_KIND[k][1] + " = ?", fact: `A ${SOLID_NAME[s]} has ${pl(ans, FACE_KIND[k][0], FACE_KIND[k][1])} for faces.`,
+        hint: `Look only at the ${FACE_KIND[k][1]}. Count them one at a time.`, key: `${s}:${k}`, figure: { t: "solid", shape: s } }; },
+      les: ({ s, k }, Q) => [`Look only at the ${FACE_KIND[k][1]} and count them one at a time.`, `A ${SOLID_NAME[s]} has ${pl(Q.ans, FACE_KIND[k][0], FACE_KIND[k][1])}.`, `${FACE_KIND[k][1].slice(0, 8)} : ${Q.ans}`]
+    },
+    FL: {
+      n: 8, min: 2, gen: tb => ({ s: tb.pick(["cylinder", "cone"]) }), bank: FLAT_BANK, scene: lineup(1, "box"),
+      q: ({ s }) => { const ans = s === "cylinder" ? 2 : 1; return { v: { n: SOLID_NAME[s] }, nums: [], ans, eq: "flat = ?", fact: `A ${SOLID_NAME[s]} has ${pl(ans, "flat face")}. ${s === "cylinder" ? "They are the two circles." : "It is the circle at the bottom."}`,
+        hint: "A flat face does not curve. Look for the flat circles.", key: s, figure: { t: "solid", shape: s } }; },
+      les: ({ s }, Q) => ["A flat face does not curve. Look for the flat circles.", `A ${SOLID_NAME[s]} has ${pl(Q.ans, "flat face")}.`, `${SHORT[s]} : ${Q.ans}`]
+    }
+  });
+
+  /* ----- data and graphs (cafe_graph.1 pictographs, .2 bar graphs, .3 tally marks). Every value is a whole multiple of the scale, so a bar ends on a line and a row
+     needs no half picture. Scales 1, 2 and 5. No value is printed on a bar or a row; the key of a pictograph is in words. ----- */
+  const DAY_FULL = { Mon: "Monday", Tue: "Tuesday", Wed: "Wednesday", Thu: "Thursday", Fri: "Friday" };
+  const low = s => s.toLowerCase();
+  const GTOPICS = [
+    { cats: ["Mon", "Tue", "Wed", "Thu", "Fri"], say: c => DAY_FULL[c], unit: "cookies", one: "cookie", icon: "cookie", intro: "Mimi counted the cookies she sold on four days.",
+      read: c => `How many cookies did she sell on ${DAY_FULL[c]}?`, most: "On which day did she sell the most cookies?", fewest: "On which day did she sell the fewest cookies?",
+      more: (a, b) => `How many more cookies did she sell on ${DAY_FULL[a]} than on ${DAY_FULL[b]}?`, tot: (a, b) => `How many cookies did she sell on ${DAY_FULL[a]} and ${DAY_FULL[b]} together?` },
+    { cats: ["Vanilla", "Mint", "Berry", "Mango"], say: c => c, unit: "scoops", one: "scoop", icon: "scoop", intro: "Mimi counted the scoops of ice cream she sold.",
+      read: c => `How many scoops of ${low(c)} did she sell?`, most: "Which flavour sold the most scoops?", fewest: "Which flavour sold the fewest scoops?",
+      more: (a, b) => `How many more scoops of ${low(a)} than ${low(b)} did she sell?`, tot: (a, b) => `How many scoops of ${low(a)} and ${low(b)} did she sell together?` },
+    { cats: ["Tea", "Cocoa", "Milk", "Juice"], say: c => c, unit: "cups", one: "cup", icon: "cup", intro: "Mimi counted the cups of drinks she poured.",
+      read: c => `How many cups of ${low(c)} did she pour?`, most: "Which drink did she pour the most?", fewest: "Which drink did she pour the fewest?",
+      more: (a, b) => `How many more cups of ${low(a)} than ${low(b)} did she pour?`, tot: (a, b) => `How many cups of ${low(a)} and ${low(b)} did she pour together?` },
+    { cats: ["Mon", "Tue", "Wed", "Thu", "Fri"], say: c => DAY_FULL[c], unit: "cupcakes", one: "cupcake", icon: "cupcake", intro: "Mimi counted the cupcakes she baked on four days.",
+      read: c => `How many cupcakes did she bake on ${DAY_FULL[c]}?`, most: "On which day did she bake the most cupcakes?", fewest: "On which day did she bake the fewest cupcakes?",
+      more: (a, b) => `How many more cupcakes did she bake on ${DAY_FULL[a]} than on ${DAY_FULL[b]}?`, tot: (a, b) => `How many cupcakes did she bake on ${DAY_FULL[a]} and ${DAY_FULL[b]} together?` }
+  ];
+  const TTOPICS = [
+    { cats: ["Tea", "Cocoa", "Milk", "Juice"], say: c => c, intro: "Mimi asked her customers which drink they like best. She made a mark for each answer.",
+      read: c => `How many customers chose ${low(c)}?`, most: "Which drink did the most customers choose?", fewest: "Which drink did the fewest customers choose?",
+      more: (a, b) => `How many more customers chose ${low(a)} than ${low(b)}?`, tot: (a, b) => `How many customers chose ${low(a)} or ${low(b)}?` },
+    { cats: ["Muffin", "Cupcake", "Cookie", "Pie"], say: c => c, intro: "Mimi asked her customers which treat they like best. She made a mark for each answer.",
+      read: c => `How many customers chose the ${low(c)}?`, most: "Which treat did the most customers choose?", fewest: "Which treat did the fewest customers choose?",
+      more: (a, b) => `How many more customers chose the ${low(a)} than the ${low(b)}?`, tot: (a, b) => `How many customers chose the ${low(a)} or the ${low(b)}?` },
+    { cats: ["Vanilla", "Mint", "Berry", "Mango"], say: c => c, intro: "Mimi asked her customers which ice cream they like best. She made a mark for each answer.",
+      read: c => `How many customers chose ${low(c)}?`, most: "Which flavour did the most customers choose?", fewest: "Which flavour did the fewest customers choose?",
+      more: (a, b) => `How many more customers chose ${low(a)} than ${low(b)}?`, tot: (a, b) => `How many customers chose ${low(a)} or ${low(b)}?` }
+  ];
+  const GRAPH_FRAMES = kind => [
+    [`Mimi made a ${kind}. {s}`, "{q}", "cookie:tray"], [`Look at Mimi's ${kind}. {s}`, "{q}", "cup:table"], [`Here is a ${kind} from the cafe. {s}`, "{q}", "muffin:tray"]
+  ];
+  const pickCats = (tb, topic) => { if (topic.cats.length === 4) return topic.cats.slice(); const skip = tb.int(0, 4); return topic.cats.filter((_, i) => i !== skip); };
+  const optionIdx = (tb, n, right) => { const o = tb.shuffle([0, 1, 2, 3].filter(x => x !== right)); return o.slice(0, 2); };
+  /* mode: read (one value), most, fewest, diff (how many more), tot (two together). kind: picto, bars, tally. scale: fixed for read types of pictographs and bar graphs. */
+  function graphType(kind, mode, fixedScale) {
+    const topics = kind === "tally" ? TTOPICS : GTOPICS, maxK = kind === "picto" ? 8 : kind === "bars" ? 9 : 22, minK = kind === "tally" ? 3 : 1;
+    return {
+      n: 60, min: 12,
+      gen: tb => {
+        const t = tb.int(0, topics.length - 1), s = kind === "tally" ? 1 : (fixedScale || tb.pick([1, 2, 5])), cats = pickCats(tb, topics[t]), ks = [0, 1, 2, 3].map(() => tb.int(minK, maxK));
+        let i = tb.int(0, 3), j = tb.int(0, 3);
+        const sorted = ks.slice().sort((a, b) => a - b);
+        if (mode === "most" && sorted[3] === sorted[2]) return null;
+        if (mode === "fewest" && sorted[0] === sorted[1]) return null;
+        if (mode === "most") i = ks.indexOf(sorted[3]); if (mode === "fewest") i = ks.indexOf(sorted[0]);
+        if (mode === "diff") { if (ks[i] <= ks[j]) return null; }
+        if (mode === "tot") { if (i >= j) return null; }
+        return { t, s, cats, ks, i, j, o: optionIdx(tb, 4, i) };
+      },
+      bank: GRAPH_FRAMES(kind === "picto" ? "picture graph" : kind === "bars" ? "bar graph" : "tally chart"), scene: lineup(1, "tray"),
+      q: p => {
+        const { t, s, cats, ks, i, j } = p, T = topics[t], vals = ks.map(k => k * s), name = c => T.say(c);
+        const fig = kind === "picto" ? { t: "picto", cats, vals, scale: s, icon: T.icon, unit: T.unit, one: T.one } : kind === "bars" ? { t: "bars", cats, vals, scale: s, unit: T.unit } : { t: "tally", cats: cats.map(name), vals };
+        const helpFig = { fig, help: kind === "picto" ? { row: mode === "read" ? i : -1 } : kind === "bars" ? { bar: mode === "read" ? i : -1 } : true };
+        const base = { v: { s: T.intro, q: "" }, nums: [], figure: fig, helpFig, key: JSON.stringify([t, s, cats, ks, i, j]) };
+        const sc = s > 1 ? NUMW[s] : "one";
+        const scaleHint = kind === "picto" ? (s > 1 ? `Look at the key. Each picture stands for ${sc}. Count by ${sc}s.` : "Count the pictures in the row.") : kind === "bars" ? `Look at the top of the bar. Read across to the numbers. Each line goes up by ${sc}.` : "Count the groups of five by fives. Then count the extra marks.";
+        if (mode === "most" || mode === "fewest") {
+          const right = i, labels = [right].concat(p.o).map(x => ({ word: kind === "tally" ? name(cats[x]) : cats[x], say: name(cats[x]) }));
+          const ask = mode === "most" ? T.most : T.fewest;
+          return Object.assign(base, wordQ(labels, 0), { v: { s: T.intro, q: ask }, eq: mode + " = ?", fact: `${name(cats[i])} has the ${mode === "most" ? "most" : "fewest"}.`,
+            hint: mode === "most" ? (kind === "bars" ? "Look for the tallest bar." : "Look for the longest row.") : (kind === "bars" ? "Look for the shortest bar." : "Look for the shortest row.") });
+        }
+        const slipFor = x => (s > 1 && kind !== "tally") ? { scale_slip: [x] } : undefined;
+        if (mode === "read") return Object.assign(base, { v: { s: T.intro, q: T.read(cats[i]) }, ans: vals[i], eq: "number = ?", fact: kind === "tally" ? `${name(cats[i])} got ${vals[i]} marks.` : s > 1 && kind === "picto" ? `${pl(ks[i], "picture")} of ${s} ${ks[i] === 1 ? "makes" : "make"} ${vals[i]}.` : `${name(cats[i])} had ${pl(vals[i], T.one, T.unit)}.`,
+          hint: scaleHint, slips: slipFor(ks[i]) });
+        if (mode === "diff") return Object.assign(base, { v: { s: T.intro, q: T.more(cats[i], cats[j]) }, ans: vals[i] - vals[j], eq: "more = ?", op: "-", fact: `${vals[i]} minus ${vals[j]} is ${vals[i] - vals[j]}.`, hint: "Find both numbers first. Then take the small one away from the big one.", slips: slipFor(ks[i] - ks[j]) });
+        return Object.assign(base, { v: { s: T.intro, q: T.tot(cats[i], cats[j]) }, ans: vals[i] + vals[j], eq: "in all = ?", op: "+", fact: `${vals[i]} plus ${vals[j]} is ${vals[i] + vals[j]}.`, hint: "Find both numbers first. Then add them.", slips: slipFor(ks[i] + ks[j]) });
+      },
+      les: (p, Q) => {
+        const { s, ks, i, j } = p, sc = s > 1 ? NUMW[s] : "one";
+        if (mode === "most" || mode === "fewest") return [`Look at all the ${kind === "bars" ? "bars" : "rows"}. Find the ${mode === "most" ? (kind === "bars" ? "tallest" : "longest") : "shortest"} one.`, Q.fact, Q.eq];
+        const readHow = kind === "picto" ? (s > 1 ? `Each picture stands for ${sc}, so count by ${sc}s.` : "Count the pictures.") : kind === "bars" ? `Read the top of each bar. Each line goes up by ${sc}.` : "Count the groups of five by fives, then the extra marks.";
+        if (mode === "read") return [readHow, Q.fact, kind === "picto" && s > 1 ? `${ks[i]} × ${s}` : `${Q.ans}`];
+        if (mode === "diff") return [`${readHow} Then take one away from the other.`, Q.fact, `${Q.ans + (ks[j] * s)} ${MINUS} ${ks[j] * s}`];
+        return [`${readHow} Then add the two.`, Q.fact, `${ks[i] * s} + ${ks[j] * s}`];
+      }
+    };
+  }
+  const G3_PICTO_KIND = g3Kind({ name: "Cafe: reading a picture graph", group: "shapes", needs: ["cafe_times.1"], choice: "mixed", lessonKind: "graph" }, {
+    PA: graphType("picto", "read", 1), PB: graphType("picto", "read", 2), PC: graphType("picto", "read", 5), PM: graphType("picto", "most"), PF: graphType("picto", "fewest"), PD: graphType("picto", "diff"), PT: graphType("picto", "tot")
+  });
+  const G3_BARS_KIND = g3Kind({ name: "Cafe: reading a bar graph", group: "shapes", needs: ["cafe_graph.1", "cafe_pattern.1"], choice: "mixed", lessonKind: "graph" }, {
+    BA: graphType("bars", "read", 1), BB: graphType("bars", "read", 2), BC: graphType("bars", "read", 5), BM: graphType("bars", "most"), BF: graphType("bars", "fewest"), BD: graphType("bars", "diff"), BT: graphType("bars", "tot")
+  });
+  const G3_TALLY_KIND = g3Kind({ name: "Cafe: tally marks", group: "shapes", needs: ["cafe_times.1"], choice: "mixed", lessonKind: "graph" }, {
+    TA: graphType("tally", "read"), TM: graphType("tally", "most"), TF: graphType("tally", "fewest"), TD: graphType("tally", "diff"), TT: graphType("tally", "tot")
+  });
+
+  /* ----- simple chance (cafe_chance.1: the four words; cafe_chance.2: spinners, fair games and draws) ----- */
+  const CHANCE_WORDS = ["impossible", "unlikely", "likely", "certain"];
+  const chanceLabels = () => CHANCE_WORDS.map(w => ({ word: w, say: w }));
+  const SWEET_COLORS = ["red", "blue", "green", "yellow", "pink", "purple"];
+  const CHANCE_FACT = {
+    jar: [c => `There is no ${c} sweet in the jar, so it is impossible.`, c => `Only a few sweets are ${c}, so it is unlikely.`, c => `Most of the sweets are ${c}, so it is likely.`, c => `All the sweets are ${c}, so it is certain.`],
+    die: [() => "No number on the cube fits, so it is impossible.", () => "Only a few numbers fit, so it is unlikely.", () => "Most of the numbers fit, so it is likely.", () => "Every number on the cube fits, so it is certain."],
+    spin: [c => `No part of the spinner is ${c}, so it is impossible.`, c => `Only a few parts are ${c}, so it is unlikely.`, c => `Most of the parts are ${c}, so it is likely.`, c => `Every part is ${c}, so it is certain.`]
+  };
+  const CHANCE_HINT = {
+    jar: "Count the sweets of that colour. Are they all, none, most or only a few?", die: "Think about the six numbers on the cube. How many of them fit?",
+    spin: "Count the parts of that colour. Are they all, none, most or only a few?"
+  };
+  const CHANCE_LESSON = "All of them is certain. None of them is impossible. Most of them is likely. Only a few is unlikely.";
+  const levelOf = (n, total) => n === 0 ? 0 : n === total ? 3 : n / total >= .6 ? 2 : 1;
+  const DICE_STATEMENTS = [
+    ["a number less than 7", 6], ["a number more than 0", 6], ["a number from 1 to 6", 6], ["a 7", 0], ["a 0", 0], ["a number more than 6", 0],
+    ["a number more than 1", 5], ["a number less than 6", 5], ["a number more than 2", 4], ["a 6", 1], ["a 1", 1], ["a number more than 5", 1], ["a number less than 2", 1]
+  ];
+  const JAR_BANK = [
+    ["Mimi has a jar of sweets. She picks one without looking.", "Will she pick a {c} sweet?", "candy:jar"],
+    ["A customer reaches into the sweet jar without looking.", "Will the customer get a {c} sweet?", "candy:jar"],
+    ["Mimi shakes the jar of sweets and takes one out.", "Will it be a {c} sweet?", "candy:jar"]
+  ];
+  const DICE_BANK = [
+    ["Mimi rolls a fair number cube. It has the numbers 1 to 6.", "Will she roll {s}?", "cup:table"],
+    ["A customer rolls a fair number cube with the numbers 1 to 6.", "Will the customer roll {s}?", "cookie:tray"],
+    ["Mimi plays a game with a fair number cube. It has the numbers 1 to 6.", "Will she roll {s}?", "muffin:tray"]
+  ];
+  const SPIN_BANK = [
+    ["Mimi spins the spinner. It has eight equal parts.", "Will it stop on {c}?", "cup:table"],
+    ["A customer spins the cafe spinner. It has eight equal parts.", "Will it stop on {c}?", "cookie:tray"],
+    ["Mimi gives the spinner a spin. It has eight equal parts.", "Will it land on {c}?", "muffin:tray"]
+  ];
+  const spinnerParts = (tb, c, r, total) => { const others = tb.shuffle(SWEET_COLORS.filter(x => x !== c)).slice(0, 2), list = []; for (let i = 0; i < r; i++) list.push(c); for (let i = r; i < total; i++) list.push(others[(i - r) % 2]); return tb.shuffle(list); };
+  const G3_CHANCE1_KIND = g3Kind({ name: "Cafe: certain, likely, unlikely, impossible", group: "shapes", needs: ["sums.3"], choice: true, ordered: true, lessonKind: "chance" }, {
+    CJ: {
+      n: 60, min: 12,
+      gen: tb => {
+        const lv = tb.int(0, 3), c = tb.pick(SWEET_COLORS), T = tb.int(6, 10), others = tb.shuffle(SWEET_COLORS.filter(x => x !== c));
+        let r = lv === 0 ? 0 : lv === 3 ? T : lv === 2 ? tb.int(Math.ceil(T * .65), T - 1) : tb.int(1, Math.floor(T * .35));
+        if (lv === 1 && r < 1) r = 1;
+        const items = {}; if (r) items[c] = r; const rest = T - r;
+        if (rest > 0) { const a = Math.ceil(rest / 2); items[others[0]] = a; if (rest - a > 0) items[others[1]] = rest - a; }
+        return { lv, c, items };
+      },
+      bank: JAR_BANK, scene: lineup(1, "jar"),
+      q: ({ lv, c, items }) => Object.assign(wordQ(chanceLabels(), lv), { v: { c }, nums: [], eq: "chance = ?", fact: CHANCE_FACT.jar[lv](c), hint: CHANCE_HINT.jar, key: JSON.stringify(items) + c, figure: { t: "jar", items } }),
+      les: ({ lv, c }) => [CHANCE_LESSON, CHANCE_FACT.jar[lv](c), "none few most"]
+    },
+    CD: {
+      n: 60, min: 8, gen: tb => ({ i: tb.int(0, DICE_STATEMENTS.length - 1) }), bank: DICE_BANK, scene: lineup(1, "tray"),
+      q: ({ i }) => { const [s, n] = DICE_STATEMENTS[i], lv = levelOf(n, 6); return Object.assign(wordQ(chanceLabels(), lv), { v: { s }, nums: [], eq: "chance = ?", fact: CHANCE_FACT.die[lv](), hint: CHANCE_HINT.die, key: s }); },
+      les: ({ i }) => { const lv = levelOf(DICE_STATEMENTS[i][1], 6); return [CHANCE_LESSON, CHANCE_FACT.die[lv](), "none few most"]; }
+    },
+    CS: {
+      n: 60, min: 12,
+      gen: tb => { const lv = tb.int(0, 3), c = tb.pick(SWEET_COLORS), r = lv === 0 ? 0 : lv === 3 ? 8 : lv === 2 ? tb.pick([6, 7]) : tb.pick([1, 2]); return { lv, c, parts: spinnerParts(tb, c, r, 8) }; },
+      bank: SPIN_BANK, scene: lineup(1, "plate"),
+      q: ({ lv, c, parts }) => Object.assign(wordQ(chanceLabels(), lv), { v: { c }, nums: [], eq: "chance = ?", fact: CHANCE_FACT.spin[lv](c), hint: CHANCE_HINT.spin, key: parts.join("") + c, figure: { t: "spinner", parts } }),
+      les: ({ lv, c }) => [CHANCE_LESSON, CHANCE_FACT.spin[lv](c), "none few most"]
+    }
+  });
+
+  const MOST_BANK = (what) => [
+    ["Mimi spins the spinner. It has equal parts.", `Which colour is it ${what} to stop on? Tap it.`, "cup:table"],
+    ["A customer spins the cafe spinner. Every part is the same size.", `Which colour is it ${what} to land on? Tap it.`, "cookie:tray"],
+    ["Mimi looks at the spinner. All the parts are equal.", `Which colour is ${what} to come up? Tap it.`, "muffin:tray"]
+  ];
+  const threeCounts = (tb, T) => { for (let i = 0; i < 100; i++) { const a = tb.int(2, T - 3), b = tb.int(1, a - 1), c = T - a - b; if (c >= 1 && c < b && a > b) return [a, b, c]; } return null; };
+  function mostType(most) {
+    return {
+      n: 60, min: 12,
+      gen: tb => { const T = tb.pick([6, 8, 9, 10, 12]), cnt = threeCounts(tb, T); if (!cnt) return null; const cols = tb.shuffle(SWEET_COLORS).slice(0, 3); const list = []; cols.forEach((c, i) => { for (let k = 0; k < cnt[i]; k++) list.push(c); }); return { cols, cnt, parts: tb.shuffle(list) }; },
+      bank: MOST_BANK(most ? "most likely" : "least likely"), scene: lineup(1, "plate"),
+      q: ({ cols, cnt, parts }) => { const right = most ? 0 : 2, order = most ? [0, 1, 2] : [2, 0, 1];
+        return Object.assign(wordQ(order.map(i => ({ word: cols[i], say: cols[i] })), 0), { v: {}, nums: [], eq: (most ? "most" : "least") + " = ?", fact: `${cap1(cols[right])} has ${most ? "the most" : "the fewest"} parts, so it is ${most ? "the most" : "the least"} likely.`,
+          hint: `Count the parts of each colour. ${most ? "More" : "Fewer"} parts means ${most ? "more" : "less"} likely.`, key: parts.join(""), figure: { t: "spinner", parts } }); },
+      les: ({ cols, cnt }) => ["Count the parts of each colour. The chance is bigger when there are more parts.", `${cap1(cols[most ? 0 : 2])} has ${most ? "the most" : "the fewest"} parts.`, `${cnt.join(" ")}`]
+    };
+  }
+  const FAIR_BANK = [
+    ["Mimi plays a spinner game with a friend. Mimi wins on {c}. Her friend wins on {d}.", "Is the game fair? Tap yes or no.", "cup:table"],
+    ["Mimi and a customer play with a spinner. Mimi wins on {c}. The customer wins on {d}.", "Is it a fair game? Tap yes or no.", "cookie:tray"],
+    ["Two friends spin the spinner. One wins on {c}. The other wins on {d}.", "Is the game fair? Tap yes or no.", "muffin:tray"]
+  ];
+  const LIST_TEXT = items => items.map(([n, c]) => `${n} ${c} ${n === 1 ? "ticket" : "tickets"}`).join(", ").replace(/, ([^,]*)$/, " and $1");
+  const DRAW_BANK2 = [
+    ["Mimi's bag has {l}. She draws one without looking.", "Which colour is she more likely to draw? Tap it.", "cup:table"],
+    ["A bag holds {l}. A customer draws one without looking.", "Which colour is more likely to be drawn? Tap it.", "cookie:tray"],
+    ["Mimi mixes {l} in a bag. She draws one.", "Which colour is she more likely to draw? Tap it.", "muffin:tray"]
+  ];
+  const DRAW_BANK3 = [
+    ["Mimi's bag has {l}. She draws one without looking.", "Which colour is she most likely to draw? Tap it.", "cup:table"],
+    ["A bag holds {l}. A customer draws one without looking.", "Which colour is most likely to be drawn? Tap it.", "cookie:tray"],
+    ["Mimi mixes {l} in a bag. She draws one.", "Which colour is she most likely to draw? Tap it.", "muffin:tray"]
+  ];
+  const FAIRADD_BANK = [
+    ["Mimi's bag has {l}. She wants a fair draw, with the same chance for both colours.", "How many {s} tickets must she add?", "cup:table"],
+    ["A bag holds {l}. The game is not fair yet.", "How many {s} tickets must Mimi put in to make it fair?", "cookie:tray"],
+    ["Mimi has {l} in the bag. She wants both colours to have the same chance.", "How many {s} tickets must she add?", "muffin:tray"]
+  ];
+  const G3_CHANCE2_KIND = g3Kind({ name: "Cafe: spinners, fair games and draws", group: "shapes", needs: ["cafe_chance.1"], choice: "mixed", lessonKind: "chance2" }, {
+    FM: mostType(true), FL: mostType(false),
+    FF: {
+      n: 60, min: 12,
+      gen: tb => { const [c, d] = tb.shuffle(SWEET_COLORS).slice(0, 2), pairs = [[2, 2], [3, 3], [4, 4], [3, 1], [1, 3], [4, 2], [2, 4], [5, 3], [3, 5], [5, 1], [1, 5], [6, 2]], [a, b] = tb.pick(pairs), list = []; for (let k = 0; k < a; k++) list.push(c); for (let k = 0; k < b; k++) list.push(d); return { c, d, a, b, parts: tb.shuffle(list) }; },
+      bank: FAIR_BANK, scene: lineup(1, "plate"),
+      q: ({ c, d, a, b, parts }) => { const fair = a === b; return Object.assign(wordQ([{ word: "Yes", say: "yes" }, { word: "No", say: "no" }], fair ? 0 : 1), { v: { c, d }, nums: [], eq: "fair = ?",
+        fact: fair ? `Both colours have ${a} parts, so each player has the same chance. It is fair.` : `${cap1(c)} has ${pl(a, "part")} and ${d} has ${pl(b, "part")}. The chances are not the same. It is not fair.`,
+        hint: "Count the parts of each colour. A fair game gives both players the same number of parts.", key: parts.join("") + c + d, figure: { t: "spinner", parts } }); },
+      les: ({ a, b }) => ["A fair game gives both players the same chance. Count the parts for each colour.", a === b ? "The two colours have the same number of parts. It is fair." : "The two colours have different numbers of parts. It is not fair.", `${a} and ${b}`]
+    },
+    FD: {
+      n: 60, min: 12, gen: tb => { const [c, d] = tb.shuffle(SWEET_COLORS).slice(0, 2), a = tb.int(2, 9), b = tb.int(1, 9); return a === b ? null : { c, d, a, b }; }, bank: DRAW_BANK2, scene: lineup(1, "basket"),
+      q: ({ c, d, a, b }) => { const right = a > b ? 0 : 1, cols = [c, d]; return Object.assign(wordQ(cols.map(x => ({ word: x, say: x })), right), { v: { l: LIST_TEXT([[a, c], [b, d]]) }, nums: [a, b], eq: "more likely = ?",
+        fact: `There are more ${cols[right]} tickets, so ${cols[right]} is more likely.`, hint: "Compare the two numbers. The colour with more tickets is more likely.", key: `${c}:${d}:${a}:${b}` }); },
+      les: ({ c, d, a, b }) => ["Compare the number of tickets. More tickets means a bigger chance.", `There are more ${a > b ? c : d} tickets, so ${a > b ? c : d} is more likely.`, `${a} or ${b}`]
+    },
+    FG: {
+      n: 60, min: 12, gen: tb => { const cols = tb.shuffle(SWEET_COLORS).slice(0, 3), cnt = [tb.int(1, 8), tb.int(1, 8), tb.int(1, 8)]; return new Set(cnt).size === 3 ? { cols, cnt } : null; }, bank: DRAW_BANK3, scene: lineup(1, "basket"),
+      q: ({ cols, cnt }) => { const right = cnt.indexOf(Math.max(...cnt)); return Object.assign(wordQ(cols.map(x => ({ word: x, say: x })), right), { v: { l: LIST_TEXT(cols.map((c, i) => [cnt[i], c])) }, nums: cnt.slice(), eq: "most likely = ?",
+        fact: `There are the most ${cols[right]} tickets, so ${cols[right]} is the most likely.`, hint: "Compare the numbers. The colour with the most tickets is the most likely.", key: cols.join("") + cnt.join(":") }); },
+      les: ({ cols, cnt }) => ["Compare the number of tickets. The most tickets gives the biggest chance.", `${cap1(cols[cnt.indexOf(Math.max(...cnt))])} has the most tickets.`, cnt.join(" ")]
+    },
+    FP: {
+      n: 60, min: 12, gen: tb => { const [c, d] = tb.shuffle(SWEET_COLORS).slice(0, 2), a = tb.int(3, 9), b = tb.int(1, a - 1); return { c, d, a, b }; }, bank: FAIRADD_BANK, scene: lineup(1, "basket"),
+      q: ({ c, d, a, b }) => ({ v: { l: LIST_TEXT([[a, c], [b, d]]), s: d }, nums: [a, b], ans: a - b, eq: "add = ?", op: "-", fact: `${a} minus ${b} is ${a - b}. With ${pl(a - b, d + " ticket")} added, both colours have ${a}. It is fair.`,
+        hint: "A fair draw needs the same number of each colour. How many more does the smaller colour need?", key: `${c}:${d}:${a}:${b}` }),
+      les: ({ a, b }, Q) => ["A fair draw has the same number of each colour. Find how many the smaller colour needs.", `${a} minus ${b} is ${Q.ans}.`, `${a} ${MINUS} ${b}`]
+    }
+  });
+
+  /* ----- fractions beyond halves and quarters (cafe_frac.2 to .5). Notation (1/3) is on the answer buttons; everything spoken is in words. ----- */
+  const DEN_WORD = { 2: ["half", "halves"], 3: ["third", "thirds"], 4: ["quarter", "quarters"], 6: ["sixth", "sixths"], 8: ["eighth", "eighths"] };
+  const fs = (k, n) => k === 1 && n === 2 ? "one half" : `${NUMW[k]} ${DEN_WORD[n][k === 1 ? 0 : 1]}`;
+  const fracLabel = ([k, n]) => ({ frac: `${k}/${n}`, say: fs(k, n) });
+  const A_PART = { 2: "a half", 3: "a third", 4: "a quarter", 6: "a sixth", 8: "an eighth" };
+  const DENS = [2, 3, 4, 6, 8];
+  // the right fraction and two more that are not equal to it in value (a different top, a different bottom, or the part that is not shaded)
+  function fracOptions(tb, k, n) {
+    const out = [[k, n]], vals = new Set([k / n]);
+    const add = f => { if (f[0] >= 1 && f[0] < f[1] && !vals.has(f[0] / f[1])) { vals.add(f[0] / f[1]); out.push(f); } };
+    if (k > 1 || n > 2) add([n - k, n]);
+    tb.shuffle(DENS.filter(m => m !== n)).forEach(m => { if (out.length < 3) add([Math.min(k, m - 1), m]); });
+    tb.shuffle(DENS).forEach(m => { for (let j = 1; j < m && out.length < 3; j++) add([j, m]); });
+    return out.slice(0, 3);
+  }
+  const SHAPE_ROWS = ["pie", "bar", "bar"];
+  const reshape = (Q, ti) => { const b = Q.figure.bars[0]; Q.figure = { t: "fracbar", bars: [Object.assign({}, b, { shape: SHAPE_ROWS[ti] })] }; if (Q.hintPic && Q.hintPic.figure) Q.hintPic.figure = Q.figure; };
+  const SLICE_BANK = (tail) => [
+    ["Mimi cuts a pie into equal slices. " + tail("pink", "slice"), "What fraction of the pie is pink? Tap it.", "pie:table"],
+    ["Mimi cuts a long cake into equal pieces. " + tail("pink", "piece"), "What fraction of the cake is pink? Tap it.", "cake:table"],
+    ["A chocolate bar has equal squares. " + tail("pink", "square"), "What fraction of the bar is pink? Tap it.", "chocolate:table"]
+  ];
+  const NAME_PART_BANK = [
+    ["Mimi cuts a pie into {n} equal slices.", "What do we call each slice? Tap it.", "pie:table"],
+    ["Mimi cuts a long cake into {n} equal pieces.", "What do we call each piece? Tap it.", "cake:table"],
+    ["A chocolate bar has {n} equal squares.", "What do we call each square? Tap it.", "chocolate:table"]
+  ];
+  const EQUAL_BANK = [
+    ["Mimi cuts three cakes of the same size.", "Which cake is cut into equal parts? Tap it.", "cake:table"],
+    ["Three chocolate bars are cut up. Only one has equal pieces.", "Which bar is cut into equal parts? Tap it.", "chocolate:table"],
+    ["Mimi cuts three long cakes in different ways.", "Which cake has equal parts? Tap it.", "cake:table"]
+  ];
+  const unequalCuts = (n, variant) => { const w = Array.from({ length: n }, (_, i) => variant ? i + 1 : (i % 2 ? 3 : 1)), tot = w.reduce((a, b) => a + b, 0); let acc = 0; return w.slice(0, -1).map(x => (acc += x) / tot); };
+  const equalFig = n => ({ t: "fracbar", bars: [{ parts: n }] });
+  const unequalFig = (n, variant) => ({ t: "fracbar", bars: [{ cuts: unequalCuts(n, variant) }] });
+  const G3_FRACNAME_KIND = g3Kind({ name: "Cafe: thirds, sixths and eighths", group: "fractions", needs: ["cafe_frac.1"], choice: true, lessonKind: "fraction_name" }, {
+    NF1: {
+      n: 60, min: 4, gen: tb => ({ n: tb.pick(DENS) }), bank: SLICE_BANK((c, w) => `One ${w} is ${c}.`), scene: lineup(1, "plate"),
+      q: ({ n }) => ({ v: {}, nums: [], ...wordQ(fracOptions(toolbox(rng32(n * 31 + 7)), 1, n).map(fracLabel), 0), eq: "fraction = ?", fact: `One of ${n} equal parts is ${fs(1, n)}.`, hint: "Count all the equal parts. The bottom number is how many equal parts there are.",
+        key: `1:${n}`, figure: { t: "fracbar", bars: [{ parts: n, shaded: [0] }] } }),
+      deco: (Q, p, ti) => reshape(Q, ti),
+      les: ({ n }) => [`Count the equal parts. There are ${n}. One of them is pink.`, `One of ${n} equal parts is ${fs(1, n)}.`, `1 of ${n}`]
+    },
+    NF2: {
+      n: 60, min: 8, gen: tb => { const n = tb.pick([3, 4, 6, 8]), k = tb.int(2, n - 1); return { n, k }; }, bank: SLICE_BANK((c, w) => "Some of the " + w + "s are pink."), scene: lineup(1, "plate"),
+      q: ({ n, k }) => ({ v: {}, nums: [], ...wordQ(fracOptions(toolbox(rng32(n * 131 + k)), k, n).map(fracLabel), 0), eq: "fraction = ?", fact: `${NUMW[k]} of ${n} equal parts is ${fs(k, n)}.`, hint: "The bottom number is how many equal parts there are. The top number is how many are pink.",
+        key: `${k}:${n}`, figure: { t: "fracbar", bars: [{ parts: n, shaded: Array.from({ length: k }, (_, i) => i) }] } }),
+      deco: (Q, p, ti) => reshape(Q, ti),
+      les: ({ n, k }) => [`Count all the equal parts. That is the bottom number. Then count the pink parts. That is the top number.`, `${NUMW[k]} of ${n} equal parts is ${fs(k, n)}.`, `${k} of ${n}`]
+    },
+    NW: {
+      n: 60, min: 4, gen: tb => { const n = tb.pick(DENS), o = tb.shuffle(DENS.filter(x => x !== n)); return { n, a: o[0], b: o[1] }; }, bank: NAME_PART_BANK, scene: lineup(1, "plate"),
+      q: ({ n, a, b }) => ({ v: { n }, nums: [n], ...wordQ([n, a, b].map(x => ({ word: A_PART[x], say: A_PART[x] })), 0), eq: "name = ?", fact: `Each of ${n} equal parts is ${A_PART[n]}.`, hint: "Count the equal parts. Each part is named after how many there are.",
+        key: `${n}:${a}:${b}`, figure: { t: "fracbar", bars: [{ parts: n }] } }),
+      deco: (Q, p, ti) => reshape(Q, ti),
+      les: ({ n }) => [`Count the equal parts. There are ${n}.`, `Each of ${n} equal parts is ${A_PART[n]}.`, `${n} parts`]
+    },
+    NE: {
+      n: 8, min: 4, gen: tb => ({ n: tb.pick([2, 3, 4, 6]), v1: tb.int(0, 1) }), bank: EQUAL_BANK, scene: lineup(3, "plate"),
+      q: ({ n, v1 }) => Object.assign(wordQ([{ fig: equalFig(n), say: "This one.", name: "a cake" }, { fig: unequalFig(n, v1), say: "This one.", name: "a cake" }, { fig: unequalFig(n, 1 - v1), say: "This one.", name: "a cake" }], 0),
+        { v: {}, nums: [], eq: "equal = ?", fact: "This cake has equal parts. Every part is the same size.", hint: "Equal parts are all the same size. Look for the cake where every piece looks the same.", key: `${n}:${v1}` }),
+      les: () => ["Equal parts are all the same size. Check each cake.", "This cake has equal parts. Every part is the same size.", "equal parts"]
+    }
+  });
+
+  const BIGGER_BANK = [
+    ["Mimi cuts one cake into {a} equal parts. She cuts a second cake, the same size, into {b} equal parts.", "Which piece is {w}? Tap it.", "cake:table"],
+    ["Two cakes are the same size. One is cut into {a} equal slices. The other is cut into {b} equal slices.", "Which slice is {w}? Tap it.", "pie:table"],
+    ["Mimi shares one pie between {a} friends. A second pie, the same size, is shared between {b} friends.", "Which share is {w}? Tap it.", "pie:table"]
+  ];
+  const SAMEDEN_BANK = [
+    ["Mimi ate {a} of {n} equal slices. Her friend ate {b} of the same {n} slices.", "Who ate more? Tap that fraction.", "pie:table"],
+    ["A pie has {n} equal slices. Mimi takes {a} of them. A customer takes {b}.", "Who took more? Tap that fraction.", "pie:table"],
+    ["A cake is cut into {n} equal pieces. One plate gets {a|piece}. Another plate gets {b|piece}.", "Which plate has more? Tap that fraction.", "cake:table"]
+  ];
+  const twoBars = (a, b, sa, sb) => ({ t: "fracbar", bars: [{ parts: a, shaded: sa }, { parts: b, shaded: sb }] });
+  function unitCompare(bigger) {
+    return {
+      n: 60, min: 8, gen: tb => { const a = tb.pick(DENS), b = tb.pick(DENS); return a === b ? null : { a, b }; }, bank: BIGGER_BANK.map(r => [r[0], r[1].replace("{w}", bigger ? "bigger" : "smaller"), r[2]]), scene: lineup(2, "plate"),
+      q: ({ a, b }) => { const big = Math.min(a, b), small = Math.max(a, b), right = bigger ? big : small, wrong = bigger ? small : big;
+        return Object.assign(wordQ([right, wrong].map(x => fracLabel([1, x])), 0), { v: { a, b, w: "" }, nums: [a, b], eq: (bigger ? "bigger" : "smaller") + " = ?", fact: `${cap1(fs(1, right))} is the ${bigger ? "bigger" : "smaller"} piece. ${cap1(NUMW[big])} is less than ${NUMW[small]}, so fewer parts means bigger pieces.`,
+          hint: "More equal parts means smaller parts. Fewer equal parts means bigger parts.", key: `${a}:${b}`, helpFig: { fig: twoBars(a, b, [0], [0]), help: true }, slips: bigger ? { bigger_parts: [2] } : undefined }); },
+      les: ({ a, b }) => ["Think of sharing a cake. The more equal parts you cut it into, the smaller each part is.", `${a} parts or ${b} parts: ${Math.min(a, b)} is fewer, so that piece is bigger.`, `${a} or ${b}`]
+    };
+  }
+  const G3_FRACCMP_KIND = g3Kind({ name: "Cafe: which fraction is bigger", group: "fractions", needs: ["cafe_frac.2"], choice: true, lessonKind: "fraction_cmp" }, {
+    CB: unitCompare(true), CS: unitCompare(false),
+    CT: {
+      n: 60, min: 8, gen: tb => { const o = tb.shuffle(DENS).slice(0, 3); return { d: o }; },
+      bank: [
+        ["Mimi cuts three cakes of the same size. One into {a} equal parts, one into {b} and one into {c}.", "Which piece is the biggest? Tap it.", "cake:table"],
+        ["Three pies are the same size. They are cut into {a}, {b} and {c} equal slices.", "Which slice is the biggest? Tap it.", "pie:table"],
+        ["Mimi shares three same-size pies between {a}, {b} and {c} friends.", "Which share is the biggest? Tap it.", "pie:table"]
+      ], scene: lineup(3, "plate"),
+      q: ({ d }) => { const best = Math.min(...d), wrong = d.filter(x => x !== best);
+        return Object.assign(wordQ([best, ...wrong].map(x => fracLabel([1, x])), 0), { v: { a: d[0], b: d[1], c: d[2] }, nums: d.slice(), eq: "biggest = ?", fact: `${cap1(fs(1, best))} is the biggest. The fewer the parts, the bigger each part.`, hint: "More equal parts means smaller parts. Which cake has the fewest parts?",
+          key: d.join(":"), slips: { bigger_parts: [2, 3] }, helpFig: { fig: { t: "fracbar", bars: d.map(x => ({ parts: x, shaded: [0] })) }, help: true } }); },
+      les: ({ d }) => ["The more equal parts a cake is cut into, the smaller each part is. Look for the fewest parts.", `The fewest parts is ${Math.min(...d)}, so that piece is the biggest.`, d.join(" ")]
+    },
+    CN: {
+      n: 60, min: 8, gen: tb => { const n = tb.pick([3, 4, 6, 8]), a = tb.int(1, n - 1), b = tb.int(1, n - 1); return a === b ? null : { n, a, b }; }, bank: SAMEDEN_BANK, scene: lineup(2, "plate"),
+      q: ({ n, a, b }) => { const big = Math.max(a, b), small = Math.min(a, b);
+        return Object.assign(wordQ([[big, n], [small, n]].map(fracLabel), 0), { v: { n, a, b }, nums: [n, a, b], eq: "more = ?", fact: `${cap1(fs(big, n))} is more than ${fs(small, n)}. The parts are the same size, so more parts is more.`, hint: "The parts are the same size. Count how many parts each one has.",
+          key: `${n}:${a}:${b}`, helpFig: { fig: twoBars(n, n, Array.from({ length: a }, (_, i) => i), Array.from({ length: b }, (_, i) => i)), help: true } }); },
+      les: ({ n, a, b }) => ["The parts are the same size. So the one with more parts is more.", `${pl(Math.max(a, b), "part")} is more than ${pl(Math.min(a, b), "part")}.`, `${a} or ${b}`]
+    }
+  });
+
+  // a fraction of a set: put the set into equal groups, then take the groups
+  const SETFRAC = { U3: [1, 3, [6, 9, 12, 15, 18, 21, 24, 27, 30]], U6: [1, 6, [12, 18, 24, 30, 36]], U8: [1, 8, [16, 24, 32, 40, 48]], K3: [2, 3, [6, 9, 12, 15, 18, 21, 24]], K4: [3, 4, [8, 12, 16, 20, 24, 28]], K8: [3, 8, [16, 24, 32, 40]] };
+  const SETFRAC_BANK = [
+    ["Mimi has {t|cupcake}. She gives {f} of them to a friend.", "How many cupcakes does her friend get?", "cupcake:tray"],
+    ["There are {t|cookie} on the tray. A customer buys {f} of them.", "How many cookies does the customer buy?", "cookie:tray"],
+    ["Mimi bakes {t|muffin}. {fc} of them are blueberry.", "How many muffins are blueberry?", "muffin:tray"]
+  ];
+  function setType(id) {
+    const [k, n, totals] = SETFRAC[id];
+    return {
+      n: 40, min: totals.length, gen: tb => ({ t: tb.pick(totals) }), bank: SETFRAC_BANK, scene: lineup(1, "tray"),
+      q: ({ t }) => { const per = t / n, ans = per * k, shade = Array.from({ length: k }, (_, i) => i);
+        return { v: { t, f: fs(k, n), fc: cap1(fs(k, n)) }, nums: [t], ans, eq: "fraction of = ?", fact: `${t} in ${n} equal groups is ${per} in each group.${k > 1 ? ` ${pl(k, "group")} make ${ans}.` : ""}`,
+          hint: k > 1 ? `Share them into ${n} equal groups. Then count ${NUMW[k]} of the groups.` : `Share them into ${n} equal groups. How many are in one group?`, key: `${id}:${t}`,
+          helpFig: { fig: { t: "set", total: t, groups: n, shade }, help: true }, slips: k > 1 ? { one_group: [per] } : undefined }; },
+      les: ({ t }, Q) => [k > 1 ? `Share the ${t} into ${n} equal groups. Then take ${NUMW[k]} of the groups.` : `Share the ${t} into ${n} equal groups. One group is ${fs(1, n)}.`,
+        k > 1 ? `${t} divided by ${n} is ${t / n}. ${NUMW[k]} groups of ${t / n} is ${Q.ans}.` : `${t} divided by ${n} is ${Q.ans}.`, k > 1 ? `${t} ÷ ${n} × ${k}` : `${t} ÷ ${n}`]
+    };
+  }
+  const G3_FRACSET_KIND = g3Kind({ name: "Cafe: a fraction of a set", group: "fractions", needs: ["cafe_frac.2", "cafe_share.2"], choice: false, lessonKind: "fraction_set" }, {
+    U3: setType("U3"), U6: setType("U6"), U8: setType("U8"), K3: setType("K3"), K4: setType("K4"), K8: setType("K8")
+  });
+
+  // a fraction on a number line from 0 to 1
+  const LINE_BANK = [
+    ["Mimi hangs a ribbon from zero to one. It is marked in equal parts. A pink dot marks a spot.", "What fraction is at the pink dot? Tap it.", "cake:table"],
+    ["A number line goes from zero to one. It is cut into equal parts. There is a pink dot on it.", "Which fraction is the pink dot? Tap it.", "cup:table"],
+    ["Look at the line from zero to one. The parts are equal. The pink dot shows a fraction.", "What fraction is it? Tap it.", "cookie:tray"]
+  ];
+  const LETTER_BANK = [
+    ["A number line goes from zero to one. It has equal parts and three dots, A, B and C.", "Which letter is at {f}? Tap it.", "cup:table"],
+    ["Mimi hangs three flags, A, B and C, on a line from zero to one. The line has equal parts.", "Which flag is at {f}? Tap its letter.", "cake:table"],
+    ["Look at the line from zero to one. Three dots, A, B and C, sit on the equal parts.", "Which letter is at {f}? Tap it.", "cookie:tray"]
+  ];
+  const HOP_BANK = [
+    ["A number line goes from zero to one. It is cut into {n} equal parts. Mimi hops one part from zero.", "What fraction is one hop? Tap it.", "cup:table"],
+    ["Mimi walks on a line from zero to one. The line has {n} equal parts. She takes one step.", "What fraction is one step? Tap it.", "cookie:tray"],
+    ["The line from zero to one has {n} equal parts. Mimi's first hop is one part long.", "What fraction is one hop? Tap it.", "cake:table"]
+  ];
+  const PARTS_BANK = [
+    ["Look at the line from zero to one. It is cut into equal parts.", "How many equal parts are there? Type the number.", "cup:table"],
+    ["Mimi hangs a ribbon from zero to one. It is cut into equal parts.", "How many equal parts is it cut into? Type the number.", "cake:table"],
+    ["A number line goes from zero to one. The parts are equal.", "How many equal parts does it have? Type the number.", "cookie:tray"]
+  ];
+  const G3_FRACLINE_KIND = g3Kind({ name: "Cafe: fractions on a number line", group: "fractions", needs: ["cafe_frac.2", "sums.5"], choice: "mixed", lessonKind: "fraction_line" }, {
+    LN: {
+      n: 8, min: 4, gen: tb => ({ n: tb.pick([3, 4, 6, 8]) }), bank: PARTS_BANK, scene: lineup(1, "plate"),
+      q: ({ n }) => ({ v: {}, nums: [], ans: n, eq: "parts = ?", fact: `The line is cut into ${n} equal parts.`, hint: "Count the spaces between the marks, not the marks.", key: `${n}`,
+        figure: { t: "fracline", parts: n }, helpFig: { fig: { t: "fracline", parts: n, mark: n }, help: true }, slips: { count_marks: [n + 1] } }),
+      les: ({ n }) => ["Count the spaces between the marks. Do not count the marks themselves.", `There are ${n} equal parts.`, `${n} parts`]
+    },
+    LU: {
+      n: 40, min: 4, gen: tb => ({ n: tb.pick([3, 4, 6, 8]) }), bank: HOP_BANK, scene: lineup(1, "plate"),
+      q: ({ n }) => ({ v: { n }, nums: [n], ...wordQ(fracOptions(toolbox(rng32(n * 17 + 5)), 1, n).map(fracLabel), 0), eq: "hop = ?", fact: `One of ${n} equal parts is ${fs(1, n)}.`, hint: "Count the equal parts of the whole line. One part is one over that number.", key: `${n}`,
+        figure: { t: "fracline", parts: n, mark: 1 }, helpFig: { fig: { t: "fracline", parts: n, mark: 1 }, help: true } }),
+      les: ({ n }) => [`The line from zero to one has ${n} equal parts. One hop is one part.`, `One of ${n} equal parts is ${fs(1, n)}.`, `1 of ${n}`]
+    },
+    LK: {
+      n: 60, min: 8, gen: tb => { const n = tb.pick([3, 4, 6, 8]), k = tb.int(2, n - 1); return { n, k }; }, bank: LINE_BANK, scene: lineup(1, "plate"),
+      q: ({ n, k }) => ({ v: {}, nums: [], ...wordQ(fracOptions(toolbox(rng32(n * 211 + k)), k, n).map(fracLabel), 0), eq: "fraction = ?", fact: `The dot is ${NUMW[k]} parts along a line of ${n} equal parts. That is ${fs(k, n)}.`,
+        hint: "Count the equal parts in the whole line. That is the bottom number. Then count the parts from zero to the dot.", key: `${k}:${n}`, figure: { t: "fracline", parts: n, mark: k }, helpFig: { fig: { t: "fracline", parts: n, mark: k }, help: true } }),
+      les: ({ n, k }) => [`Count the equal parts in the whole line. There are ${n}. Then count the parts from zero to the dot.`, `${NUMW[k]} parts out of ${n} is ${fs(k, n)}.`, `${k} of ${n}`]
+    },
+    LP: {
+      n: 60, min: 8, gen: tb => { const n = tb.pick([4, 6, 8]), at = tb.shuffle(Array.from({ length: n - 1 }, (_, i) => i + 1)).slice(0, 3), t = tb.int(0, 2); return { n, at, t }; }, bank: LETTER_BANK, scene: lineup(1, "plate"),
+      q: ({ n, at, t }) => Object.assign(wordQ(["A", "B", "C"].map(x => ({ word: x, say: x })), t), { v: { f: fs(at[t], n) }, nums: [], eq: "letter = ?", ordered: true, fact: `${["A", "B", "C"][t]} is ${NUMW[at[t]]} parts along a line of ${n} equal parts. That is ${fs(at[t], n)}.`,
+        hint: "Count the equal parts in the whole line. Then count along from zero to find the fraction.", key: `${n}:${at.join("")}:${t}`, figure: { t: "fracline", parts: n, letters: at.map((x, i) => ({ at: x, ch: "ABC"[i] })) } }),
+      les: ({ n, at, t }) => [`Count the equal parts in the whole line. There are ${n}. Count along from zero.`, `${["A", "B", "C"][t]} is at ${fs(at[t], n)}.`, `${at[t]} of ${n}`]
+    }
+  });
+
   const KINDS = {
     "cafe_tens.1": TENS_KIND,
     "cafe_times.1": timesKind("Cafe: equal groups of 2, 5 and 10", [2, 5, 10], 2, ["sums.3"]),
@@ -1768,7 +2457,22 @@
     "cafe_estimate.3": G3_ESTIMATE3_KIND,
     "cafe_bills.1": G3_BILLS1_KIND,
     "cafe_bills.2": G3_BILLS2_KIND,
-    "cafe_bills.3": G3_BILLS3_KIND
+    "cafe_bills.3": G3_BILLS3_KIND,
+    "cafe_measure.1": G3_UNITS_KIND,
+    "cafe_measure.2": G3_READ_KIND,
+    "cafe_measure.3": G3_MEASURE_CMP_KIND,
+    "cafe_measure.4": G3_MEASURE_SUM_KIND,
+    "cafe_solid.1": G3_SOLID_NAMES_KIND,
+    "cafe_solid.2": G3_SOLID_PARTS_KIND,
+    "cafe_graph.1": G3_PICTO_KIND,
+    "cafe_graph.2": G3_BARS_KIND,
+    "cafe_graph.3": G3_TALLY_KIND,
+    "cafe_chance.1": G3_CHANCE1_KIND,
+    "cafe_chance.2": G3_CHANCE2_KIND,
+    "cafe_frac.2": G3_FRACNAME_KIND,
+    "cafe_frac.3": G3_FRACCMP_KIND,
+    "cafe_frac.4": G3_FRACSET_KIND,
+    "cafe_frac.5": G3_FRACLINE_KIND
   };
   Object.keys(KINDS).forEach(id => Object.keys(KINDS[id].bank).forEach(t => {
     if (!KINDS[id].sceneRows || !KINDS[id].sceneRows[t] || KINDS[id].sceneRows[t].length !== KINDS[id].bank[t].length) throw new Error("KS: " + id + " needs one scene entry per " + t + " story");
@@ -1786,12 +2490,14 @@
     Q.say = Q.story + " " + Q.ask;
     if (K.decorate) { K.decorate(Q, K.pOf ? K.pOf(p) : p, ti); Q.say = Q.story + " " + Q.ask; }   // pictures, a tray, names in the fact (round of 22 Oct 2026)
     Q.correct = "Correct! " + Q.fact;
-    Q.kind = K.choice ? "choice" : "typed";
-    if (K.choice) {
+    const tap = K.choice === "mixed" ? !!d.words : !!K.choice;      // "mixed" kinds: a question with word buttons is a tap question, the rest are typed (round of 23 Oct 2026, round 2)
+    Q.kind = tap ? "choice" : "typed";
+    if (tap) {
       const pool = [...new Set(d.pool)].filter(x => x !== Q.ans), picks = [];
       while (picks.length < (d.want || 2) && pool.length) picks.push(pool.splice(Math.floor(rng() * pool.length), 1)[0]);
       const opts = [Q.ans, ...picks];
       for (let i = opts.length - 1; i > 0; i--) { const j = Math.floor(rng() * (i + 1)); [opts[i], opts[j]] = [opts[j], opts[i]]; }
+      if (K.ordered || d.ordered) opts.sort((x, y) => x - y);       // the chance words stay in the order of the scale
       Q.opts = opts;
     }
     return Q;

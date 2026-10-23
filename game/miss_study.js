@@ -20,7 +20,7 @@
  */
 (function (root) {
   "use strict";
-  const CLASSES = ["copied", "wrong_op", "place_value", "slip", "guess", "choice_near", "choice_far", "wrong_end", "last_digit"];
+  const CLASSES = ["copied", "wrong_op", "place_value", "slip", "guess", "choice_near", "choice_far", "wrong_end", "last_digit", "unit_size", "other_part", "scale_slip", "bigger_parts", "one_group", "count_marks"];
   const LEAD = {
     copied: "That number is in the story. We need to find a new number.",
     wrong_op: "Look at the sign first. Is it plus or minus?",
@@ -30,7 +30,13 @@
     choice_near: "So close! Let's count again, nice and slow.",
     choice_far: "Let's look at it together.",
     wrong_end: "Read the question once more. Is it more, or is it less?",
-    last_digit: "Look at the last digit. Does it make the number even or odd?"
+    last_digit: "Look at the last digit. Does it make the number even or odd?",
+    unit_size: "Think how big it is. Big things need the big unit.",
+    other_part: "Check the question. Faces, edges or corners?",
+    scale_slip: "Look at the key and the side numbers again.",
+    bigger_parts: "More equal parts means smaller parts.",
+    one_group: "That is one group. How many groups do we need?",
+    count_marks: "Count the spaces between the marks, not the marks."
   };
   const LABEL = {
     copied: "gave a number that was printed in the question",
@@ -41,7 +47,13 @@
     choice_near: "tapped an answer that was one or two away",
     choice_far: "tapped an answer that was far away",
     wrong_end: "tapped the other end (the least when asked for the most, or the most when asked for the least)",
-    last_digit: "tapped the wrong even or odd number (the last digit tells which)"
+    last_digit: "tapped the wrong even or odd number (the last digit tells which)",
+    unit_size: "chose the right kind of unit but the wrong size (centimetres for metres, grams for kilograms, millilitres for litres, or the other way round)",
+    other_part: "counted the faces, edges or corners that were not asked for",
+    scale_slip: "read the graph as one for each picture or line, and forgot what one picture or line stands for",
+    bigger_parts: "chose the fraction with more parts as the bigger piece",
+    one_group: "gave the size of one group when more than one group was needed",
+    count_marks: "counted the marks on the line instead of the equal parts"
   };
 
   /* the numbers a child can see in the question */
@@ -78,6 +90,7 @@
 
   function classify(Q, given) {
     if (!Q || !Number.isFinite(given) || !Number.isFinite(Q.ans)) return "guess";
+    if (Q.slips) { const hit = CLASSES.find(c => Array.isArray(Q.slips[c]) && Q.slips[c].includes(given) && given !== Q.ans); if (hit) return hit; }   // a known mix-up of the new kinds (23 Oct 2026, round 2)
     if (Q.picOpts) return "guess";                                   // picture answers (patterns, size) are numbered 1, 2, 3 only to tell them apart: being "one away" means nothing
     const ans = Q.ans, d = Math.abs(given - ans);
     if (Q.noNear) {                                                  // comparing, ordering, even or odd, estimating: the wrong taps are not "one or two away"

@@ -25,7 +25,7 @@
 <link rel="stylesheet" href="theme.css?v=4">
 <link rel="stylesheet" href="kid_mode.css?v=3">
 <link rel="stylesheet" href="parent_area.css?v=2">
-<link rel="stylesheet" href="new_skills.css?v=1">
+<link rel="stylesheet" href="new_skills.css?v=2">
 <link rel="stylesheet" href="scene/scene.css?v=1">
 <link rel="stylesheet" href="journey.css?v=2">
 </head>
@@ -44,7 +44,8 @@
 <script src="../modules/knight_art.js"></script>
 <script src="../modules/engine.js?v=2"></script>
 <script src="../topics/kinder.js"></script>
-<script src="stories.js?v=2"></script>
+<script src="stories.js?v=3"></script>
+<script src="figure.js?v=1"></script>
 <!-- reward games (game/rewards/): the shared core and kits, then one file per game -->
 <link rel="stylesheet" href="rewards/reward_styles.css">
 <script src="rewards/reward_kit_spring.js"></script>
@@ -435,7 +436,10 @@ const startOf = () => Number.isFinite(Q.a) && !(Q.type === "K" && Q.a === Q.ans)
 const endOf = () => Number.isFinite(Q.result) ? Q.result : Q.ans;     // a missing part ends on the total, not on the answer
 const escHtml = t => String(t).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
 /* picture answers (patterns, size) and the counting tray: see the fields in game/stories.js (Q.picOpts, Q.pics, Q.strip, Q.tray, Q.noLine) */
-const picHtml = pc => pc.src ? `<img src="${pc.src}" alt="">` : `<span class="bar ${pc.bar.dir}" style="--len:${pc.bar.len}"></span>`;
+const picHtml = pc => pc.src ? `<img src="${pc.src}" alt="">` : pc.bar ? `<span class="bar ${pc.bar.dir}" style="--len:${pc.bar.len}"></span>`
+  : pc.solid ? Figure.solidSvg(pc.solid) : pc.fig ? Figure.svg(pc.fig, { small: true }) : pc.frac ? Figure.fractionHtml(pc.frac) : `<span class="wordpic">${escHtml(pc.word)}</span>`;   // word, fraction, solid and small-figure buttons (23 Oct 2026, round 2)
+const picCls = pc => pc.bar ? pc.bar.dir : pc.src ? "img" : "word" + (pc.fig || pc.solid ? " fig" : "") + (pc.word && pc.word.length > 7 ? " long" : "");
+const figHtml = () => Q.figure ? `<div class="figure">${Figure.svg(Q.figure)}</div>` : "";     // the picture the question is about, under the story (game/figure.js)
 const optInner = o => Q.picOpts ? `<span class="optpic">${picHtml(Q.pics[o])}</span>` : String(o);
 const optAttrs = o => Q.picOpts ? ` aria-label="${escHtml(Q.pics[o].name || "A bar")}"` : "";
 const stripHtml = () => Q.strip ? `<div class="patstrip" role="img" aria-label="A pattern of pictures">${Q.strip.map(i => picHtml(Q.pics[i])).join("")}<span class="patq" aria-hidden="true">?</span></div>` : "";
@@ -455,8 +459,8 @@ function renderBody() {
   const b = $("#qbody"), bulb = `<button class="bulb" aria-label="Hint">${ICON.bulb}</button>`;
   const story = `<div class="story">${Q.story}${Q.ask ? `<br><b>${Q.ask}</b>` : ""}<span class="inbulb">${bulb}</span></div>`;
   const top = Q.kind === "choice"
-    ? `${story}${stripHtml()}<div class="bars">${Q.opts.map((o, i) => `<button class="opt${Q.picOpts ? " pic " + (Q.pics[o].bar ? Q.pics[o].bar.dir : "img") : ""}" data-v="${o}"${optAttrs(o)}>${KidMode.on() ? "" : `<small>${"abcd"[i]})</small>`}${optInner(o)}</button>`).join("")}</div>`
-    : `${story}<div class="eq"><span class="box ${boxCls()}" id="ansBox">${QS.typed || "&nbsp;"}</span></div>`;
+    ? `${story}${figHtml()}${stripHtml()}<div class="bars">${Q.opts.map((o, i) => `<button class="opt${Q.picOpts ? " pic " + picCls(Q.pics[o]) : ""}" data-v="${o}"${optAttrs(o)}>${KidMode.on() ? "" : `<small>${"abcd"[i]})</small>`}${optInner(o)}</button>`).join("")}</div>`
+    : `${story}${figHtml()}<div class="eq"><span class="box ${boxCls()}" id="ansBox">${QS.typed || "&nbsp;"}</span></div>`;
   const off = QS.phase === "shown" || QS.phase === "right" ? " disabled" : "";
   const sz = sign => QS.ruler ? `<b class="sz">${sign}${QS.hop}</b>` : "", hz = QS.ruler ? ` ${QS.hop}` : "";   // the hop size is on the button
   const fa = document.activeElement, focusSel = fa && b.contains(fa) ? (fa.dataset.v ? `.opt[data-v="${fa.dataset.v}"]` : fa.classList.contains("watch") ? ".watch" : fa.classList.contains("bulb") ? ".bulb" : fa.dataset.h !== undefined ? `[data-h="${fa.dataset.h}"]` : "") : "";
