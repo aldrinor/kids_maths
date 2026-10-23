@@ -12,17 +12,21 @@
        (../modules/engine.js) picks every question, finds the level, moves up when secure, practises again on a slip.
      - Every question is a story (stories.js). The question screen is the agreed demo screen (../demo).
      - Coins for right answers. Every 5 answers a short reward game (game/rewards/: Mimi's Hot Chocolate, Ice Cream and Cookies in turn for Marie, Pony Stable, Goblin Rescue and Tower for Kitty in turn for Kennedy). Every 25 answers: play world (stage 2).
+     - The journey (22 Oct 2026, journey.js): a first-then picture strip (maths, game, play world, done) under the 5 dots; a card with one big Go button before each
+       little game and before the play world (at answer 25 the rest card is that card); the keepsake of a game is saved with the counters, shown on a card, on the world
+       shelf and in the small room beside the coins; a break button; an end-of-day card. Every card waits for a tap.
      - Own save per child (kidsMaths.game.<child>); the old app's save is read once and never written. -->
 <link rel="stylesheet" href="theme.css?v=3">
-<link rel="stylesheet" href="kid_mode.css?v=2">
+<link rel="stylesheet" href="kid_mode.css?v=3">
 <link rel="stylesheet" href="parent_area.css?v=1">
-<link rel="stylesheet" href="scene/scene.css">
+<link rel="stylesheet" href="scene/scene.css?v=1">
+<link rel="stylesheet" href="journey.css?v=2">
 </head>
 <body>
 <div id="app">
   <div id="deco"></div>
   <div id="rotate" role="alert"><div><svg viewBox="0 0 48 48" aria-hidden="true"><rect x="15" y="6" width="18" height="32" rx="4" fill="none" stroke="currentColor" stroke-width="3"/><path d="M8 30a16 16 0 0 0 10 12M40 18A16 16 0 0 0 30 6" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"/></svg><p>Please turn the phone upright.</p></div></div>
-  <div id="top"><button id="speak" aria-label="Read the question out loud"></button><div id="dots" aria-label="Questions until the next game"></div><div id="msg" role="status" hidden></div><div id="coins" aria-label="Coins"></div><div id="mascot" aria-hidden="true"></div></div>
+  <div id="top"><button id="speak" aria-label="Read the question out loud"></button><div id="dots" aria-label="Questions until the next game"></div><div id="msg" role="status" hidden></div><div id="coins" aria-label="Coins"></div><div id="mascot" aria-hidden="true"></div><div id="homebadge"></div></div>
   <div id="scene" aria-hidden="true" hidden></div>
   <div id="tools"></div>
   <div id="work"><canvas id="draw"></canvas><div id="qbody"></div></div>
@@ -39,39 +43,41 @@
 <script src="rewards/reward_kit_spring.js"></script>
 <script src="rewards/reward_kit_drag.js"></script>
 <script src="rewards/reward_kit_sound.js"></script>
-<script src="rewards/reward_core.js"></script>
-<script src="rewards/cafe_hot_chocolate.js"></script>
+<script src="rewards/reward_core.js?v=2"></script>
+<script src="rewards/cafe_hot_chocolate.js?v=2"></script>
 <script src="rewards/cafe_scene_kit.js"></script>
-<script src="rewards/cafe_ice_cream.js"></script>
-<script src="rewards/cafe_cookie.js"></script>
+<script src="rewards/cafe_ice_cream.js?v=2"></script>
+<script src="rewards/cafe_cookie.js?v=2"></script>
 <script src="rewards/castle_pony_stable.js"></script>
 <script src="rewards/castle_extra_art.js"></script>
 <script src="rewards/castle_goblin_rescue.js"></script>
 <script src="rewards/castle_kitty_tower.js"></script>
-<script src="world/world_core.js"></script>
+<script src="world/world_core.js?v=2"></script>
 <!-- play worlds: world/cafe_world.js and world/castle_world.js are added when built -->
-<script src="world/cafe_world.js?v=2"></script>
-<script src="world/castle_world.js"></script>
+<script src="world/cafe_world.js?v=3"></script>
+<script src="world/castle_world.js?v=2"></script>
 <!-- the question scene above each question (game/scene/): the core, then one file per theme -->
 <script src="scene/scene_core.js"></script>
 <script src="scene/scene_cafe.js"></script>
 <script src="scene/scene_castle.js"></script>
-<script src="game_save.js?v=1"></script>
-<script src="kid_mode.js?v=2"></script>
+<script src="game_save.js?v=2"></script>
+<script src="kid_mode.js?v=3"></script>
 <script src="choice_evidence.js?v=2"></script>
 <script src="answer_log.js?v=1"></script>
 <script src="miss_study.js?v=1"></script>
 <script src="mastery_bkt.js?v=1"></script>
 <script src="hint_ladder.js?v=1"></script>
-<script src="parent_report.js?v=1"></script>
+<script src="parent_report.js?v=2"></script>
 <script src="progress_file.js?v=1"></script>
 <script src="parent_area.js?v=1"></script>
 <script src="focus_guard.js?v=1"></script>
+<script src="journey.js?v=2"></script>
 <script>
 "use strict";
 const $ = s => document.querySelector(s);
 const FAST = window.__demoFast ? 0.2 : 1;            // tests run the teaching faster
-const wait = ms => new Promise(r => setTimeout(r, ms * FAST));
+let breakHold = null;                                  // while the child is on a break the lesson waits at its next pause
+const wait = ms => new Promise(r => setTimeout(() => { if (breakHold) breakHold.then(r); else r(); }, ms * FAST));    // no extra turn of the event loop when nobody is on a break
 const DAY_LIMIT_MIN = 25, REWARD_EVERY = 5, PLAY_EVERY = 25;
 
 /* ---------- the children: each has a door, a world and a save ---------- */
@@ -353,7 +359,12 @@ function nextQ() {
 }
 
 /* ---------- screen ---------- */
-function drawDots() { const k = P ? P.game.sinceReward : 0; $("#dots").innerHTML = Array.from({ length: REWARD_EVERY }, (_, i) => `<i class="${i < k ? "done" : i === k ? "now" : ""}"></i>`).join(""); }
+/* the 5 dots count the answers until the next little game; under them the first-then strip shows the way: maths, a game, the play world, done */
+function drawDots() {
+  const k = P ? P.game.sinceReward : 0;
+  const dots = Array.from({ length: REWARD_EVERY }, (_, i) => `<i class="${i < k ? "done" : i === k ? "now" : ""}"></i>`).join("");
+  $("#dots").innerHTML = `<span class="jdots">${dots}</span>${Journey.strip({ step: "maths", stones: P ? Journey.stones(P.game.sincePlay, PLAY_EVERY, REWARD_EVERY) : 0, total: PLAY_EVERY / REWARD_EVERY, theme })}`;
+}
 function drawCoins(pop) { const c = $("#coins"); c.innerHTML = `${ICON.coin}<b>${P ? P.coins : 0}</b>`; if (pop) { c.classList.remove("pop"); void c.offsetWidth; c.classList.add("pop"); } }
 /* carry: parts of the old question's state that go on to the next one (after a miss the new question keeps tries: 1) and a spoken lead-in */
 function nextQuestion(given, carry) {
@@ -828,7 +839,9 @@ function finished(correct) {
   if (Q.skill) { const k = d.skills[Q.skill] || (d.skills[Q.skill] = [0, 0]); k[0]++; if (clean) k[1]++; }
   const coins = correct && !taught ? 2 : 1;                 // right at the first try 2 (a hint never costs coins); right after a lesson 1; a wrong final answer also earns 1 effort coin (the engine stays strict)
   P.coins += coins; P.game.answered++; P.game.sinceReward++; P.game.sincePlay++;
-  save(); drawCoins(coins > 0); drawDots();
+  save(); drawDots();
+  /* the coins fly into the pill (a short calm motion; none under reduced motion, then the pill just changes) */
+  Journey.flyCoins({ from: document.querySelector("#qbody .story") || $("#qbody"), to: $("#coins"), n: coins, html: ICON.coin, fast: !!window.__demoFast, onLand: () => drawCoins(coins > 0) });
 }
 
 /* ---------- Check: right -> Next or "Watch how it works" (no timer); 1st wrong -> lesson; 2nd wrong -> kind words, See The Answer ---------- */
@@ -910,28 +923,73 @@ function swapFresh() {
   const q = freshQuestion(Q); prevKey = q.key; q.alt = QS.alt && !!HintLadder.picture(q);
   nextQuestion(q, { tries: 1, afterMiss: true, lead: HintLadder.NEW_ONE });
 }
+/* ---------- the connected path (journey.js): cards join maths, the little games and the play world. Every card waits for a tap; nothing moves on by itself. ---------- */
+const NEAR_AT = PLAY_EVERY - REWARD_EVERY;                 // at this many answers the play world is near: one spoken line
+const pathStones = () => Journey.stones(P.game.sincePlay, PLAY_EVERY, REWARD_EVERY);
+async function journeyCard(kind, extra) {
+  const kid = KidMode.on(), line = Journey.lineFor(kind, theme);
+  const html = Journey.card(kind, Object.assign({ theme, kid, art: kind === "pause" ? art("stand") : art("happy"), stones: pathStones(), total: PLAY_EVERY / REWARD_EVERY }, extra));
+  stopVoice();
+  const shown = overlay(html, "jover" + (kind === "break" ? " jquiet" : ""));
+  let open = true; shown.then(() => { open = false; });
+  (async () => {                                           // the line, then (for Kennedy, the first 3 times) what to tap
+    if (line) await say(line);
+    if (open && kid && KidMode.shouldPrompt("go")) await say(KidMode.promptText("go"));
+  })();
+  const v = await shown; stopVoice(); return v;
+}
+/* how the badge, the keepsake shelf and the "saving for" picture see the play world (read only) */
+const worldInfo = () => { try { return window.PlayWorlds && P && PlayWorlds.info ? PlayWorlds.info(theme, P.world || {}, P.coins) : null; } catch (e) { return null; } };
+function updateBadge() {
+  const el = $("#homebadge"); if (!el) return;
+  const info = who ? worldInfo() : null;
+  el.innerHTML = info ? Journey.badge(info, P.keepsakes) : "";
+}
 let going = false;
 async function goNext() {
   if (going) return; going = true;
   try {
     si++; closeBoard(); stopVoice();
-    /* the counters go back to 0 only AFTER the game or world has finished, so a crash or a closed page in the middle loses nothing (item 7/19) */
-    if (P.game.sinceReward >= REWARD_EVERY) { await reward(); P.game.sinceReward = 0; P.game.rewardTurn = (P.game.rewardTurn || 0) + 1; dayLog().sets++; save(); drawDots(); }
-    if (P.game.sincePlay >= PLAY_EVERY) { await playWorld(); P.game.sincePlay = 0; save(); }
-    if (overLimit()) return showEnd("See you tomorrow!", "That is all the maths for today. Well done!");
-    nextQuestion();
+    let rewarded = false, arrived = false;
+    /* the counters go back to 0 only AFTER the game or world has finished, so a crash or a closed page in the middle loses nothing (item 7/19).
+       The keepsake is written in the same save as the reset, so it is never lost and never given twice. */
+    if (P.game.sinceReward >= REWARD_EVERY) {
+      const turn = P.game.rewardTurn || 0, played = !window.__noRewards && !!window.RewardGames;
+      if (played) await journeyCard("game");
+      const res = await reward();
+      const keep = played ? Journey.keepsakeFor(theme, res && res.game, turn, res && res.keep) : null;
+      P.game.sinceReward = 0; P.game.rewardTurn = turn + 1; dayLog().sets++;
+      if (keep) P.keepsakes = (Array.isArray(P.keepsakes) ? P.keepsakes : []).concat(Object.assign({}, keep, { t: Date.now(), day: dayKey(Date.now()) })).slice(-24);
+      save(); drawDots(); updateBadge();
+      if (keep) await journeyCard("keepsake", { keep: Journey.keepsakeList([keep])[0] });
+      rewarded = played; arrived = true;
+    }
+    if (P.game.sincePlay >= PLAY_EVERY) {
+      const worldOn = !window.__noWorld && !!window.PlayWorlds && PlayWorlds.has(theme);
+      if (worldOn) await journeyCard(rewarded ? "pause" : "world");       // at answer 25 the rest card is also the way into the world
+      await playWorld();
+      P.game.sincePlay = 0; P.game.nearSaid = false; save(); updateBadge(); arrived = true;
+    }
+    if (overLimit()) return dayEnd();
+    /* at answer 20 one line says the play world is near; it goes before the next question so the reward and the cards never cut it off */
+    const near = !P.game.nearSaid && P.game.sincePlay >= NEAR_AT && P.game.sincePlay < PLAY_EVERY;
+    if (near) { P.game.nearSaid = true; save(); }
+    if (arrived) { const w = $("#work"); w.classList.remove("jin"); void w.offsetWidth; w.classList.add("jin"); }
+    nextQuestion(null, near ? { lead: Journey.lineFor("near", theme) } : undefined);
   } finally { going = false; }
 }
-/* the short reward game after every 5 answers */
+/* the short reward game after every 5 answers; resolves with the game's result ({ game, ... }) */
 async function reward() {
   QS = null; drawDots();
-  if (window.__noRewards || !window.RewardGames) return;
+  if (window.__noRewards || !window.RewardGames) return null;
   const host = document.createElement("div"); host.className = "rewardhost"; document.body.appendChild(host);
   /* the games of a theme take turns; the turn moves on (and is saved) once the game has finished */
   const turn = P.game.rewardTurn || 0;
+  let res = null;
   FocusGuard.enter(host, { label: "Reward game", trap: true });
-  try { await RewardGames.play(host, { theme, fast: !!window.__demoFast, speak: say, turn }); } catch (e) {}
+  try { res = await RewardGames.play(host, { theme, fast: !!window.__demoFast, speak: say, turn }); } catch (e) {}
   host.remove(); FocusGuard.leave(host, "#tile"); lastAct = Date.now();
+  return res;
 }
 /* the play world after every 25 answers: 5 minutes to spend coins and play */
 async function playWorld() {
@@ -940,13 +998,37 @@ async function playWorld() {
   P.world = P.world || {};
   let host = null;
   try {
-    const opening = PlayWorlds.open(document.body, { theme, minutes: 5, fast: !!window.__demoFast, speak: say, data: P.world,
+    const opening = PlayWorlds.open(document.body, { theme, minutes: 5, fast: !!window.__demoFast, speak: say, data: P.world, kid: KidMode.on(),
+      keepsakes: Journey.keepsakeList(P.keepsakes).map(k => ({ src: k.src, label: k.label })),
       getCoins: () => P.coins, spendCoins: n => { if (P.coins < n) return false; P.coins -= n; drawCoins(true); return true; }, save });
     host = document.querySelector(".pw-host"); if (host) FocusGuard.enter(host, { label: "Play world", trap: true });
     await opening;
   } catch (e) { console.error(e); }
   if (host) FocusGuard.leave(host, "#tile");
   drawCoins(false); lastAct = Date.now();
+}
+/* a break: a picture button in the tools. A quiet card waits as long as the child likes; the time is logged for the grown-up, and is not counted as thinking or play time */
+async function takeBreak() {
+  if (breakHold || document.querySelector(".over") || !who) return;
+  const started = Date.now(), me = QS; let release;
+  breakHold = new Promise(r => { release = r; });
+  addTime(); stopVoice();
+  try { await journeyCard("break"); } finally { release(); breakHold = null; }
+  const ms = Date.now() - started, d = dayLog();
+  d.breaks = (d.breaks || 0) + 1; d.breakMs = (d.breakMs || 0) + ms;
+  lastAct = Date.now(); if (me) me.t0 += ms;
+  save();
+  if (QS && QS === me && me.phase === "ask" && !me.teaching && !me.submitting) say(Q.say);       // the question is read again
+}
+/* the end of the day: stars, coins held and what is being saved for (the day is over by the clock) */
+async function dayEnd() {
+  QS = null; stopVoice(); closeBoard(); save(); if (window.QuestScene) QuestScene.react("end");
+  const d = dayLog(), info = worldInfo(), kid = KidMode.on();
+  const html = Journey.dayCard({ theme, kid, stars: d.clean, coins: P.coins, want: info && info.want, canBuy: !!(info && info.canBuy), stones: pathStones(), total: PLAY_EVERY / REWARD_EVERY, mascot: art("happy"), coinSvg: ICON.coin });
+  const shown = overlay(html, "jover"); let open = true; shown.then(() => { open = false; });
+  (async () => { await say(Journey.lineFor("day", theme)); if (open) await say(Journey.lineFor("day2", theme)); })();
+  await shown; stopVoice();
+  doors();
 }
 function band(kind) {
   const b = document.createElement("div"); b.className = "band " + kind;
@@ -982,9 +1064,10 @@ function buildTools() {
   const kid = KidMode.on(), pens = kid ? PENS.slice(0, 1) : PENS;     // Kennedy: one pencil, the rubber, the bin and home
   if (kid && pen !== "erase") pen = PENS[0][0];
   $("#tools").innerHTML = pens.map(([c, d]) => `<button class="pencil" data-c="${c}" aria-label="Colour pencil">${pencilSVG(c, d, down)}</button>`).join("")
-    + `<button class="rubber" data-t="erase" aria-label="Rubber">${rubberSVG(down)}</button><div class="grow"></div><button class="bin" data-t="clear" aria-label="Clear the drawing">${ICON.bin}</button><button class="bin home" data-t="home" aria-label="Back to the start">${ICON.home}</button>`;
+    + `<button class="rubber" data-t="erase" aria-label="Rubber">${rubberSVG(down)}</button><div class="grow"></div><button class="bin breakbtn" data-t="break" aria-label="Take a break">${Journey.ICON.moon}</button><button class="bin" data-t="clear" aria-label="Clear the drawing">${ICON.bin}</button><button class="bin home" data-t="home" aria-label="Back to the start">${ICON.home}</button>`;
   $("#tools").querySelectorAll("button").forEach(b => b.onclick = () => {
     if (b.dataset.t === "clear") return clearDraw();
+    if (b.dataset.t === "break") return takeBreak();
     if (b.dataset.t === "home") return KidMode.on() ? confirmHome() : doors();
     pen = b.dataset.c || "erase"; markTools();
   });
@@ -1044,7 +1127,7 @@ function openGrownups() {
 }
 /* the doors: each child taps their own picture; no other choice */
 async function doors() {
-  stopVoice(); closeBoard(); closeHint(); save(); QS = null; who = null; P = null; KidMode.set(null); if (window.QuestScene) QuestScene.clear();
+  stopVoice(); closeBoard(); closeHint(); save(); QS = null; who = null; P = null; KidMode.set(null); if (window.QuestScene) QuestScene.clear(); $("#homebadge").innerHTML = "";
   document.querySelectorAll(".over, .rewardhost").forEach(o => o.remove());
   const door = w => `<button class="go" data-theme="${PROFILES[w].theme}" data-v="${w}"><span class="art">${art("wave", PROFILES[w].theme)}</span>${PROFILES[w].name}<small>${PROFILES[w].world}</small></button>`;
   for (;;) {
@@ -1063,11 +1146,11 @@ async function start(w, forceFresh) {
     log = AnswerLog.open({ storage: store, key: LOG_KEY(who) });
     if (log.damaged) { const t = `${PROFILES[who].name}'s record of answers was damaged. A safe copy was kept on this device and a new record started. Play and progress are not affected.`; GameSave.addNote(store, who, t, Date.now()); pendingNotes.push(t); }
     if (navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(() => {});      // ask the browser to keep the save (Safari may clear it after a week otherwise)
-    KidMode.set(who); setTheme(PROFILES[who].theme); audioCtx(); sizeDraw(); save();
+    KidMode.set(who); setTheme(PROFILES[who].theme); audioCtx(); sizeDraw(); save(); updateBadge();
     M.order.forEach(id => { M.map[id].ready = KS.SKILLS.includes(id) && KS.fits(id, theme); });   // cafe kinds are Marie's, knight kinds Kennedy's
     if (pendingNotes.length) { const n = pendingNotes; pendingNotes = []; await parentNote(n); }
     if (P.engine.paused) return showEnd("Maths is resting.", "A grown-up paused maths for now.");
-    if (overLimit()) return showEnd("See you tomorrow!", "That is all the maths for today. Well done!");
+    if (overLimit()) return dayEnd();
     nextQuestion();
   } catch (e) {
     console.error(e);

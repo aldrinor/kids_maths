@@ -748,6 +748,7 @@
       if (S.step !== "cup") { return false; }
       var c = CUPS[i];
       S.cup = c.id;
+      ctx.keepsake = "rewards/art/cafe/cup_" + c.id + ".png";   // what she really chose: the game reports it (journey.js)
       var from = fromRect || ctx.rect(cupTools[i]);
       cupTools[i].classList.add("rw-used");
       drawCup();

@@ -6,7 +6,8 @@
  *       fast  = true shortens every wait and animation 5x (tests and the demo).
  *       speak = optional function(text) that says a line out loud (game/index.html passes its say()).
  *               Without it the game is silent but works.
- *       Resolves with { done: true, theme, game } when the child taps Done (onDone runs then too).
+ *       Resolves with { done: true, theme, game, keep } when the child taps Done (onDone runs then too).
+ *       keep = the art path (under game/) of what she really made or chose, when the game set ctx.keepsake (cafe games), else null.
  *   RewardGames.close()  -> stops the running game (sounds, timers, frames), resolves it with { done: false }.
  *   RewardGames.register(theme, { name, start(ctx, finish) })   (the old form (theme, name, start) also works)
  *       Games of one theme are played in turn. ("cafe" = cafe_hot_chocolate.js, cafe_ice_cream.js, cafe_cookie.js;
@@ -331,7 +332,7 @@
         ctx.dispose();
         if (ctx.root.parentNode) { ctx.root.parentNode.removeChild(ctx.root); }
         if (restore) { restore(); }
-        var result = { done: true, theme: theme, game: game.name };
+        var result = { done: true, theme: theme, game: game.name, keep: typeof ctx.keepsake === "string" ? ctx.keepsake : null };
         resolve(result);
         if (typeof opts.onDone === "function") {
           try { opts.onDone(result); } catch (e2) { setTimeout(function () { throw e2; }, 0); }

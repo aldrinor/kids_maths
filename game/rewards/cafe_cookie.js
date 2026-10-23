@@ -233,6 +233,7 @@
     function chooseShape(id, from) {
       if (S.step !== "shape") { return false; }
       S.shape = id;
+      ctx.keepsake = "rewards/art/cafe/cookie_" + id + ".png";   // what she really made: the game reports it (journey.js)
       var b = toolOf(shapeTools, id);
       b.classList.add("rw-used");
       draw({});

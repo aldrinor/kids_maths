@@ -45,6 +45,8 @@ body[data-who="kennedy"] #tools { align-items: center; padding-left: 0; padding-
   body[data-who="kennedy"] #tools { height: 76px; align-items: center; padding: 6px 10px; gap: 8px; }
   body[data-who="kennedy"] #tools .bin.home { margin: 0 0 0 22px; }
 }
+/* five 64 px buttons (pencil, rubber, break, bin, home) must fit a 360 px phone */
+@media (max-width: 420px) { body[data-who="kennedy"] #tools { gap: 4px; padding: 6px; } body[data-who="kennedy"] #tools .bin.home { margin-left: 10px; } }
 
 /* "do you want to stop?": two big pictures, a tick and a cross */
 .panel.kidconfirm .homepic { width: 96px; height: 96px; margin: 0 auto; color: var(--primary-dark); }

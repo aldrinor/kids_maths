@@ -31,6 +31,13 @@ def tap_next(pg):
     pg.click("#tile")
 
 
+def tap_go(pg, kind=None):
+    """22 Oct 2026: the little game, the play world, the keepsake and the break each have a card with one big button; nothing moves on by itself"""
+    sel = ".over.jover" + (f' .jpanel[data-kind="{kind}"]' if kind else "") + " .jgo"
+    pg.wait_for_selector(sel, timeout=30000)
+    pg.click(sel)
+
+
 def new_question_after_miss(pg):
     """22 Oct 2026: after a first miss the lesson ends on the fact and the answer is locked; the child taps the next arrow and
     gets a NEW question of the same skill (new numbers). Returns (old key, new key)."""
@@ -111,9 +118,11 @@ with sync_playwright() as p:
             tap_next(pg)
             if k == 4:
                 wait_ask(pg, 4)
+        tap_go(pg, "game")
         pg.wait_for_selector(".rewardhost", timeout=90000)
         ok(f"{who} reward game after 5", pg.locator(".rewardhost").count() == 1)
         pg.evaluate("()=>RewardGames.close()")
+        tap_go(pg, "keepsake")
         pg.wait_for_function("()=>!document.querySelector('.rewardhost') && __game.QS && __game.QS.phase==='ask'", timeout=15000)
         ok(f"{who} counter back to 0 after the reward", pg.evaluate("()=>__game.P.game.sinceReward") == 0)
         ok(f"{who} engine recorded answers", pg.evaluate("()=>{const d=__game.P.days, k=Object.keys(d)[0]; return d[k].n}") == 5)

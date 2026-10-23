@@ -109,6 +109,13 @@ def wait_ask(pg, n=None):
     pg.wait_for_function(cond, timeout=90000)
 
 
+def tap_go(pg, kind=None):
+    """22 Oct 2026: the little game, the play world, the keepsake and the break each have a card with one big button; nothing moves on by itself"""
+    sel = ".over.jover" + (f' .jpanel[data-kind="{kind}"]' if kind else "") + " .jgo"
+    pg.wait_for_selector(sel, timeout=30000)
+    pg.click(sel)
+
+
 def active_in(pg, sel):
     return pg.evaluate("(s)=>{const a=document.activeElement; return !!(a && a.closest(s))}", sel)
 
@@ -353,8 +360,10 @@ with sync_playwright() as p:
     answer(pg, True)
     pg.wait_for_function("()=>__game.QS.phase==='right'", timeout=8000)
     pg.click("#tile")
+    tap_go(pg, "game")
     pg.wait_for_selector(".rewardhost", timeout=30000)
     pg.evaluate("()=>RewardGames.close()")
+    tap_go(pg, "keepsake")
     pg.wait_for_function("()=>!document.querySelector('.rewardhost') && __game.QS && __game.QS.phase==='ask'", timeout=20000)
     ctx_day = pg.context
     pg.close()                                                   # closing the page saves once more (pagehide); only then is the version taken out
@@ -403,14 +412,18 @@ with sync_playwright() as p:
     answer(pg, True)
     pg.wait_for_function("()=>__game.QS.phase==='right'", timeout=8000)
     pg.click("#tile")
+    tap_go(pg, "game")
     pg.wait_for_selector(".rewardhost", timeout=30000)
     st = pg.evaluate("()=>JSON.parse(localStorage.getItem('kidsMaths.game.marie')).game")
     ok("reward game open: the saved counters are not reset yet", st["sinceReward"] == 5 and st["rewardTurn"] == 0, st)
     ok("reward game open: focus is inside it", active_in(pg, ".rewardhost"))
     pg.evaluate("()=>RewardGames.close()")
-    pg.wait_for_function("()=>!document.querySelector('.rewardhost') && __game.QS && __game.QS.phase==='ask'", timeout=20000)
+    pg.wait_for_selector('.over.jover .jpanel[data-kind="keepsake"]', timeout=20000)
     st = pg.evaluate("()=>JSON.parse(localStorage.getItem('kidsMaths.game.marie')).game")
-    ok("reward game finished: counters reset and the turn moved on, saved", st["sinceReward"] == 0 and st["rewardTurn"] == 1, st)
+    ok("reward game finished: counters reset and the turn moved on, saved (before the keepsake card is tapped)", st["sinceReward"] == 0 and st["rewardTurn"] == 1, st)
+    ok("reward game finished: the keepsake is in the same save", pg.evaluate("()=>(JSON.parse(localStorage.getItem('kidsMaths.game.marie')).keepsakes||[]).length") == 1)
+    tap_go(pg, "keepsake")
+    pg.wait_for_function("()=>!document.querySelector('.rewardhost') && __game.QS && __game.QS.phase==='ask'", timeout=20000)
     ok("reward game closed: focus is back on the question", not active_in(pg, ".rewardhost") and active_in(pg, "#app"))
     ok("no page errors (reward counters)", not pg.errs, pg.errs[:3])
     pg.context.close()
@@ -425,6 +438,7 @@ with sync_playwright() as p:
     answer(pg, True)
     pg.wait_for_function("()=>__game.QS.phase==='right'", timeout=8000)
     pg.click("#tile")
+    tap_go(pg, "world")
     pg.wait_for_selector(".pw-host", timeout=30000)
     st = pg.evaluate("()=>JSON.parse(localStorage.getItem('kidsMaths.game.marie')).game")
     ok("play world open: the saved play counter is not reset yet", st["sincePlay"] == 25 and st["sinceReward"] == 0, st)

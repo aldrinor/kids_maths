@@ -932,6 +932,24 @@
     return { close: close };
   }
 
-  if (window.PlayWorlds) { window.PlayWorlds.register("castle", { open: open }); }
+  /* what the rest of the game may know about his castle (journey.js): read only, never changes the save */
+  function castleInfo(data, coins) {
+    var C = (data && data.castle) || {}, owned = C.owned || {}, slots = C.slots || {}, buddies = Array.isArray(C.buddies) ? C.buddies : [];
+    function src(id) { return PARTS[id].old ? OA(PARTS[id].old) : NA(id); }
+    var ids = [];
+    ["keep", "tower_l", "walls", "gate", "tower_r", "moat", "garden_l"].forEach(function (s) { var id = slots[s]; if (id && PARTS[id] && ids.indexOf(id) < 0) { ids.push(id); } });
+    var friend = PETS[C.pet] ? NA("pet_" + C.pet + "_sit") : buddies[0] ? NA("buddy_" + buddies[0] + "_idle") : "";
+    var wants = [];
+    Object.keys(PARTS).forEach(function (id) { if (!owned[id]) { wants.push({ name: PARTS[id].name, price: PARTS[id].price, img: src(id) }); } });
+    if (!PETS[C.pet]) { Object.keys(PETS).forEach(function (k) { wants.push({ name: PETS[k].name, price: PETS[k].price, img: NA("pet_" + k + "_sit") }); }); }
+    BUDDIES.forEach(function (b) { if (buddies.indexOf(b.id) < 0) { wants.push({ name: b.name, price: b.price, img: NA("buddy_" + b.id + "_idle") }); } });
+    wants.sort(function (a, b) { return a.price - b.price; });
+    var want = null;
+    for (var i = 0; i < wants.length && !want; i++) { if (wants[i].price > coins) { want = wants[i]; } }
+    return { title: "my castle", wall: "", friend: friend, friendName: PETS[C.pet] ? PETS[C.pet].name : buddies[0] ? "a buddy knight" : "",
+      items: ids.length ? ids.slice(0, 3).map(src) : [NA("castle_plot")], want: want || wants[0] || null, canBuy: !!wants.length && !want };
+  }
+
+  if (window.PlayWorlds) { window.PlayWorlds.register("castle", { info: castleInfo, open: open }); }
   try { if (document.readyState === "complete") { preload(); } else { window.addEventListener("load", preload); } } catch (e) {}
 })();

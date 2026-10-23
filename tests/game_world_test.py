@@ -57,6 +57,8 @@ def open_world_by_answering(pg):
     pg.evaluate("""()=>{const Q=__game.Q; if(Q.kind==='choice'){__game.QS.pick=Q.ans}else{__game.QS.typed=String(Q.ans)}; document.getElementById('tile').click()}""")
     pg.wait_for_function("()=>__game.QS.phase==='right'", timeout=8000)
     pg.click("#tile")                                   # Next: no timer moves on by itself
+    pg.wait_for_selector(".over.jover .jpanel[data-kind=world] .jgo", timeout=30000)
+    pg.click(".over.jover .jpanel[data-kind=world] .jgo")      # 22 Oct: a card with one big Go button comes before the play world
     pg.wait_for_selector(".pw-host .cw", timeout=60000)
     pg.wait_for_timeout(300)
 

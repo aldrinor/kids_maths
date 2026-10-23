@@ -55,7 +55,14 @@
       if (!isObj(day)) { delete p.days[d]; add(1, "a day in the daily record"); continue; }
       for (const f of ["n", "clean", "ms", "sets"]) if (!whole(day[f])) { day[f] = 0; add(1, "a day in the daily record"); }
       if (!isObj(day.skills)) { day.skills = {}; add(1, "a day in the daily record"); }
+      for (const f of ["breaks", "breakMs"]) if (day[f] !== undefined && !whole(day[f])) { day[f] = 0; add(1, "a day in the daily record"); }   // breaks the child asked for (journey.js)
     }
+    /* keepsakes from the reward games: a list of small records; anything else in the list is dropped, the rest is kept */
+    if (p.keepsakes !== undefined) {
+      if (!Array.isArray(p.keepsakes)) { delete p.keepsakes; add(1, "the keepsakes"); }
+      else { const good = p.keepsakes.filter(k => isObj(k) && typeof k.g === "string" && typeof k.a === "string").slice(-24); if (good.length !== p.keepsakes.length) add(1, "the keepsakes"); p.keepsakes = good; }
+    }
+    if (p.game.nearSaid !== undefined && typeof p.game.nearSaid !== "boolean") { p.game.nearSaid = false; add(1, "a counter"); }
     for (const [k, type] of [["world", "object"], ["parentLog", "array"], ["home", "array"]]) {
       if (p[k] === undefined) continue;
       if (type === "array" ? !Array.isArray(p[k]) : !isObj(p[k])) { delete p[k]; add(1, "saved play-world items"); }

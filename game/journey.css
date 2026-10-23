@@ -1,0 +1,92 @@
+/* journey.css - the connected path: first-then strip, bridge cards, keepsakes, the small room, the day card, the break button (22 Oct 2026).
+   Calm: nothing here flashes, bounces or loops. The only motion is a short fade in (200 ms) and the coins flying to the pill; both stop under reduced motion. */
+
+/* ---------- the first-then strip: static pictures ---------- */
+#dots { flex-direction: column; align-items: center; gap: 4px; }
+#dots .jdots { display: flex; justify-content: center; gap: clamp(5px, 1vw, 10px); }
+.jstrip { display: inline-flex; align-items: center; gap: 4px; color: var(--ink-soft); --jn: 22px; --jl: 8px; max-width: 100%; }
+.jstrip .jn { width: var(--jn); height: var(--jn); flex: none; display: grid; place-items: center; border-radius: 50%; background: var(--bg-2); color: var(--ink-soft); box-shadow: inset 0 0 0 2px var(--paper-edge); padding: 3px; box-sizing: border-box; }
+.jstrip .jn svg { width: 100%; height: 100%; display: block; }
+.jstrip .jn.past { background: var(--accent-soft); color: var(--accent-dark); box-shadow: inset 0 0 0 2px var(--accent-dark); }
+.jstrip .jn.on { background: var(--paper); color: var(--primary-dark); box-shadow: inset 0 0 0 3px var(--primary); }
+.jstrip .jl { width: var(--jl); height: 3px; border-radius: 2px; background: var(--paper-edge); flex: none; }
+.jstrip .jpath { display: inline-flex; align-items: center; gap: 3px; padding: 0 2px; }
+.jstrip .jst { width: 7px; height: 7px; border-radius: 50%; background: var(--bg-2); box-shadow: inset 0 0 0 1.5px var(--paper-edge); flex: none; }
+body[data-theme="castle"] .jstrip .jst { border-radius: 2px; transform: rotate(45deg); width: 6px; height: 6px; }
+.jstrip .jst.full { background: var(--accent-dark); box-shadow: none; }
+@media (max-width: 640px) { .jstrip { --jn: 19px; --jl: 4px; gap: 2px; } .jstrip .jn { padding: 2px; } .jstrip .jst { width: 6px; height: 6px; } .jstrip .jpath { gap: 2px; } }
+@media (max-width: 400px) { .jstrip { --jn: 16px; gap: 2px; } .jstrip .jl { display: none; } .jstrip .jn { padding: 2px; } .jstrip .jst { width: 5px; height: 5px; } .jstrip .jpath { gap: 2px; padding: 0 3px; } .jpanel .jstrip .jl, .jday .jstrip .jl { display: block; } }
+@media (max-width: 340px) { .jstrip { --jn: 14px; gap: 1px; } .jstrip .jst { width: 4px; height: 4px; } .jstrip .jpath { gap: 1px; padding: 0 2px; } }
+
+/* ---------- cards: the same panel as the other cards, with one big Go button ---------- */
+.over.jover { animation: jfade .2s ease-out; background: rgba(30, 30, 40, .38); }
+.over.jover.jquiet { background: rgba(60, 60, 80, .5); }
+@keyframes jfade { from { opacity: 0; } to { opacity: 1; } }
+.jpanel { max-width: 560px; }
+.jpanel .jart { display: block; width: 120px; height: 150px; margin: 0 auto; }
+.jpanel .jart svg { width: 100%; height: 100%; }
+.jpanel .jstrip { --jn: 40px; --jl: 16px; margin: 14px 0 4px; gap: 8px; }
+.jpanel .jstrip .jst { width: 12px; height: 12px; }
+body[data-theme="castle"] .jpanel .jstrip .jst { width: 10px; height: 10px; }
+.jpanel .jstrip .jpath { gap: 6px; }
+.jpanel .jgo { display: inline-flex; align-items: center; justify-content: center; gap: 10px; margin-top: 20px; min-width: 200px; min-height: 72px; }
+.jpanel .jgo svg { width: 34px; height: 34px; flex: none; }
+.jpanel .jgo.kid { min-width: 0; width: 104px; height: 104px; min-height: 104px; border-radius: 50%; padding: 0; }
+.jpanel .jgo.kid svg { width: 58px; height: 58px; }
+.jpanel .jmedal { display: block; width: 150px; height: 188px; margin: 0 auto; }
+.jpanel .jmedal svg { width: 100%; height: 100%; }
+.jpanel .jmoon { display: block; width: 96px; height: 96px; margin: 0 auto; color: var(--primary-dark); }
+.jpanel .jmoon svg { width: 100%; height: 100%; }
+.jpanel[data-kind="break"] .jmoon { color: var(--ink-soft); }
+@media (max-width: 520px) { .jpanel .jstrip { --jn: 30px; --jl: 8px; gap: 5px; } .jpanel .jstrip .jst { width: 9px; height: 9px; } body[data-theme="castle"] .jpanel .jstrip .jst { width: 8px; height: 8px; } .jpanel .jstrip .jpath { gap: 4px; } }
+@media (max-width: 360px) { .jpanel .jstrip { --jn: 26px; --jl: 5px; gap: 4px; } .jpanel .jstrip .jst { width: 7px; height: 7px; } .jpanel .jstrip .jpath { gap: 3px; } }
+@media (max-height: 640px) { .jpanel .jart { height: 100px; width: 80px; } .jpanel .jmedal { width: 100px; height: 126px; } .jpanel .jgo { margin-top: 10px; } .jpanel .jstrip { margin: 8px 0 0; --jn: 32px; } }
+
+/* ---------- the end-of-day card ---------- */
+.jday .jrows { display: grid; gap: 10px; margin: 14px auto 6px; width: min(440px, 100%); }
+.jday .jrow { display: flex; align-items: center; gap: 12px; padding: 8px 14px; border-radius: 18px; background: var(--bg-2); box-shadow: inset 0 0 0 2px var(--paper-edge); text-align: left; }
+.jday .jpic, .jday .jrow > img { width: 40px; height: 40px; flex: none; display: grid; place-items: center; object-fit: contain; }
+.jday .jpic svg { width: 100%; height: 100%; }
+.jday .jwhat { flex: 1; min-width: 0; display: grid; gap: 2px; }
+.jday .jwhat small { font-size: 14px; color: var(--ink-soft); font-weight: 600; }
+.jday .jwhat b { font-size: 18px; color: var(--ink); }
+.jday .jnum { display: inline-flex; align-items: center; gap: 6px; font-size: 26px; font-weight: 800; color: var(--ink); }
+.jday .jnum svg { width: 28px; height: 28px; }
+.jday .jbar { display: block; height: 8px; border-radius: 4px; background: var(--paper); box-shadow: inset 0 0 0 1.5px var(--paper-edge); overflow: hidden; }
+.jday .jbar i { display: block; height: 100%; background: var(--accent-dark); border-radius: 4px; }
+.jday .mascot-big { width: 90px; height: 112px; }
+.jday .jstrip { --jn: 32px; }
+@media (max-height: 700px) { .jday .mascot-big { display: none; } .jday .jrows { gap: 6px; margin-top: 8px; } .jday .jrow { padding: 4px 12px; } }
+
+/* ---------- the break button ---------- */
+#tools button.breakbtn { color: var(--ink-soft); display: grid; place-items: center; }
+#tools button.breakbtn svg { width: 70%; height: 70%; }
+
+/* ---------- the small room on the question screen ("my cafe" / "my castle") ---------- */
+#homebadge { grid-column: 4; grid-row: 1; justify-self: end; pointer-events: none; display: none; animation: jfade .25s ease-out; }
+#app.has-scene #homebadge:not(:empty) { display: block; }
+@media (max-width: 640px) { #top.talking #homebadge { display: none !important; } }      /* the little message needs the room */
+.jroom { position: relative; display: block; width: clamp(50px, 7.5vw, 96px); aspect-ratio: 4 / 3.3; border-radius: 12px; overflow: hidden; box-shadow: 0 0 0 3px var(--paper-edge), 0 2px 6px rgba(0, 0, 0, .15); background: var(--bg-2); }
+.jroom .jwall { position: absolute; inset: 0 0 34% 0; background: #fdf4e8; }
+.jroom[data-theme="castle"] .jwall { background: linear-gradient(#cfe3f5, #e8f1f8); }
+.jroom .jfloor { position: absolute; inset: 66% 0 0 0; background: #d8b48a; }
+.jroom[data-theme="castle"] .jfloor { background: #9fcf8a; }
+.jroom .jitem { position: absolute; bottom: 24%; left: calc(6% + var(--i) * 25%); height: 38%; width: auto; max-width: 26%; object-fit: contain; }
+.jroom .jfriend { position: absolute; right: 3%; bottom: 20%; height: 44%; width: auto; max-width: 34%; object-fit: contain; }
+.jroom .jkeep { position: absolute; left: 4%; top: 4%; height: 30%; width: auto; max-width: 30%; object-fit: contain; }
+.jroom .jtag { position: absolute; left: 0; right: 0; bottom: 0; text-align: center; font: 700 10px/1.5 var(--ui, system-ui), sans-serif; color: #fff; background: var(--primary-dark); }
+@media (min-width: 700px) { .jroom .jtag { font-size: 12px; } }
+@media (min-width: 420px) and (max-width: 699px) { .jroom .jtag { font-size: 11px; } }
+
+/* ---------- a coin on its way to the pill ---------- */
+.jcoin { position: fixed; left: 0; top: 0; width: 28px; height: 28px; z-index: 55; pointer-events: none; will-change: transform, opacity; }
+.jcoin svg { width: 100%; height: 100%; display: block; }
+
+/* ---------- a soft arrival after a game or the play world ---------- */
+#work.jin, #scene.jin { animation: jfade .2s ease-out; }
+.rewardhost { animation: jfade .2s ease-out; }
+
+@media (prefers-reduced-motion: reduce) {
+  .over.jover, #homebadge, #work.jin, #scene.jin, .rewardhost { animation: none !important; }
+  .jcoin { display: none !important; }
+}

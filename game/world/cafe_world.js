@@ -403,7 +403,31 @@
     return D;
   }
 
-  PlayWorlds.register("cafe", { open: function (stage, wctx) {
+  /* ---------- what the rest of the game may know about her cafe (journey.js): read only, never changes the save ---------- */
+  var ITEM_NAME = { cafe_table: "a table", cafe_chair_pink: "a pink chair", cafe_chair_mint: "a mint chair", cafe_booth: "a booth", cafe_lamp_pendant: "a hanging lamp",
+    cafe_lamp_floor: "a floor lamp", cafe_fairy_lights: "fairy lights", cafe_plant_big: "a big plant", cafe_plant_hanging: "a hanging plant", cafe_flower_vase: "a vase of flowers",
+    cafe_picture: "a picture", cafe_menu_board: "a menu board", cafe_clock: "a clock", cafe_bunting: "bunting", cafe_shelf: "a shelf", cafe_cake_stand: "a cake stand",
+    cafe_rug: "a rug", garden_bench: "a garden bench", garden_bird_bath: "a bird bath", garden_lantern: "a lantern", garden_arch: "a garden arch", garden_birdhouse: "a birdhouse",
+    garden_pond: "a pond", garden_toadstool: "a toadstool", pet_house: "a pet house", pet_scratch_post: "a scratching post", pet_mouse_toy: "a toy mouse", pet_bed: "a pet bed" };
+  function cafeInfo(data, coins) {
+    var D = (data && data.cafe) || {}, owned = D.owned || {}, pets = Array.isArray(D.pets) ? D.pets : [];
+    var cp = (D.places && D.places.cafe) || {}, wall = PATTERN[cp.wall] ? cp.wall : "cream";
+    var placed = (Array.isArray(cp.items) ? cp.items : []).map(function (i) { return i && i.id; }).filter(function (id) { return !!itemDef("cafe", id); });
+    var bought = placed.filter(function (id, k) { return !itemDef("cafe", id).free && placed.indexOf(id) === k; });
+    var show = (bought.length ? bought : placed.filter(function (id, k) { return placed.indexOf(id) === k; })).slice(0, 3);
+    if (!show.length && !D.started) { show = ["cafe_table", "cafe_chair_pink"]; }   // a world not visited yet: the cosy start she will find
+    var petKind = PET_NAME[D.petWith] ? D.petWith : (pets[0] && PET_NAME[pets[0].kind] ? pets[0].kind : "");
+    var wants = [];
+    ITEMS.forEach(function (it) { if (!it.free && !owned[it.place + ":" + it.id]) { wants.push({ name: ITEM_NAME[it.id] || it.id.replace(/_/g, " "), price: it.price, img: ART + it.id + ".png" }); } });
+    PETS.forEach(function (p) { if (!pets.some(function (x) { return x && x.kind === p.id; })) { wants.push({ name: "a " + p.id, price: p.price, img: ART + "pet_" + p.id + "_sit.png" }); } });
+    wants.sort(function (a, b) { return a.price - b.price; });
+    var want = null;
+    for (var i = 0; i < wants.length && !want; i++) { if (wants[i].price > coins) { want = wants[i]; } }
+    return { title: "my cafe", wall: PATTERN[wall] + " 0 0/" + Math.round(TILE[wall] * 0.33) + "px auto", friend: petKind ? ART + "pet_" + petKind + "_sit.png" : "",
+      friendName: petKind ? PET_NAME[petKind] : "", items: show.map(function (id) { return ART + id + ".png"; }), want: want || wants[0] || null, canBuy: !!wants.length && !want };
+  }
+
+  PlayWorlds.register("cafe", { info: cafeInfo, open: function (stage, wctx) {
     injectCss();
     var D = setup(wctx.data);
     var root = el("div", "cw"); stage.appendChild(root);

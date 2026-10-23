@@ -56,9 +56,10 @@
   /* facts about the last 7 days, from the save (days) and the log (entries) */
   function weekFacts(child, now) {
     const P = child.save || {}, days = isObj(P.days) ? P.days : {}, E = child.engine;
-    let n = 0, clean = 0, ms = 0, played = 0, sets = 0;
+    let n = 0, clean = 0, ms = 0, played = 0, sets = 0, breaks = 0, breakMs = 0;
     for (let i = 0; i < 7; i++) {
       const d = days[E.dayKey(now - i * DAY)];
+      if (d) { breaks += d.breaks || 0; breakMs += d.breakMs || 0; }
       if (d && d.n) { played++; n += d.n; clean += d.clean || 0; ms += d.ms || 0; sets += d.sets || 0; }
     }
     const week = within(child.entries || [], now, 7).filter(e => e.s !== "parent");
@@ -69,7 +70,7 @@
     if (isObj(st.skills)) for (const id of Object.keys(st.skills)) if (st.skills[id] && st.skills[id].learntAt >= now - 7 * DAY && st.skills[id].lvl >= 3) learnt.push(nameOfSkill(child.M, id));
     const parked = [];
     if (isObj(st.skills)) for (const id of Object.keys(st.skills)) if (st.skills[id] && st.skills[id].parkedUntil > now) parked.push(nameOfSkill(child.M, id));
-    return { n, clean, ms, played, sets, week, misses, classes, hints, deepHints, typical, learnt, parked };
+    return { n, clean, ms, played, sets, breaks, breakMs, week, misses, classes, hints, deepHints, typical, learnt, parked };
   }
 
   function weekly(child, now) {
@@ -84,6 +85,7 @@
       if (top && child.missLabel) parts.push(`Most wrong answers ${child.missLabel(top[0]) ? "were where " + name + " " + child.missLabel(top[0]) : "had no clear pattern"} (${top[1]} of ${f.misses.length}).`);
     } else parts.push("There were no wrong answers.");
     if (f.hints) parts.push(`${name} used a hint on ${pl(f.hints, "question")}, and the worked step on ${f.deepHints}.`);
+    if (f.breaks) parts.push(`${name} asked for a break ${pl(f.breaks, "time")}${f.breakMs >= 60000 ? ", about " + Math.round(f.breakMs / 60000) + " minutes in all" : ""}. Asking for a break is a good thing to do.`);
     if (f.learnt.length) parts.push(`New skills reached "Knows it": ${f.learnt.slice(0, 4).join(", ")}.`);
     if (f.parked.length) parts.push(`Resting for now because they were hard: ${f.parked.slice(0, 3).join(", ")}.`);
     return parts.join(" ");

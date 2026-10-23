@@ -214,6 +214,7 @@
       var b = toolOf(id);
       var fromR = from || ctx.rect(b);
       S.cone = id;
+      ctx.keepsake = "rewards/art/cafe/cone_" + id + ".png";   // what she really chose: the game reports it (journey.js)
       sc.toolState(tools, "rw-spent");
       b.classList.add("rw-used");
       draw({});

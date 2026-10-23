@@ -15,6 +15,7 @@
     see: "Tap the eye to see the answer.",
     home: "Do you want to stop? Tap the tick to stop, or the cross to keep playing.",
     more: "Tap the plus for more help.",
+    go: "Tap the big round button to go.",
   };
   const MAX_PROMPTS = 3;                 // each prompt is spoken the first 3 times in a visit, then he knows it: calm, not nagging
   const given = {};
