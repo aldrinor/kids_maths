@@ -38,6 +38,11 @@ res = []
 VERBOSE = bool(os.environ.get("SAFETY_VERBOSE"))
 
 
+def tile_words(pg):
+    """the words on the main button; Kennedy's button is a picture, so its label for screen readers counts too"""
+    return pg.inner_text("#tile") + " " + (pg.get_attribute("#tile", "aria-label") or "")
+
+
 def step(name):
     """with SAFETY_VERBOSE=1 each section announces itself, so a slow run can be located"""
     if VERBOSE:
@@ -123,7 +128,7 @@ with sync_playwright() as p:
         pg.wait_for_timeout(4800)                               # longer than the old 4 second timer, at any speed
         ok(f"{who} right: still on the same question after 4.8 s (no timer)", pg.evaluate("()=>__game.QS.phase") == "right" and pg.evaluate("()=>__game.P.game.answered") == 1)
         ok(f"{who} right: no lesson is forced", pg.locator("#board").count() == 0)
-        ok(f"{who} right: Next is shown from the start", pg.is_visible("#tile") and "Next" in pg.inner_text("#tile"))
+        ok(f"{who} right: Next is shown from the start", pg.is_visible("#tile") and "Next" in tile_words(pg))
         ok(f"{who} right: 'Watch how it works' is offered", pg.locator("#qbody .watch").count() == 1 and pg.is_visible("#qbody .watch"))
         ok(f"{who} right: the message is the one word 'Correct!'", pg.inner_text("#msg").strip().endswith("Correct!"), pg.inner_text("#msg"))
         pg.click("#qbody .watch")
@@ -144,7 +149,7 @@ with sync_playwright() as p:
         pg.evaluate("()=>{const s=GameSave.newSkill(); s.lvl=3; __game.P.engine.skills[__game.Q.skill]=s}")
         answer(pg, True)
         pg.wait_for_function("()=>__game.QS.phase==='right'", timeout=8000)
-        ok(f"{who} known skill: Next only, no 'Watch how it works'", pg.locator("#qbody .watch").count() == 0 and "Next" in pg.inner_text("#tile"))
+        ok(f"{who} known skill: Next only, no 'Watch how it works'", pg.locator("#qbody .watch").count() == 0 and "Next" in tile_words(pg))
         pg.click("#tile")
         wait_ask(pg, 2)
         ok(f"{who} no page errors (lesson choice)", not pg.errs, pg.errs[:3])
@@ -165,7 +170,7 @@ with sync_playwright() as p:
         ok(f"{who} second miss: same kind words as the first", "Not yet" in msg and "Not yet" in first, (first, msg))
         ok(f"{who} second miss: no 'incorrect', no cross", "incorrect" not in msg.lower() and "✗" not in pg.inner_text("#msg") and icon.strip() == "!", (msg, icon))
         ok(f"{who} second miss: no grey bar", pg.locator(".band").count() == 0)
-        ok(f"{who} second miss: the button is not dimmed and works at once", "dim" not in pg.get_attribute("#tile", "class") and "See The Answer" in pg.inner_text("#tile"))
+        ok(f"{who} second miss: the button is not dimmed and works at once", "dim" not in pg.get_attribute("#tile", "class") and "See The Answer" in tile_words(pg))
         ok(f"{who} second miss: 1 effort coin (the owner's rule)", pg.evaluate("()=>__game.P.coins") == c0 + 1, (c0, pg.evaluate("()=>__game.P.coins")))
         ok(f"{who} second miss: the day record stays strict (not clean)", pg.evaluate("()=>{const d=Object.values(__game.P.days)[0]; return d.n===1 && d.clean===0}"))
         pg.click("#tile")

@@ -226,6 +226,8 @@ with sync_playwright() as p:
             pg.wait_for_function("()=>__game.QS.phase==='right' && !__game.QS.teaching", timeout=60000)
             pg.click("#tile")
         pg.click("#tools .bin.home"); pg.wait_for_timeout(300)
+        if who == "kennedy":                          # Kennedy: one tap only asks; the tick goes home
+            pg.click('.kidconfirm .go[data-v="yes"]'); pg.wait_for_timeout(300)
         ok(f"{who} doors clear the scene", pg.evaluate("()=>document.querySelector('#scene').hidden"))
         ok(f"{who} no page errors", not errs, errs[:3])
         pg.close()

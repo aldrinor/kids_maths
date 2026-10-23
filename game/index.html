@@ -14,6 +14,7 @@
      - Coins for right answers. Every 5 answers a short reward game (game/rewards/: Mimi's Hot Chocolate, Ice Cream and Cookies in turn for Marie, Pony Stable, Goblin Rescue and Tower for Kitty in turn for Kennedy). Every 25 answers: play world (stage 2).
      - Own save per child (kidsMaths.game.<child>); the old app's save is read once and never written. -->
 <link rel="stylesheet" href="theme.css?v=2">
+<link rel="stylesheet" href="kid_mode.css?v=1">
 <link rel="stylesheet" href="scene/scene.css">
 </head>
 <body>
@@ -55,6 +56,7 @@
 <script src="scene/scene_cafe.js"></script>
 <script src="scene/scene_castle.js"></script>
 <script src="game_save.js?v=1"></script>
+<script src="kid_mode.js?v=1"></script>
 <script src="choice_evidence.js?v=1"></script>
 <script src="focus_guard.js?v=1"></script>
 <script>
@@ -226,6 +228,7 @@ function speakSystem(text) {                     // the voice of the device: use
 }
 async function say(text) {
   text = String(text); stopVoice(); let me = sayToken;
+  if (window.__sayLog) window.__sayLog.push(text);                  // tests only: what was spoken
   if (voiceList === null && manifestPromise) {   // the list is still loading: give it a moment, so the recorded voice is used
     await Promise.race([manifestPromise, new Promise(r => setTimeout(r, 1500))]);
     if (me !== sayToken) return;
@@ -355,7 +358,7 @@ function nextQuestion(given) {
   QS = { tries: 0, phase: "ask", typed: "", pick: null, lo: L.lo, hi: L.hi, step: L.step || 1, line: null, hops: [], t0: Date.now(), hinted: false };
   if (isRuler(Q)) rulerSetup();
   $("#app").classList.toggle("nokeys", Q.kind === "choice"); $("#app").classList.remove("locked");
-  hideMsg(); tileTo("", "Check"); $("#tile").hidden = false;
+  hideMsg(); tileTo("", "Check"); $("#tile").hidden = KidMode.on() && Q.kind === "choice";     // Kennedy taps an answer and it goes in: no Check button until he needs a picture button
   if (window.QuestScene) QuestScene.show(Q, theme);      // the scene above the question acts it out (before the body is measured)
   drawDots(); drawCoins(); renderBody(); mascot("stand");
   const story = document.querySelector("#qbody .story");                     // a screen reader reads the new question
@@ -369,7 +372,7 @@ function renderBody() {
   const b = $("#qbody"), bulb = `<button class="bulb" aria-label="Hint">${ICON.bulb}</button>`;
   const story = `<div class="story">${Q.story}${Q.ask ? `<br><b>${Q.ask}</b>` : ""}<span class="inbulb">${bulb}</span></div>`;
   const top = Q.kind === "choice"
-    ? `${story}<div class="bars">${Q.opts.map((o, i) => `<button class="opt" data-v="${o}"><small>${"abc"[i]})</small>${o}</button>`).join("")}</div>`
+    ? `${story}<div class="bars">${Q.opts.map((o, i) => `<button class="opt" data-v="${o}">${KidMode.on() ? "" : `<small>${"abc"[i]})</small>`}${o}</button>`).join("")}</div>`
     : `${story}<div class="eq"><span class="box ${boxCls()}" id="ansBox">${QS.typed || "&nbsp;"}</span></div>`;
   const off = QS.phase === "shown" || QS.phase === "right" ? " disabled" : "";
   const sz = sign => QS.ruler ? `<b class="sz">${sign}${QS.hop}</b>` : "", hz = QS.ruler ? ` ${QS.hop}` : "";   // the hop size is on the button
@@ -377,16 +380,18 @@ function renderBody() {
   const tileHad = fa === $("#tile");                      // a rebuild must not drop keyboard focus
   const tileEl = $("#tile"); tileEl.remove();             // Check sits in the row beside Restart; keep it while the body is rebuilt
   const watch = QS.phase === "right" && QS.watchOk && !QS.board;           // a clean right answer: Next, or Watch how it works
-  const hopBtns = watch ? `<button class="watch" aria-label="Watch how it works"><span class="play">${ICON.play}</span>Watch how it works</button>`
-    : `<button data-h="-1"${off} aria-label="Hop back${hz}"><i class="ar">◀ </i>Back${sz("−")}</button><button data-h="1" class="fwd"${off} aria-label="Hop forward${hz}">Forward${sz("+")}<i class="ar"> ▶</i></button><button data-h="0"${off} aria-label="Start again"><i class="ar">↺ </i>Restart</button>`;
+  const kid = KidMode.on(), tapQ = kid && Q.kind === "choice", solo = tapQ || (kid && watch);   // Kennedy on a tap question: picture buttons only, no Back / Forward / Restart
+  const w = (word, kidWord = "") => kid ? kidWord : word;       // words on buttons are for readers; Kennedy gets arrows and numbers
+  const hopBtns = watch ? `<button class="watch" aria-label="Watch how it works"><span class="play">${ICON.play}</span>${w("Watch how it works")}</button>`
+    : tapQ ? "" : `<button data-h="-1"${off} aria-label="Hop back${hz}"><i class="ar">◀ </i>${w("Back")}${sz("−")}</button><button data-h="1" class="fwd"${off} aria-label="Hop forward${hz}">${w("Forward")}${sz("+")}<i class="ar"> ▶</i></button><button data-h="0"${off} aria-label="Start again"><i class="ar">↺ </i>${w("Restart")}</button>`;
   b.innerHTML = `<div class="qtop">${top}</div><div class="room"></div>
     <div class="qbottom"><div class="nlbox" aria-label="Number line"></div>
-    <div class="hoprow">${hopBtns}</div></div>`;
+    <div class="hoprow${solo ? " solo" : ""}">${hopBtns}</div></div>`;
   b.querySelector(".hoprow").appendChild(tileEl);
   b.classList.toggle("rulerq", !!QS.ruler);       // the ruler is a little taller: the empty gap above it gives way
   drawLine();
   b.querySelectorAll(".bulb").forEach(x => x.onclick = e => { e.stopPropagation(); document.querySelector(".bubble") ? closeHint() : openHint(); });
-  b.querySelectorAll(".opt").forEach(x => x.onclick = () => { if (QS.phase !== "ask" || QS.teaching) return; QS.pick = +x.dataset.v; QS.mark = null; renderBody(); });
+  b.querySelectorAll(".opt").forEach(x => x.onclick = () => { if (QS.phase !== "ask" || QS.teaching || QS.submitting) return; if (KidMode.on()) return kidSubmit(+x.dataset.v, true); QS.pick = +x.dataset.v; QS.mark = null; renderBody(); });
   if (QS.pick != null) b.querySelectorAll(`.opt[data-v="${QS.pick}"]`).forEach(x => x.classList.add("sel", ...(QS.mark ? [QS.mark] : [])));
   b.querySelectorAll(".hoprow .watch").forEach(x => x.onclick = () => { if (QS && QS.phase === "right" && !QS.teaching) teach(); });
   b.querySelectorAll(".hoprow button[data-h]").forEach(x => x.onclick = () => { const h = +x.dataset.h; if (!h) restart(); else if (QS.ruler) hopBy(h); else hopTo(QS.line + h * QS.step); });
@@ -623,7 +628,7 @@ async function teach() {
     bd.innerHTML = `<canvas></canvas>`;
     $("#work").appendChild(bd);
     const bb = document.createElement("div"); bb.id = "boardbtns";    // buttons above the drawing layer; the board below it
-    bb.innerHTML = `<button class="bx" aria-label="Close the lesson">✕</button><div class="brow"><button class="again" hidden><span class="play">${ICON.play}</span>Watch again</button><button class="bnext" hidden>Next ➜</button></div>`;
+    bb.innerHTML = `<button class="bx" aria-label="Close the lesson">✕</button><div class="brow"><button class="again" hidden aria-label="Watch again"><span class="play">${ICON.play}</span>${KidMode.on() ? "" : "Watch again"}</button><button class="bnext" hidden aria-label="Next">${KidMode.on() ? KidMode.ICONS.next : "Next ➜"}</button></div>`;
     $("#work").appendChild(bb);
     bb.querySelector(".again").onclick = () => teach();
     bb.querySelector(".bnext").onclick = () => { if (QS && (QS.phase === "right" || QS.phase === "shown")) goNext(); };
@@ -764,9 +769,20 @@ function buildPad() {
   $("#pad").querySelectorAll("button").forEach(b => b.onclick = () => key(b.dataset.k));
 }
 function key(k) {
-  if (!QS || QS.phase !== "ask" || Q.kind === "choice" || QS.teaching) return;
+  if (!QS || QS.phase !== "ask" || Q.kind === "choice" || QS.teaching || QS.submitting) return;
   if (k === "⌫") QS.typed = QS.typed.slice(0, -1); else if (QS.typed.length < 4) QS.typed += k;
   QS.mark = null; renderBody();
+  if (KidMode.on() && k !== "⌫") kidSubmit(k, QS.typed.length === String(Q.ans).length && /^\d+$/.test(String(Q.ans)));   // Kennedy hears each digit; when the answer is all in, it goes in
+}
+/* Kennedy: speak what he tapped, then (if it was an answer) put it in. One tap, no Check button to find. */
+async function kidSubmit(v, send) {
+  const me = QS; me.submitting = true;
+  if (me.firstMs == null && send) me.firstMs = Date.now() - me.t0;              // the thinking time is the time before the tap, not the time to speak
+  if (Q.kind === "choice") { me.pick = v; me.mark = null; renderBody(); }
+  await Promise.race([say(String(v)), new Promise(r => setTimeout(r, 2500))]);
+  if (QS !== me) return;
+  me.submitting = false;
+  if (send && me.phase === "ask" && !me.teaching) tile();
 }
 
 /* ---------- one answer is finished: tell the engine, pay coins, move the counters ---------- */
@@ -797,7 +813,15 @@ function finished(correct) {
 const MSG_ICON = { right: "✓", shown: "✓", try: "!" };
 function msg(cls, text) { const m = $("#msg"); m.hidden = false; m.className = cls; m.innerHTML = `<b class="mi" aria-hidden="true">${MSG_ICON[cls]}</b><span>${text}</span>`; $("#top").classList.add("talking"); }
 function hideMsg() { $("#msg").hidden = true; $("#top").classList.remove("talking"); }
-function tileTo(cls, text) { const t = $("#tile"); t.className = cls; t.innerHTML = `<span>${text}</span>`; }
+function tileTo(cls, text) {
+  const t = $("#tile"); t.className = cls;
+  if (KidMode.on()) { t.innerHTML = `<span class="pic">${KidMode.tileIcon(cls)}</span>`; t.setAttribute("aria-label", text.replace("➜", "").trim()); }   // a picture, not a word
+  else { t.innerHTML = `<span>${text}</span>`; t.removeAttribute("aria-label"); }
+}
+async function kidPrompt(kind, me) {              // the spoken "what to tap now" for a child who cannot read (first 3 times in a visit)
+  if (!KidMode.shouldPrompt(kind)) return;
+  await say(KidMode.promptText(kind));
+}
 const FINAL_WORDS = "Not yet. Let's see the answer.";
 async function tile() {
   if (!QS || QS.teaching) return;
@@ -811,9 +835,10 @@ async function tile() {
       renderBody(); $("#app").classList.add("locked");
       msg("right", "Correct!"); tileTo("next", "Next ➜"); $("#tile").hidden = false; band("correct");   // no lesson, no timer: she taps Next, or Watch how it works
       const me = QS; await say(Q.correct); if (QS !== me) return;
+      await kidPrompt("next", me);
       return;
     }
-    QS.tries++; QS.mark = "wrong"; renderBody();
+    QS.tries++; QS.mark = "wrong"; QS.submitting = false; renderBody();
     if (QS.tries === 1) {
       QS.teaching = !Q.parent;
       msg("try", Q.parent ? "Not yet. Try again." : "Not yet. Watch how to work it out.");
@@ -823,15 +848,17 @@ async function tile() {
       return;
     }
     QS.phase = "final"; finished(false); closeBoard(); renderBody(); $("#app").classList.add("locked");
-    msg("try", FINAL_WORDS); tileTo("see", "See The Answer");      // the same kind words as the first miss: no cross, no grey bar, no dimmed button
-    say(FINAL_WORDS);
+    msg("try", FINAL_WORDS); tileTo("see", "See The Answer"); $("#tile").hidden = false;      // the same kind words as the first miss: no cross, no grey bar, no dimmed button
+    const me = QS; await say(FINAL_WORDS); if (QS !== me) return;
+    await kidPrompt("see", me);
     return;
   }
   if (QS.phase === "final") {
     QS.phase = "shown"; QS.mark = "right";
     if (Q.kind === "choice") QS.pick = Q.ans; else QS.typed = String(Q.ans);
     msg("shown", "This is the correct answer!"); tileTo("next", "Next ➜");
-    say(Q.fact); showHops();
+    const me = QS; showHops();
+    say(Q.fact).then(() => QS === me ? kidPrompt("next", me) : 0);
     return;
   }
   if (QS.phase === "shown" || QS.phase === "right") goNext();
@@ -896,14 +923,24 @@ function closeHint() { document.querySelectorAll(".bubble").forEach(b => { b.rem
 /* ---------- drawing: pencil always ready, 6 colours, rubber, bin (no sounds) ---------- */
 function buildTools() {
   const down = matchMedia(NARROW).matches;
-  $("#tools").innerHTML = PENS.map(([c, d]) => `<button class="pencil" data-c="${c}" aria-label="Colour pencil">${pencilSVG(c, d, down)}</button>`).join("")
+  const kid = KidMode.on(), pens = kid ? PENS.slice(0, 1) : PENS;     // Kennedy: one pencil, the rubber, the bin and home
+  if (kid && pen !== "erase") pen = PENS[0][0];
+  $("#tools").innerHTML = pens.map(([c, d]) => `<button class="pencil" data-c="${c}" aria-label="Colour pencil">${pencilSVG(c, d, down)}</button>`).join("")
     + `<button class="rubber" data-t="erase" aria-label="Rubber">${rubberSVG(down)}</button><div class="grow"></div><button class="bin" data-t="clear" aria-label="Clear the drawing">${ICON.bin}</button><button class="bin home" data-t="home" aria-label="Back to the start">${ICON.home}</button>`;
   $("#tools").querySelectorAll("button").forEach(b => b.onclick = () => {
     if (b.dataset.t === "clear") return clearDraw();
-    if (b.dataset.t === "home") return doors();
+    if (b.dataset.t === "home") return KidMode.on() ? confirmHome() : doors();
     pen = b.dataset.c || "erase"; markTools();
   });
   markTools();
+}
+/* Kennedy: the home button cannot end his session with one tap. A card with two pictures asks first, and says so out loud. */
+async function confirmHome() {
+  if (document.querySelector(".kidconfirm")) return;
+  say(KidMode.promptText("home"));
+  const v = await overlay(`<div class="panel kidconfirm"><h1 class="sr">Stop playing?</h1><div class="homepic">${ICON.home}</div><div class="pair"><button class="go" data-v="yes" aria-label="Yes, stop and go home">${KidMode.ICONS.tick}</button><button class="go" data-v="no" aria-label="No, keep playing">${KidMode.ICONS.cross}</button></div></div>`);
+  stopVoice();
+  if (v === "yes") doors();
 }
 function markTools() { $("#tools").querySelectorAll("button").forEach(b => b.classList.toggle("on", (b.dataset.c || b.dataset.t) === pen)); }
 let gd = null;
@@ -936,7 +973,7 @@ function overlay(html, cls = "") {
 async function showEnd(title, text) {
   QS = null; stopVoice(); closeBoard(); save(); if (window.QuestScene) QuestScene.react("end");
   say(`${title} ${text}`);
-  await overlay(`<div class="panel"><div class="mascot-big">${art("happy")}</div><h1>${title}</h1><p>${text}</p><button class="go">OK</button></div>`);
+  await overlay(`<div class="panel"><div class="mascot-big">${art("happy")}</div><h1>${title}</h1><p>${text}</p>${KidMode.on() ? `<button class="go pictureok" aria-label="OK">${KidMode.ICONS.tick}</button>` : `<button class="go">OK</button>`}</div>`);
   doors();
 }
 /* a plain-words note for the grown-up: shown once when something about a save needed care, and kept until it is read */
@@ -946,7 +983,7 @@ async function parentNote(lines) {
 }
 /* the doors: each child taps their own picture; no other choice */
 async function doors() {
-  stopVoice(); closeBoard(); closeHint(); save(); QS = null; who = null; P = null; if (window.QuestScene) QuestScene.clear();
+  stopVoice(); closeBoard(); closeHint(); save(); QS = null; who = null; P = null; KidMode.set(null); if (window.QuestScene) QuestScene.clear();
   document.querySelectorAll(".over, .rewardhost").forEach(o => o.remove());
   const door = w => `<button class="go" data-theme="${PROFILES[w].theme}" data-v="${w}"><span class="art">${art("wave", PROFILES[w].theme)}</span>${PROFILES[w].name}<small>${PROFILES[w].world}</small></button>`;
   for (;;) {
@@ -962,7 +999,7 @@ async function start(w, forceFresh) {
   try {
     P = loadSave(who, forceFresh);
     if (navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(() => {});      // ask the browser to keep the save (Safari may clear it after a week otherwise)
-    setTheme(PROFILES[who].theme); audioCtx(); sizeDraw(); save();
+    KidMode.set(who); setTheme(PROFILES[who].theme); audioCtx(); sizeDraw(); save();
     M.order.forEach(id => { M.map[id].ready = KS.SKILLS.includes(id) && KS.fits(id, theme); });   // cafe kinds are Marie's, knight kinds Kennedy's
     if (pendingNotes.length) { const n = pendingNotes; pendingNotes = []; await parentNote(n); }
     if (P.engine.paused) return showEnd("Maths is resting.", "A grown-up paused maths for now.");

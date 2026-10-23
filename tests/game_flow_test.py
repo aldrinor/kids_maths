@@ -60,7 +60,7 @@ with sync_playwright() as p:
         answer(pg, True)
         pg.wait_for_function("()=>__game.QS.phase==='right'", timeout=8000)
         pg.wait_for_timeout(1500)
-        ok(f"{who} right: no lesson forced, no auto-advance", pg.locator("#board").count() == 0 and pg.evaluate("()=>__game.P.game.answered") == 1 and "Next" in pg.inner_text("#tile"))
+        ok(f"{who} right: no lesson forced, no auto-advance", pg.locator("#board").count() == 0 and pg.evaluate("()=>__game.P.game.answered") == 1 and "Next" in (pg.inner_text("#tile") + (pg.get_attribute("#tile", "aria-label") or "")))   # Kennedy's button is a picture with a label for screen readers
         ok(f"{who} right: +2 coins", pg.evaluate("()=>__game.P.coins") == c0 + 2)
         pg.click("#tile")
         wait_ask(pg, 1)
@@ -82,7 +82,7 @@ with sync_playwright() as p:
         pg.wait_for_function("()=>!__game.QS.teaching && !document.querySelector('#boardbtns .again').hidden", timeout=90000)
         answer(pg, False)
         pg.wait_for_function("()=>__game.QS.phase==='final'", timeout=8000)
-        ok(f"{who} wrong twice: See The Answer", "See The Answer" in pg.inner_text("#tile"))
+        ok(f"{who} wrong twice: See The Answer", "See The Answer" in (pg.inner_text("#tile") + (pg.get_attribute("#tile", "aria-label") or "")))
         pg.wait_for_function("()=>!document.getElementById('tile').classList.contains('dim')", timeout=8000)
         pg.click("#tile"); pg.wait_for_timeout(300)
         ok(f"{who} answer shown", "correct answer" in pg.inner_text("#msg"))
@@ -110,6 +110,8 @@ with sync_playwright() as p:
         ok(f"{who} progress kept after reload", pg.evaluate("()=>__game.P.game.answered") == 5)
         # home button goes back to the doors
         pg.click("#tools .bin.home"); pg.wait_for_timeout(300)
+        if who == "kennedy":                          # Kennedy: one tap only asks; the tick goes home
+            pg.click('.kidconfirm .go[data-v="yes"]'); pg.wait_for_timeout(300)
         ok(f"{who} home button shows the doors", pg.locator(".over.start").count() == 1)
         ok(f"{who} no page errors", not errs, errs[:3])
         ctx.close()

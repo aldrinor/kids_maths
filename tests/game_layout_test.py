@@ -79,6 +79,9 @@ with sync_playwright() as p:
                 pg.wait_for_timeout(200)
                 probs += pg.evaluate(CHECK, tag2 + " right (Next and Watch how it works)")
                 pg.click("#tile")
+            if theme == "castle":                    # Kennedy's typed sums (picture tick, hop arrows with no words, keypad)
+                pg.evaluate("()=>__game.ask('sums.5', 47, 38, '+')"); pg.wait_for_timeout(400)
+                probs += pg.evaluate(CHECK, "kennedy typed question")
             for x in sorted(set(probs)):
                 print(f"{theme} {tag} {vw}x{vh}: {x}"); total += 1
             pg.close()

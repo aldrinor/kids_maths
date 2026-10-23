@@ -1,0 +1,80 @@
+/* Kennedy's screen: big picture buttons (at least 64 px), no reading needed. Loaded after theme.css. */
+.sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+body[data-who="kennedy"] { --touch: 64px; }
+
+/* the answers: 64 px or more, no a) b) c) labels, never squeezed smaller than they say */
+body[data-who="kennedy"] #qbody .opt { min-height: var(--touch); flex: none; }
+body[data-who="kennedy"] #qbody .bars { flex: none; }
+body[data-who="kennedy"] #qbody .opt small { display: none; }
+
+/* the hint light bulb: a real target. The story leaves room for it, so no word sits under it */
+body[data-who="kennedy"] .bulb, body[data-who="kennedy"] .inbulb { width: var(--touch); height: var(--touch); }
+body[data-who="kennedy"] .inbulb { margin-left: 8px; }
+body[data-who="kennedy"] .story { padding-right: 0; }
+body[data-who="kennedy"] .bubble .bh button { width: var(--touch); height: var(--touch); }
+body[data-who="kennedy"] #speak { width: var(--touch); height: var(--touch); }
+
+/* only the picture buttons: no Back, Forward or Restart on the hop row */
+body[data-who="kennedy"] .hoprow.solo { display: flex; justify-content: center; align-items: center; gap: 16px; width: 100%; }
+body[data-who="kennedy"] .hoprow button[data-h] { min-height: var(--touch); }     /* typed sums keep the hop arrows (they are the tool), as arrows and numbers, no words */
+body[data-who="kennedy"] .hoprow .ar { display: inline; }
+body[data-who="kennedy"] #qbody .hoprow #tile { min-height: var(--touch); padding: 4px 6px; min-width: 0; }
+body[data-who="kennedy"] #qbody .hoprow.solo #tile { min-width: 140px; padding: 4px 18px; flex: 0 1 220px; }
+body[data-who="kennedy"] #tile .pic { display: grid; place-items: center; }
+body[data-who="kennedy"] #tile .pic svg { width: 44px; height: 44px; display: block; }
+body[data-who="kennedy"] .hoprow .watch { grid-column: auto; flex: none; width: var(--touch); min-width: var(--touch); min-height: var(--touch); padding: 0; justify-content: center; }
+body[data-who="kennedy"] .hoprow .watch .play { width: 44px; height: 44px; }
+body[data-who="kennedy"] .hoprow .watch .play svg { width: 60%; height: 60%; }
+body[data-who="kennedy"] #pad button { min-height: var(--touch); }
+
+/* the lesson card: picture buttons too */
+body[data-who="kennedy"] #boardbtns .bx { width: var(--touch); height: var(--touch); }
+body[data-who="kennedy"] #boardbtns .bnext, body[data-who="kennedy"] #boardbtns .again { min-height: var(--touch); }
+body[data-who="kennedy"] #boardbtns .bnext { min-width: 0; padding: 0 12px; }
+body[data-who="kennedy"] #boardbtns .bnext svg { width: 40px; height: 40px; display: block; }
+body[data-who="kennedy"] #boardbtns .again { min-width: 0; padding: 0 8px; }
+body[data-who="kennedy"] #boardbtns .again .play { width: 44px; height: 44px; }
+body[data-who="kennedy"] #boardbtns .brow { gap: 18px; }
+
+/* the drawing shelf: one pencil, the rubber, the bin and the home button. Each one is a 64 px square. */
+body[data-who="kennedy"] #tools .pencil, body[data-who="kennedy"] #tools .rubber { width: var(--touch); height: var(--touch); transform: none; margin: 0; align-self: center; flex: none; }
+body[data-who="kennedy"] #tools .bin { width: var(--touch); height: var(--touch); margin: 0; align-self: center; flex: none; }
+body[data-who="kennedy"] #tools .bin.home { margin-top: 28px; border-color: var(--accent-dark); }
+body[data-who="kennedy"] #tools { align-items: center; padding-left: 0; padding-right: 0; }
+@media (max-width: 640px), (max-aspect-ratio: 3/4) and (max-width: 820px) {
+  body[data-who="kennedy"] #tools { height: 76px; align-items: center; padding: 6px 10px; gap: 8px; }
+  body[data-who="kennedy"] #tools .bin.home { margin: 0 0 0 22px; }
+}
+
+/* "do you want to stop?": two big pictures, a tick and a cross */
+.panel.kidconfirm .homepic { width: 96px; height: 96px; margin: 0 auto; color: var(--primary-dark); }
+.panel.kidconfirm .homepic svg { width: 100%; height: 100%; }
+.panel.kidconfirm .pair { display: flex; justify-content: center; gap: 32px; margin-top: 18px; }
+.panel.kidconfirm .go { margin: 0; min-width: 0; width: 96px; height: 96px; min-height: 96px; border-radius: 50%; display: grid; place-items: center; padding: 0; }
+.panel.kidconfirm .go svg { width: 56px; height: 56px; }
+.panel.kidconfirm .go[data-v="yes"] { background: var(--ok); border-color: color-mix(in srgb, var(--ok) 70%, black); box-shadow: 0 5px 0 color-mix(in srgb, var(--ok) 70%, black); color: #fff; }
+.panel.kidconfirm .go[data-v="no"] { background: var(--note); border-color: var(--accent-dark); box-shadow: 0 5px 0 var(--accent-dark); color: var(--ink); }
+.panel .go.pictureok { min-width: 120px; display: inline-grid; place-items: center; }
+.panel .go.pictureok svg { width: 44px; height: 44px; }
+
+/* the +1 / +10 hop-size buttons on the two-digit ruler: 64 px too */
+body[data-who="kennedy"] .hopsize button { width: var(--touch); height: var(--touch); flex: none; }
+body[data-who="kennedy"] .nlbox.compact .hopsize button { width: var(--touch); height: var(--touch); }
+
+/* typed sums on a phone held upright (360 x 740): a 64 px keypad and a 64 px hop row do not fit with the story, the number line and the
+   speech bubble, so only those two shrink, to the size the game used before (46 px). The answers, the bulb and the picture buttons on
+   tap questions stay 64 px. */
+@media (max-width: 640px) and (max-height: 860px) and (orientation: portrait) {
+  body[data-who="kennedy"] #app:not(.nokeys) #pad button { min-height: 46px; }
+  body[data-who="kennedy"] #app:not(.nokeys) .hoprow button, body[data-who="kennedy"] #app:not(.nokeys) #qbody .hoprow #tile { min-height: 46px; }
+  body[data-who="kennedy"] #app:not(.nokeys) .qtop { gap: 2px; }
+  body[data-who="kennedy"] #app:not(.nokeys) #tile .pic svg { width: 34px; height: 34px; }
+}
+/* the smallest phones (iPhone SE with Safari's bars, 375 x 553) on typed sums: back to the game's older small sizes, so nothing is covered */
+@media (max-height: 600px) and (orientation: portrait) {
+  body[data-who="kennedy"] #app:not(.nokeys) #pad button { min-height: 38px; }
+  body[data-who="kennedy"] #app:not(.nokeys) .hoprow button, body[data-who="kennedy"] #app:not(.nokeys) #qbody .hoprow #tile { min-height: 38px; }
+  body[data-who="kennedy"] #app:not(.nokeys) #tile .pic svg { width: 26px; height: 26px; }
+  body[data-who="kennedy"] #app:not(.nokeys) #tools { height: 52px; padding-top: 4px; padding-bottom: 4px; }
+  body[data-who="kennedy"] #app:not(.nokeys) #tools .pencil, body[data-who="kennedy"] #app:not(.nokeys) #tools .rubber, body[data-who="kennedy"] #app:not(.nokeys) #tools .bin { width: 44px; height: 44px; }
+}
