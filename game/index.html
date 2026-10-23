@@ -22,7 +22,7 @@
        little game and before the play world (at answer 25 the rest card is that card); the keepsake of a game is saved with the counters, shown on a card, on the world
        shelf and in the small room beside the coins; a break button; an end-of-day card. Every card waits for a tap.
      - Own save per child (kidsMaths.game.<child>); the old app's save is read once and never written. -->
-<link rel="stylesheet" href="theme.css?v=3">
+<link rel="stylesheet" href="theme.css?v=4">
 <link rel="stylesheet" href="kid_mode.css?v=3">
 <link rel="stylesheet" href="parent_area.css?v=2">
 <link rel="stylesheet" href="new_skills.css?v=1">
@@ -1151,13 +1151,29 @@ function sizeDraw() {
 }
 function clearDraw() { const c = $("#draw"); if (gd) { gd.save(); gd.setTransform(1, 0, 0, 1, 0, 0); gd.clearRect(0, 0, c.width, c.height); gd.restore(); } }
 function setupDraw() {
-  const c = $("#draw"); let last = null;
+  /* The drawing layer never sits on top of a button. #draw ignores touches (pointer-events: none), so every button, answer and
+     key gets its own tap first. Only a touch that lands on empty space starts a stroke, and #work (the parent of both) listens for it.
+     A finger tap on empty space leaves no dot; a stroke needs a little movement. A pen or mouse still marks a dot at once. */
+  const c = $("#draw"), w = $("#work"); let last = null, id = null, moved = false, fromX = 0, fromY = 0;
+  const SKIP = "button, a, input, select, textarea, label, [role=button], .opt, .box, .tapitem, .tapbox, .nlbox, .hoprow, .counttray, .bulb, .keys, #pad, #tools, #boardbtns";
   const at = e => { const b = c.getBoundingClientRect(); return [e.clientX - b.left, e.clientY - b.top]; };
   const style = () => { const er = pen === "erase"; gd.globalCompositeOperation = er ? "destination-out" : "source-over";
     gd.strokeStyle = er ? "#000" : pen; gd.fillStyle = gd.strokeStyle; gd.lineWidth = er ? 30 : 5; gd.lineCap = gd.lineJoin = "round"; };
-  c.onpointerdown = e => { if (!gd) return; e.preventDefault(); c.setPointerCapture(e.pointerId); last = at(e); style(); gd.beginPath(); gd.arc(last[0], last[1], gd.lineWidth / 2, 0, 7); gd.fill(); };
-  c.onpointermove = e => { if (!last) return; e.preventDefault(); const p = at(e); style(); gd.beginPath(); gd.moveTo(last[0], last[1]); gd.lineTo(p[0], p[1]); gd.stroke(); last = p; };
-  c.onpointerup = c.onpointercancel = () => last = null;
+  w.addEventListener("pointerdown", e => {
+    if (!gd || id !== null || (e.target.closest && e.target.closest(SKIP))) return;
+    id = e.pointerId; moved = false; last = at(e); fromX = e.clientX; fromY = e.clientY;
+    try { w.setPointerCapture(e.pointerId); } catch (x) {}
+    if (e.pointerType !== "touch") { style(); gd.beginPath(); gd.arc(last[0], last[1], gd.lineWidth / 2, 0, 7); gd.fill(); moved = true; }
+  });
+  w.addEventListener("pointermove", e => {
+    if (e.pointerId !== id || !last) return;
+    if (!moved && Math.hypot(e.clientX - fromX, e.clientY - fromY) < 6) return;     // a finger that only taps draws nothing
+    e.preventDefault(); const p = at(e); style();
+    if (!moved) { gd.beginPath(); gd.arc(last[0], last[1], gd.lineWidth / 2, 0, 7); gd.fill(); moved = true; }
+    gd.beginPath(); gd.moveTo(last[0], last[1]); gd.lineTo(p[0], p[1]); gd.stroke(); last = p;
+  });
+  const end = e => { if (e.pointerId === id) { id = null; last = null; } };
+  w.addEventListener("pointerup", end); w.addEventListener("pointercancel", end);
 }
 
 /* ---------- cards ---------- */

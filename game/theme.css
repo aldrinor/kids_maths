@@ -71,7 +71,8 @@ body[data-theme="castle"] #dots i { border-radius: 3px; transform: rotate(45deg)
 #mascot svg { width: 100%; height: 100%; display: block; }
 
 #work { grid-area: work; position: relative; min-height: 0; overflow: hidden; }
-#draw { position: absolute; inset: 0; width: 100%; height: 100%; z-index: 3; touch-action: none; cursor: crosshair; }
+#draw { position: absolute; inset: 0; width: 100%; height: 100%; z-index: 3; pointer-events: none; cursor: crosshair; }
+#work { touch-action: none; }          /* a stroke on empty space must not scroll the page; buttons still get their own tap */
 #qbody { position: absolute; inset: 6px 16px 10px; display: flex; flex-direction: column; align-items: center; pointer-events: none; }
 #qbody .box, #qbody .opt, #qbody .bulb, #qbody .nlbox, #qbody .hoprow { pointer-events: auto; position: relative; z-index: 4; }
 #qbody .bulb { position: absolute; z-index: 5; }
