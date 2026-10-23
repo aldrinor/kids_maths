@@ -51,7 +51,7 @@ const sentenceList = KS.sentences();
 const sentenceSet = new Set(sentenceList);
 
 // ---------- global checks ----------
-check("pieces under 1500", KS.pieces().length < 1500 ? [] : ["pieces: " + KS.pieces().length]);
+check("pieces under 2000", KS.pieces().length < 2000 ? [] : ["pieces: " + KS.pieces().length]);
 check("pieces not empty strings", KS.pieces().filter(p => !p || p !== p.trim()).slice(0, 3));
 check("sentences limit works", KS.sentences(5).length === 5 ? [] : ["limit"]);
 check("skills list", ["sums.1", "sums.2", "sums.3", "sums.4", "sums.5", "sums.6", "sums.7", "sums.8", "sums.9", "kinder.2", "kinder.5"].filter(s => !KS.SKILLS.includes(s)));

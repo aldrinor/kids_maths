@@ -19,7 +19,7 @@
     grape: ["item_grape", 1], strawberry: [R + "topping_strawberry", 1], napkin: ["item_napkin", 1], slice: [WA + "treat_cake", 1], piece: ["item_piece", 1],
     chocolate: ["item_chocolate", 1], cake: [WA + "treat_cake", 1], tea: [R + "cup_mint", 440 / 420], pie: ["item_pie", 1], sandwich: ["item_sandwich", 1],
     cocoa: [WA + "treat_cocoa", 1], toonie: ["item_toonie", 1], loonie: ["item_loonie", 1], dime: ["item_dime", 1], nickel: ["item_nickel", 1],
-    bill_10: ["item_bill_10", 2], bill_20: ["item_bill_20", 2]
+    bill_5: ["item_bill_5", 2], bill_10: ["item_bill_10", 2], bill_20: ["item_bill_20", 2], bill_50: ["item_bill_50", 2], bill_100: ["item_bill_100", 2]
   };
   // the colour of a thing when it is drawn as a dot in a box of ten or a tray of a hundred
   const DOT = { cupcake: "#f490ab", cookie: "#c48e52", cup: "#f08aa6", customer: "#b99ae0", saucer: "#e9a2b6", coin: "#e3ad25", tray: "#bf8d5c",
@@ -274,7 +274,7 @@
       S.useFriend = true;
       const it = group(S.ctx, icons(S.ctx, sc.noun, 1, 1.25), "plate", "thing");
       const tag = h("span", "qs-tag"); tag.textContent = "$" + sc.price; it.appendChild(tag);
-      const bill = group(S.ctx, icons(S.ctx, sc.paid === 20 ? "bill_20" : "bill_10", 1, 0.9), null, "paid");
+      const bill = group(S.ctx, icons(S.ctx, "bill_" + sc.paid, 1, 0.9), null, "paid");
       add(S, it, bill); fit(S);
       return [[200, () => reveal(S, it, "d")], [500, () => friendCome(S, friendFor(Q))], [900, () => reveal(S, bill, "r")], [400, () => pose(S, "point")], [1400, () => pose(S, "stand")]];
     },
@@ -308,6 +308,24 @@
   ACTS.tap_count = (S, Q, sc) => {
     const it = group(S.ctx, icons(S.ctx, sc.noun, 1, 1.9), null, "thing"); add(S, it); fit(S);
     return [[200, () => reveal(S, it, "d")], [500, () => pose(S, "count")], [1600, () => pose(S, "stand")]];
+  };
+  // bills and coins (round of 23 Oct 2026): the things she adds up or pays with, drawn true to the story. coins = [[picture name, how many], ...]
+  ACTS.bills = (S, Q, sc) => {
+    S.useFriend = sc.who === "customer" || sc.who === "friend";
+    const SIZE = { bill_5: 0.95, bill_10: 0.95, bill_20: 0.95, bill_50: 0.95, bill_100: 0.95, toonie: 1, loonie: 0.95 };
+    const gs = sc.coins.filter(([, c]) => c > 0).map(([k, c]) => group(S.ctx, icons(S.ctx, k, c, SIZE[k], c > 4 ? 2 : 1), null, k, c));
+    add(S, ...gs); fit(S);
+    const steps = [[200, () => { if (S.useFriend) friendCome(S, friendFor(Q)); }]];
+    gs.forEach(g => steps.push([S.useFriend ? 700 : 300, () => reveal(S, g, S.useFriend ? "r" : "d")]));
+    return steps.concat([[400, () => pose(S, "point")], [1400, () => pose(S, "stand")]]);
+  };
+  // a row of holders (jars, trays, tables ...) each with a few of the same thing, for questions about numbers that are too big to draw (comparing, ordering,
+  // even and odd, estimating, prices). It shows the holders and nothing about how many: n holders, the same small pile in each.
+  ACTS.lineup = (S, Q, sc) => {
+    const gs = [];
+    for (let i = 0; i < sc.n; i++) gs.push(group(S.ctx, icons(S.ctx, sc.noun, 3, 1, 1), sc.holder || "tray", "h" + i));
+    add(S, ...gs); fit(S);
+    return [[200, () => pose(S, "carry")]].concat(gs.map(g => [S.ctx.reduced ? 120 : 340, () => reveal(S, g, "d")]), [[500, () => pose(S, "stand")]]);
   };
   // castle acts, if a cafe question ever carries one: show the things plainly
   ACTS.count = (S, Q, sc) => { const g = group(S.ctx, icons(S.ctx, "cupcake", sc.seq[2]), "tray", "a", sc.seq[2]); add(S, g); fit(S); return [[200, () => reveal(S, g, "l")]]; };
@@ -343,7 +361,7 @@
       preload(ctx, Object.values(MIMI).concat(FRIENDS.flatMap(f => ["stand", "walk", "cheer"].map(p => friendArt(f, p))), [R + "heart"]));
       const sc = Q.scene, S = frame(root, ctx, sc.act);
       const actFn = ACTS[sc.act] || ACTS.need;
-      S.stage.classList.toggle("qs-rows", ["groups", "share", "bundle"].includes(sc.act));   // many holders may stand in two rows
+      S.stage.classList.toggle("qs-rows", ["groups", "share", "bundle", "lineup"].includes(sc.act));   // many holders may stand in two rows
       const steps = actFn(S, Q, sc);
       S.inner.style.setProperty("--right", S.useFriend ? "calc(var(--H) * .6)" : "calc(var(--H) * .12)");
       if (S.useFriend) S.friend.src = ctx.art(friendArt(friendFor(Q), "stand"));

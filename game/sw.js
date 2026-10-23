@@ -12,7 +12,7 @@
  */
 "use strict";
 /*FILES-BEGIN*/
-const VERSION = "vc313c28f";
+const VERSION = "vb37073df";
 const FILES = [
   "index.html",
   "app.webmanifest",
@@ -57,7 +57,7 @@ const FILES = [
   "parent_area.js?v=2",
   "focus_guard.js?v=1",
   "journey.js?v=2",
-  "theme.css?v=3",
+  "theme.css?v=4",
   "kid_mode.css?v=3",
   "parent_area.css?v=2",
   "new_skills.css?v=1",
@@ -80,7 +80,10 @@ const ART = [
   "scene/art/cafe/hold_tray.png",
   "scene/art/cafe/hold_vase.png",
   "scene/art/cafe/item_bill_10.png",
+  "scene/art/cafe/item_bill_100.png",
   "scene/art/cafe/item_bill_20.png",
+  "scene/art/cafe/item_bill_5.png",
+  "scene/art/cafe/item_bill_50.png",
   "scene/art/cafe/item_biscuit.png",
   "scene/art/cafe/item_cake_box.png",
   "scene/art/cafe/item_candy.png",

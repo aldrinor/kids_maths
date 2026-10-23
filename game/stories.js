@@ -147,7 +147,7 @@
       "apple@horse", "goblin", "coin",
       "gate", "shield", "door"]
   };
-  const SCENE_ACTS = ["add", "sub", "need", "left", "compare", "numeral", "groups", "share", "place", "bundle", "money", "change", "time", "fraction", "count", "more_less", "make10", "pattern", "size", "tap_count"];
+  const SCENE_ACTS = ["add", "sub", "need", "left", "compare", "numeral", "groups", "share", "place", "bundle", "money", "change", "time", "fraction", "count", "more_less", "make10", "pattern", "size", "tap_count", "lineup", "bills"];
   const SCENE_NOUNS = {
     cafe: ["cupcake", "cup", "cookie", "customer", "saucer", "coin", "tray", "muffin", "scoop", "chair", "tea_bag", "oven", "cake_box", "sign",
       "biscuit", "flower", "roll", "candy", "lemon", "sticker", "grape", "strawberry", "napkin", "slice", "piece", "chocolate", "clock",
@@ -1122,6 +1122,622 @@
     }
   };
 
+
+  /* =====================================================================================
+     Round of 23 Oct 2026 (Grade 3 gaps, round 1): comparing and ordering numbers to 1000, even and odd, estimating, bills and coins to 100 dollars.
+     Ten new skills for Marie (cafe), 63 question shapes ("types", each with 3 or 4 cafe wordings). They follow the 22 Oct pattern: a story kind, a scene that never
+     carries the answer, a skill-map entry with needs, one hint (the engine turns it into the 3-step help), a short lesson, and a miss class where one fits.
+     A type is { n (how many number sets), gen(tb) (one number set, or null to skip it), bank [[story, ask, sceneRow]], scene(p), q(p), les(p, Q) }.
+     Number sets are made from a fixed seed, so the list of questions is the same every time (the tests walk every one).
+     Extra fields q(p) may return, copied onto Q by decorate: range [lo, hi] (a typed estimate is right anywhere in it: index.html asks KS.isRight),
+     opposite (the number a child gives when she reads "more" as "less": MissStudy "wrong_end"), noNear (a tap miss is never "one or two away"),
+     parity (a wrong even/odd tap: MissStudy "last_digit"). Every one of these kinds sets Q.noLine: there is no number line to hop on.
+     Spoken text: no "$" and no symbols (money is said in words: "20 dollars", "a twenty-dollar bill").
+     ===================================================================================== */
+  const rng32 = seed => { let s = seed >>> 0; return () => { s = (s + 0x6D2B79F5) >>> 0; let t = s; t = Math.imul(t ^ (t >>> 15), t | 1); t ^= t + Math.imul(t ^ (t >>> 7), t | 61); return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; };
+  const hashText = s => { let h = 2166136261; for (const c of s) h = Math.imul(h ^ c.charCodeAt(0), 16777619) >>> 0; return h; };
+  const toolbox = r => ({
+    int: (lo, hi) => lo + Math.floor(r() * (hi - lo + 1)), pick: a => a[Math.floor(r() * a.length)], flip: () => r() < 0.5,
+    shuffle: a => { const b = a.slice(); for (let i = b.length - 1; i > 0; i--) { const j = Math.floor(r() * (i + 1)); [b[i], b[j]] = [b[j], b[i]]; } return b; }
+  });
+  const LINE_OFF = { lo: 0, hi: 1000, step: 100 };
+  const hd = n => Math.floor(n / 100), td = n => Math.floor(n / 10) % 10;
+  const sortUp = a => a.slice().sort((x, y) => x - y);
+  const spread = (tb, n, lo, hi, gap) => { for (let i = 0; i < 200; i++) { const v = Array.from({ length: n }, () => tb.int(lo, hi)), s = sortUp(v); if (s.every((x, k) => !k || x - s[k - 1] >= gap)) return v; } return null; };
+  function g3Kind(meta, T) {
+    const ids = Object.keys(T);
+    return {
+      theme: "cafe", name: meta.name, grade: 3, group: meta.group, needs: meta.needs, choice: !!meta.choice,
+      all: () => ids.flatMap(type => {
+        const D = T[type], tb = toolbox(rng32(hashText(meta.name + type))), seen = new Set(), out = [];
+        for (let i = 0; i < 8000 && out.length < (D.n || 40); i++) {
+          const p = D.gen(tb); if (!p) continue;
+          const k = JSON.stringify(p); if (seen.has(k)) continue; seen.add(k); out.push(Object.assign({ type }, p));
+        }
+        if (out.length < (D.min || 12)) throw new Error("KS: too few number sets for " + type);
+        return out;
+      }),
+      bank: Object.fromEntries(ids.map(t => [t, T[t].bank.map(b => [b[0], b[1]])])),
+      sceneRows: Object.fromEntries(ids.map(t => [t, T[t].bank.map(b => b[2])])),
+      scene: p => T[p.type].scene(p),
+      q: p => { const d = T[p.type].q(p); return Object.assign({ op: "", start: 0, line: LINE_OFF }, d, { end: d.ans }); },
+      decorate: (Q, p) => {
+        const d = T[p.type].q(p);
+        Q.noLine = true;
+        ["range", "opposite", "noNear", "parity"].forEach(f => { if (d[f] !== undefined && d[f] !== false) Q[f] = d[f]; });
+        // the second help picture (game/hint_ladder.js): place-value blocks of the numbers in the story, or a pile put in pairs. It shows amounts, never the answer.
+        if (meta.pic && !T[p.type].noPic && d.nums.length >= 1 && d.nums.length <= 4) Q.hintPic = { blocks: d.nums.slice() };
+        if (d.hintPic) Q.hintPic = d.hintPic;
+      },
+      lesson: (p, Q) => {
+        const L = T[p.type].les(p, Q);
+        return { kind: meta.lessonKind, steps: [{ say: L[0], draw: [rowOf(0, Q.eq)] }, { say: L[1], draw: L[2] ? [rowOf(1, L[2])] : [] }] };
+      }
+    };
+  }
+
+  /* ----- which number is more, which is less (cafe_compare.1) ----- */
+  const MORE2_BANK = [
+    ["Mimi sold {a} cookies in May and {b} cookies in June.", "In which month did she sell more? Tap that number.", "cookie:tray"],
+    ["One jar holds {a} candies. The other jar holds {b} candies.", "Which jar holds more? Tap that number.", "candy:jar"],
+    ["Mimi has two boxes of tea bags. One box has {a}. The other has {b}.", "Which box has more tea bags? Tap that number.", "tea_bag:box"],
+    ["Mimi baked {a} muffins last week and {b} muffins this week.", "Which week had more muffins? Tap that number.", "muffin:tray"]
+  ];
+  const LESS2_BANK = [
+    ["Mimi sold {a} cookies in May and {b} cookies in June.", "In which month did she sell fewer? Tap that number.", "cookie:tray"],
+    ["One jar holds {a} candies. The other jar holds {b} candies.", "Which jar holds fewer? Tap that number.", "candy:jar"],
+    ["Mimi has two boxes of tea bags. One box has {a}. The other has {b}.", "Which box has fewer tea bags? Tap that number.", "tea_bag:box"],
+    ["Mimi baked {a} muffins last week and {b} muffins this week.", "Which week had fewer muffins? Tap that number.", "muffin:tray"]
+  ];
+  const MORE3_BANK = [
+    ["Mimi has three jars. They hold {a}, {b} and {c} candies.", "Which jar holds the most? Tap that number.", "candy:jar"],
+    ["Mimi sold {a} cookies on Monday, {b} on Tuesday and {c} on Wednesday.", "Which day had the most cookies? Tap that number.", "cookie:tray"],
+    ["Three shelves hold {a}, {b} and {c} cups.", "Which shelf holds the most cups? Tap that number.", "cup:table"]
+  ];
+  const LESS3_BANK = [
+    ["Mimi has three jars. They hold {a}, {b} and {c} candies.", "Which jar holds the fewest? Tap that number.", "candy:jar"],
+    ["Mimi sold {a} cookies on Monday, {b} on Tuesday and {c} on Wednesday.", "Which day had the fewest cookies? Tap that number.", "cookie:tray"],
+    ["Three shelves hold {a}, {b} and {c} cups.", "Which shelf holds the fewest cups? Tap that number.", "cup:table"]
+  ];
+  const PAIR_HINT = {
+    h: more => `Look at the hundreds first. The ${more ? "bigger" : "smaller"} hundreds digit makes the ${more ? "bigger" : "smaller"} number.`,
+    t: () => "The hundreds are the same. Look at the tens next.",
+    o: () => "The hundreds and the tens are the same. Look at the ones.",
+    d: more => `Count the digits. The number with ${more ? "more" : "fewer"} digits is ${more ? "bigger" : "smaller"}.`
+  };
+  function pairType(diff, more) {
+    return {
+      n: 40, min: 20,
+      gen: tb => {
+        let a, b;
+        if (diff === "h") { a = tb.int(100, 999); b = tb.int(100, 999); if (hd(a) === hd(b)) return null; }
+        else if (diff === "t") { const h = tb.int(1, 9); a = h * 100 + tb.int(0, 99); b = h * 100 + tb.int(0, 99); if (td(a) === td(b)) return null; }
+        else if (diff === "o") { const base = tb.int(10, 99) * 10; a = base + tb.int(0, 9); b = base + tb.int(0, 9); if (a === b) return null; }
+        else { const x = tb.int(60, 99), y = tb.int(100, 140); if (tb.flip()) { a = x; b = y; } else { a = y; b = x; } }
+        return { a, b };
+      },
+      bank: more ? MORE2_BANK : LESS2_BANK,
+      scene: () => ({ act: "lineup", n: 2 }),
+      q: ({ a, b }) => {
+        const big = Math.max(a, b), small = Math.min(a, b), ans = more ? big : small, other = more ? small : big;
+        return { v: { a, b }, nums: [a, b], ans, eq: (more ? "more" : "less") + " = ?", fact: `${ans} is ${more ? "more" : "less"} than ${other}.`,
+          hint: PAIR_HINT[diff](more), key: `${a}:${b}`, pool: [other], want: 1, opposite: other, noNear: true };
+      },
+      les: ({ a, b }, Q) => {
+        const w = more ? "bigger" : "smaller", verdict = `So ${Q.ans} is ${more ? "more" : "less"}.`;
+        if (diff === "h") return [`We want the ${w} number. Look at the hundreds first.`, `${pl(hd(a), "hundred")} and ${pl(hd(b), "hundred")}. ${verdict}`, `${a} or ${b}`];
+        if (diff === "t") return [`We want the ${w} number. The hundreds are the same, so look at the tens.`, `${pl(td(a), "ten")} and ${pl(td(b), "ten")}. ${verdict}`, `${a} or ${b}`];
+        if (diff === "o") return [`We want the ${w} number. The hundreds and the tens are the same, so look at the ones.`, `${pl(a % 10, "one")} and ${pl(b % 10, "one")}. ${verdict}`, `${a} or ${b}`];
+        return [`We want the ${w} number. Count the digits in each number.`, `${Math.min(a, b)} has two digits. ${Math.max(a, b)} has three digits. ${verdict}`, `${a} or ${b}`];
+      }
+    };
+  }
+  function trioType(more) {
+    return {
+      n: 40, min: 20,
+      gen: tb => { const v = spread(tb, 3, 100, 999, 11); return v && { a: v[0], b: v[1], c: v[2] }; },
+      bank: more ? MORE3_BANK : LESS3_BANK,
+      scene: () => ({ act: "lineup", n: 3 }),
+      q: ({ a, b, c }) => {
+        const s = sortUp([a, b, c]), ans = more ? s[2] : s[0], opp = more ? s[0] : s[2];
+        return { v: { a, b, c }, nums: [a, b, c], ans, eq: (more ? "most" : "fewest") + " = ?", fact: `${ans} is the ${more ? "most" : "fewest"} of the three.`,
+          hint: "Look at the hundreds first. If two match, look at the tens.", key: `${a}:${b}:${c}`, pool: [a, b, c].filter(x => x !== ans), want: 2, opposite: opp, noNear: true };
+      },
+      les: ({ a, b, c }, Q) => [`We want the ${more ? "biggest" : "smallest"} number. Look at the hundreds first. If they match, look at the tens.`,
+        `${Q.ans} is the ${more ? "most" : "fewest"} of the three.`, `${a} ${b} ${c}`]
+    };
+  }
+  const COMPARE_TYPES = {
+    MA: pairType("h", true), MB: pairType("t", true), MC: pairType("o", true), MD: pairType("d", true),
+    LA: pairType("h", false), LB: pairType("t", false), LC: pairType("o", false), LD: pairType("d", false),
+    M3: trioType(true), L3: trioType(false)
+  };
+  const G3_COMPARE_KIND = g3Kind({ name: "Cafe: which number is more or less (to 1000)", group: "count", needs: ["cafe_tens.1", "sums.5"], choice: true, pic: true, lessonKind: "compare3" }, COMPARE_TYPES);
+
+  /* ----- putting numbers in order (cafe_order.1: tap) and 10 or 100 more or less (cafe_order.2: type) ----- */
+  const ORDER_MIDDLE_BANK = [
+    ["Mimi puts three jars in order, from the least to the most. The jars hold {a}, {b} and {c} candies.", "Which number is in the middle?", "candy:jar"],
+    ["Mimi sold {a}, {b} and {c} muffins on three days. She lists the days from the fewest to the most.", "Which number is in the middle of the list?", "muffin:tray"],
+    ["Three shelves hold {a}, {b} and {c} cups. Mimi puts the shelves in order.", "Which number is in the middle, from smallest to biggest?", "cup:table"]
+  ];
+  const ORDER_NEXT_BANK = [
+    ["Mimi lines up jars from the least to the most. The jars hold {a}, {b} and {c} candies.", "Which number can come next in the line?", "candy:jar"],
+    ["Mimi sells more cookies each day: {a}, {b} and {c}. The days go on.", "Which number can come next?", "cookie:tray"],
+    ["Tea boxes stand in a line from the least to the most. They hold {a}, {b} and {c} tea bags.", "Which number can come next in the line?", "tea_bag:box"]
+  ];
+  const ORDER_HIDDEN_BANK = [
+    ["Mimi puts jars in order. One jar holds {a} candies. The next jar is hidden. The jar after it holds {b} candies.", "Which number could be in the hidden jar?", "candy:jar"],
+    ["Three trays stand in order. The first tray holds {a} cookies. The last tray holds {b}. The middle tray is covered.", "Which number could be on the covered tray?", "cookie:tray"],
+    ["Mimi lines up boxes in order. One box has {a} tea bags. A box in the next place is shut. The one after it has {b}.", "Which number could be in the shut box?", "tea_bag:box"]
+  ];
+  const ORDER_BETWEEN_BANK = [
+    ["Mimi numbers her tables. Table {a} is on the left. Table {b} is on the right.", "Which table number is between them?", "chair:table"],
+    ["A cake box says {a} on one side and {b} on the other. Mimi writes a number in between.", "Which number is between them?", "cake_box:table"],
+    ["Mimi's two jars hold {a} and {b} candies. A third jar holds a number in between.", "Which number is between them?", "candy:jar"]
+  ];
+  const ORDER_OUTSIDE_BANK = [
+    ["A party needs a number of cookies between {a} and {b}. Mimi has jars with {x}, {y} and {z} cookies.", "Which jar does not fit the party? Tap that number.", "cookie:tray"],
+    ["Mimi wants a number of cups between {a} and {b}. She counts {x}, {y} and {z} cups on three shelves.", "Which shelf has a number that is not between? Tap it.", "cup:table"],
+    ["A box must hold between {a} and {b} tea bags. Three boxes hold {x}, {y} and {z}.", "Which box is wrong? Tap that number.", "tea_bag:box"]
+  ];
+  const ORDER_SECOND_BANK = [
+    ["Mimi sold {a}, {b}, {c} and {d} muffins on four days.", "Which number is the second biggest?", "muffin:tray"],
+    ["Four jars hold {a}, {b}, {c} and {d} candies.", "Which number is the second biggest?", "candy:jar"],
+    ["Mimi counts {a}, {b}, {c} and {d} cups on four shelves.", "Which number is the second biggest?", "cup:table"]
+  ];
+  // a hidden number between lo and hi, with two choices outside (one under lo, one over hi)
+  const betweenGen = tb => {
+    const lo = tb.int(120, 880), hi = lo + tb.int(30, 110); if (hi > 960) return null;
+    const ans = tb.int(lo + 6, hi - 6), d1 = lo - tb.int(5, 60), d2 = hi + tb.int(5, 60);
+    return d1 < 100 || d2 > 999 ? null : { lo, hi, ans, d1, d2 };
+  };
+  const betweenQ = ({ lo, hi, ans, d1, d2 }, down) => ({ v: down ? { a: hi, b: lo } : { a: lo, b: hi }, nums: down ? [hi, lo] : [lo, hi], ans, eq: "between = ?",
+    fact: `${ans} is more than ${lo} and less than ${hi}.`, hint: `The number must be more than ${lo} and less than ${hi}.`, key: `${lo}:${hi}:${ans}`, pool: [d1, d2], want: 2, noNear: true });
+  const betweenLes = ({ lo, hi }, Q) => [`Look for a number that is bigger than ${lo} and smaller than ${hi}.`, `${Q.ans} fits in between.`, `${lo} ${Q.ans} ${hi}`];
+  const ORDER_TYPES = {
+    OM: {
+      n: 40, min: 20, gen: tb => { const v = spread(tb, 3, 100, 999, 11); return v && { a: v[0], b: v[1], c: v[2] }; },
+      bank: ORDER_MIDDLE_BANK, scene: () => ({ act: "lineup", n: 3 }),
+      q: ({ a, b, c }) => { const s = sortUp([a, b, c]); return { v: { a, b, c }, nums: [a, b, c], ans: s[1], eq: "middle = ?", fact: `In order they go ${s[0]}, ${s[1]} and ${s[2]}. The middle one is ${s[1]}.`,
+        hint: "Put them in order. Which number is the smallest? Which is the biggest? The one left is in the middle.", key: `${a}:${b}:${c}`, pool: [s[0], s[2]], want: 2, noNear: true }; },
+      les: ({ a, b, c }, Q) => { const s = sortUp([a, b, c]); return ["Put the numbers in order, from the smallest to the biggest. Look at the hundreds first.", `The order is ${s[0]}, ${s[1]} and ${s[2]}. The middle one is ${s[1]}.`, `${s[0]} ${s[1]} ${s[2]}`]; }
+    },
+    ON: {
+      n: 40, min: 20,
+      gen: tb => { const a = tb.int(100, 400), b = a + tb.int(30, 150), c = b + tb.int(30, 150), d = c + tb.int(30, 120); return d > 999 ? null : { a, b, c, d, e1: a + tb.int(1, b - a - 1), e2: b + tb.int(1, c - b - 1) }; },
+      bank: ORDER_NEXT_BANK, scene: () => ({ act: "lineup", n: 3 }),
+      q: ({ a, b, c, d, e1, e2 }) => ({ v: { a, b, c }, nums: [a, b, c], ans: d, eq: "next = ?", fact: `The line goes up. ${d} is more than ${c}, so it can come next.`,
+        hint: "The line goes up. The next number must be bigger than the last one.", key: `${a}:${b}:${c}:${d}`, pool: [e1, e2], want: 2, noNear: true }),
+      les: ({ a, b, c }, Q) => ["The numbers go up, from the least to the most. The next one must be bigger than the last one.", `${Q.ans} is more than ${c}.`, `${a} ${b} ${c} ${Q.ans}`]
+    },
+    OG: { n: 40, min: 20, gen: betweenGen, bank: ORDER_HIDDEN_BANK, scene: () => ({ act: "lineup", n: 3 }), q: p => betweenQ(p, false), les: betweenLes },
+    OH: {
+      n: 40, min: 20, gen: betweenGen, bank: ORDER_HIDDEN_BANK.map(([s, a, r]) => [s.replace("in order", "in order, from the most to the least").replace("Three trays stand in order.", "Three trays stand in order, from the most to the least."), a, r]),
+      scene: () => ({ act: "lineup", n: 3 }), q: p => betweenQ(p, true), les: betweenLes
+    },
+    OS: { n: 40, min: 20, gen: betweenGen, bank: ORDER_BETWEEN_BANK, scene: () => ({ act: "lineup", n: 2 }), q: p => betweenQ(p, false), les: betweenLes },
+    OT: {
+      n: 40, min: 20,
+      gen: tb => {
+        const lo = tb.int(120, 800), hi = lo + tb.int(60, 150), x = tb.int(lo + 6, hi - 6), y = tb.int(lo + 6, hi - 6), out = tb.flip() ? lo - tb.int(5, 60) : hi + tb.int(5, 60);
+        return x === y || hi > 960 || out < 100 || out > 999 ? null : { lo, hi, x, y, z: out };
+      },
+      bank: ORDER_OUTSIDE_BANK, scene: () => ({ act: "lineup", n: 3 }),
+      q: ({ lo, hi, x, y, z }) => ({ v: { a: lo, b: hi, x, y, z }, nums: [lo, hi, x, y, z], ans: z, eq: "outside = ?", fact: `${z} is not between ${lo} and ${hi}.`,
+        hint: `A number that fits is more than ${lo} and less than ${hi}. Which one does not?`, key: `${lo}:${hi}:${x}:${y}:${z}`, pool: [x, y], want: 2, noNear: true }),
+      les: ({ lo, hi }, Q) => [`A number fits when it is bigger than ${lo} and smaller than ${hi}.`, `${Q.ans} does not fit.`, `${lo} to ${hi}`]
+    },
+    OR: {
+      n: 40, min: 20, gen: tb => { const v = spread(tb, 4, 100, 999, 11); return v && { a: v[0], b: v[1], c: v[2], d: v[3] }; },
+      bank: ORDER_SECOND_BANK, scene: () => ({ act: "lineup", n: 4 }),
+      q: ({ a, b, c, d }) => { const s = sortUp([a, b, c, d]); return { v: { a, b, c, d }, nums: [a, b, c, d], ans: s[2], eq: "second = ?", fact: `From the biggest down: ${s[3]}, ${s[2]}. So ${s[2]} is the second biggest.`,
+        hint: "Find the biggest number first. Then find the next biggest.", key: `${a}:${b}:${c}:${d}`, pool: [a, b, c, d].filter(x => x !== s[2]), want: 3, noNear: true }; },
+      les: ({ a, b, c, d }, Q) => { const s = sortUp([a, b, c, d]); return ["Find the biggest number first. Then find the next biggest.", `The biggest is ${s[3]}. The next one is ${s[2]}.`, `${s[3]} ${s[2]}`]; }
+    }
+  };
+  const G3_ORDER_KIND = g3Kind({ name: "Cafe: put numbers in order (to 1000)", group: "count", needs: ["cafe_compare.1"], choice: true, pic: true, lessonKind: "order3" }, ORDER_TYPES);
+
+  const STEP_BANK = {
+    TM: [["Mimi has {n} stickers. A friend gives her ten more.", "How many stickers does she have now?", "sticker:tray"], ["The jar holds {n} candies. Mimi adds ten more.", "How many candies are in the jar now?", "candy:jar"], ["Mimi baked {n} cookies. She bakes ten more.", "How many cookies has she baked?", "cookie:tray"]],
+    TL: [["Mimi has {n} candies. She sells ten of them.", "How many candies are left?", "candy:jar"], ["The shop has {n} cups. Ten cups go to the party.", "How many cups are left?", "cup:table"], ["Mimi packs {n} cookies. She eats ten of them.", "How many cookies are left?", "cookie:tray"]],
+    HM: [["Mimi has {n} stickers. A friend gives her one hundred more.", "How many stickers does she have now?", "sticker:tray"], ["The jar holds {n} candies. Mimi adds one hundred more.", "How many candies are in the jar now?", "candy:jar"], ["The cafe sold {n} muffins. It sells one hundred more.", "How many muffins did it sell in all?", "muffin:tray"]],
+    HL: [["Mimi has {n} candies. She gives away one hundred of them.", "How many candies are left?", "candy:jar"], ["The shop has {n} cups. One hundred cups go to the fair.", "How many cups are left?", "cup:table"], ["Mimi baked {n} cookies. She sells one hundred of them.", "How many cookies are left?", "cookie:tray"]]
+  };
+  const stepType = (kind, up, tens) => {
+    const by = tens ? 10 : 100;
+    return {
+      n: 40, min: 20,
+      gen: tb => ({ n: up ? tb.int(100, 999 - by) : tb.int(100 + by, 999) }),
+      bank: STEP_BANK[kind], scene: () => ({ act: "lineup", n: 1 }),
+      q: ({ n }) => { const ans = up ? n + by : n - by; return { v: { n }, nums: [n], ans, eq: `${n} ${up ? "+" : MINUS} ${by} = ?`, op: up ? "+" : "-", fact: `${n} ${up ? "plus" : "minus"} ${by} is ${ans}.`,
+        hint: tens ? "Only the tens digit changes. The hundreds and the ones stay the same." : "Only the hundreds digit changes. The tens and the ones stay the same.", key: `${n}` }; },
+      les: ({ n }, Q) => [tens ? `${up ? "Ten more" : "Ten less"} means ${up ? "one more ten" : "one ten fewer"}. Look at the tens digit.` : `${up ? "One hundred more" : "One hundred less"} means ${up ? "one more hundred" : "one hundred fewer"}. Look at the hundreds digit.`,
+        tens ? `${n} has ${pl(td(n), "ten")} in the tens place. Now it has ${pl(td(Q.ans), "ten")}.` : `${n} has ${pl(hd(n), "hundred")} in the hundreds place. Now it has ${pl(hd(Q.ans), "hundred")}.`, `${n} ${up ? "+" : MINUS} ${by} = ${Q.ans}`]
+    };
+  };
+  const STEP_TYPES = { TM: stepType("TM", true, true), TL: stepType("TL", false, true), HM: stepType("HM", true, false), HL: stepType("HL", false, false) };
+  const G3_STEP_KIND = g3Kind({ name: "Cafe: 10 or 100 more, 10 or 100 less", group: "count", needs: ["cafe_tens.1"], choice: false, pic: true, lessonKind: "steps" }, STEP_TYPES);
+
+  /* ----- even and odd numbers (cafe_evenodd.1: tap) ----- */
+  const isEven = n => n % 2 === 0;
+  const EVEN_ROW = "ends 0 2 4 6 8", ODD_ROW = "ends 1 3 5 7 9";
+  const WHICH_BANK = (word) => [
+    [`Three guests get numbered tickets: {a}, {b} and {c}. Mimi calls the ${word} numbers first.`, `Which ticket is ${word}? Tap that number.`, "sign:table"],
+    [`Three tables have signs: {a}, {b} and {c}.`, `Which table has an ${word === "even" ? "even" : "odd"} number? Tap it.`, "chair:table"],
+    [`Mimi puts numbers on three cake boxes: {a}, {b} and {c}.`, `Which number is ${word}? Tap it.`, "cake_box:table"]
+  ];
+  const oneOf = (tb, lo, hi, even) => { for (let i = 0; i < 50; i++) { const v = tb.int(lo, hi); if (isEven(v) === even) return v; } return null; };
+  function whichType(lo, hi, wantEven) {
+    return {
+      n: 40, min: 20,
+      gen: tb => {
+        const x = oneOf(tb, lo, hi, wantEven), y = oneOf(tb, lo, hi, !wantEven), z = oneOf(tb, lo, hi, !wantEven);
+        if (x === null || y === null || z === null || y === z) return null;
+        const o = tb.shuffle([x, y, z]); return { a: o[0], b: o[1], c: o[2] };
+      },
+      bank: WHICH_BANK(wantEven ? "even" : "odd"),
+      scene: () => ({ act: "lineup", n: 3 }),
+      q: ({ a, b, c }) => {
+        const ans = [a, b, c].find(x => isEven(x) === wantEven);
+        return { v: { a, b, c }, nums: [a, b, c], ans, eq: (wantEven ? "even" : "odd") + " = ?", fact: `${ans} ends in ${ans % 10}, so it is ${wantEven ? "even" : "odd"}.`,
+          hint: wantEven ? "An even number ends in 0, 2, 4, 6 or 8. Look at the last digit." : "An odd number ends in 1, 3, 5, 7 or 9. Look at the last digit.", key: `${a}:${b}:${c}`,
+          pool: [a, b, c].filter(x => x !== ans), want: 2, noNear: true, parity: true };
+      },
+      les: (p, Q) => [wantEven ? "An even number ends in 0, 2, 4, 6 or 8. Look at the last digit of each number." : "An odd number ends in 1, 3, 5, 7 or 9. Look at the last digit of each number.",
+        `${Q.ans} ends in ${Q.ans % 10}. So it is ${wantEven ? "even" : "odd"}.`, wantEven ? EVEN_ROW : ODD_ROW]
+    };
+  }
+  const NOTEVEN_BANK = [
+    ["Mimi has four plates with {a}, {b}, {c} and {d} cookies. Three plates can be shared by two friends with none left over.", "Which plate cannot? Tap that number.", "cookie:plate"],
+    ["Four jars hold {a}, {b}, {c} and {d} candies. Three jars hold an even number.", "Which jar holds an odd number? Tap it.", "candy:jar"],
+    ["Mimi writes {a}, {b}, {c} and {d} on four cups. Three of the numbers are even.", "Which number is not even? Tap it.", "cup:table"]
+  ];
+  const LEFTOVER_BANK = [
+    ["Mimi shares {n|cookie} between two plates. Each plate gets the same.", "How many cookies are left over?", "cookie:plate"],
+    ["Mimi puts {n|cup} in pairs on the table.", "How many cups have no partner?", "cup:table"],
+    ["Two friends share {n|candy|candies}. They give them out one at a time.", "How many candies are left over?", "candy:jar"]
+  ];
+  const NEXTEVEN_BANK = (word) => [
+    [`Mimi numbers her tables with ${word} numbers: {a}, {b} and {c}.`, "Which number comes next?", "chair:table"],
+    [`The cafe stools have ${word} numbers: {a}, {b} and {c}. They go on.`, "Which number is on the next stool?", "chair:table"],
+    [`Mimi counts by twos and says ${word} numbers: {a}, {b} and {c}.`, "Which number does she say next?", "sign:table"]
+  ];
+  const MISSING_BANK = [
+    ["Mimi numbers her tables in order, counting by twos: {a}, {b}, then a table with no sign, then {c}.", "What number goes on the table with no sign?", "chair:table"],
+    ["The cups on the shelf are numbered by twos: {a}, {b}, then a cup with no number, then {c}.", "What number goes on that cup?", "cup:table"],
+    ["Mimi hangs signs by twos: {a}, {b}, then an empty hook, then {c}.", "What number goes on the empty hook?", "sign:table"]
+  ];
+  const EVEN_TYPES = {
+    EE: whichType(10, 99, true), EO: whichType(10, 99, false), EB: whichType(100, 999, true), EC: whichType(100, 999, false),
+    EN: {
+      n: 40, min: 20,
+      gen: tb => {
+        const e = [oneOf(tb, 10, 99, true), oneOf(tb, 10, 99, true), oneOf(tb, 10, 99, true)], o = oneOf(tb, 10, 99, false);
+        if (e.includes(null) || new Set(e).size !== 3 || o === null) return null;
+        const v = tb.shuffle([e[0], e[1], e[2], o]); return { a: v[0], b: v[1], c: v[2], d: v[3] };
+      },
+      bank: NOTEVEN_BANK, scene: () => ({ act: "lineup", n: 4 }),
+      q: ({ a, b, c, d }) => { const ans = [a, b, c, d].find(x => !isEven(x)); return { v: { a, b, c, d }, nums: [a, b, c, d], ans, eq: "odd = ?", fact: `${ans} ends in ${ans % 10}, so it is odd.`,
+        hint: "An even number ends in 0, 2, 4, 6 or 8. Which number does not?", key: `${a}:${b}:${c}:${d}`, pool: [a, b, c, d].filter(x => x !== ans), want: 3, noNear: true, parity: true }; },
+      les: (p, Q) => ["An even number ends in 0, 2, 4, 6 or 8. Look at the last digit of each number.", `${Q.ans} ends in ${Q.ans % 10}. It is the odd one.`, ODD_ROW]
+    },
+    EL: {
+      n: 40, min: 20, gen: tb => ({ n: tb.int(5, 39) }), bank: LEFTOVER_BANK, scene: () => ({ act: "lineup", n: 2 }),
+      q: ({ n }) => ({ v: { n }, nums: [n], ans: n % 2, eq: "left = ?", fact: n % 2 ? `${n} is odd. One is left over.` : `${n} is even. None are left over.`,
+        hint: "Share them two at a time. Is one left? Look at the last digit of the number.", key: `${n}`, pool: [0, 1, 2], want: 2, noNear: true, parity: true, hintPic: { pairs: n } }),
+      les: ({ n }, Q) => ["Share them out two at a time. An even number has none left over. An odd number has one left over.", `${n} ends in ${n % 10}. So ${n % 2 ? "one is left over" : "none are left over"}.`, n % 2 ? ODD_ROW : EVEN_ROW]
+    },
+    EX: {
+      n: 40, min: 20, gen: tb => { const a = oneOf(tb, 2, 90, true); return a === null ? null : { a }; }, bank: NEXTEVEN_BANK("even"), scene: () => ({ act: "lineup", n: 3 }),
+      q: ({ a }) => { const ans = a + 6; return { v: { a, b: a + 2, c: a + 4 }, nums: [a, a + 2, a + 4], ans, eq: "next = ?", fact: `${a + 4} plus 2 is ${ans}. ${ans} is even.`,
+        hint: "Even numbers go up by 2. The next number ends in 0, 2, 4, 6 or 8.", key: `${a}`, pool: [ans - 1, ans + 1, ans + 3], want: 2, noNear: true, parity: true }; },
+      les: ({ a }, Q) => ["Even numbers go up by 2 each time. Add 2 to the last number.", `${a + 4} plus 2 is ${Q.ans}.`, `${a + 4} + 2 = ${Q.ans}`]
+    },
+    EY: {
+      n: 40, min: 20, gen: tb => { const a = oneOf(tb, 1, 89, false); return a === null ? null : { a }; }, bank: NEXTEVEN_BANK("odd"), scene: () => ({ act: "lineup", n: 3 }),
+      q: ({ a }) => { const ans = a + 6; return { v: { a, b: a + 2, c: a + 4 }, nums: [a, a + 2, a + 4], ans, eq: "next = ?", fact: `${a + 4} plus 2 is ${ans}. ${ans} is odd.`,
+        hint: "Odd numbers go up by 2. The next number ends in 1, 3, 5, 7 or 9.", key: `${a}`, pool: [ans - 1, ans + 1, ans + 3], want: 2, noNear: true, parity: true }; },
+      les: ({ a }, Q) => ["Odd numbers go up by 2 each time. Add 2 to the last number.", `${a + 4} plus 2 is ${Q.ans}.`, `${a + 4} + 2 = ${Q.ans}`]
+    },
+    EZ: {
+      n: 40, min: 20, gen: tb => { const a = oneOf(tb, 2, 90, tb.flip()); return a === null ? null : { a }; }, bank: MISSING_BANK, scene: () => ({ act: "lineup", n: 4 }),
+      q: ({ a }) => { const ans = a + 4; return { v: { a, b: a + 2, c: a + 6 }, nums: [a, a + 2, a + 6], ans, eq: "missing = ?", fact: `${a + 2} plus 2 is ${ans}. ${ans} plus 2 is ${a + 6}.`,
+        hint: "Count by 2 from the second number. What do you say before the last number?", key: `${a}`, pool: [ans - 1, ans + 1, ans + 2], want: 2, noNear: true, parity: true }; },
+      les: ({ a }, Q) => ["Count by 2 from the second number to find the one that is missing.", `${a + 2} plus 2 is ${Q.ans}.`, `${a + 2} + 2 = ${Q.ans}`]
+    }
+  };
+  const G3_EVENODD_KIND = g3Kind({ name: "Cafe: even and odd numbers", group: "count", needs: ["cafe_times.1"], choice: true, lessonKind: "evenodd" }, EVEN_TYPES);
+
+  /* ----- rounding to the nearest 10 or 100 (cafe_estimate.1: type) ----- */
+  const near10 = n => Math.floor((n + 5) / 10) * 10, near100 = n => Math.floor((n + 50) / 100) * 100;
+  const ROUND10_BANK = [
+    ["Mimi counts {n} cookies on the shelf. A customer asks about how many there are.", "About how many cookies is that, to the nearest ten?", "cookie:tray"],
+    ["The jar has {n} candies. Mimi tells a friend about how many.", "About how many candies is that, to the nearest ten?", "candy:jar"],
+    ["{n} guests came to the cafe this month. Mimi tells her friend about how many.", "About how many guests is that, to the nearest ten?", "chair:table"]
+  ];
+  const ROUND100_BANK = [
+    ["Mimi baked {n} muffins this year. A reporter asks about how many.", "About how many muffins is that, to the nearest hundred?", "muffin:tray"],
+    ["The cafe sold {n} cups of tea. Mimi puts about how many on a sign.", "About how many cups is that, to the nearest hundred?", "cup:table"],
+    ["{n} guests visited the cafe this year. Mimi tells her friend about how many.", "About how many guests is that, to the nearest hundred?", "chair:table"]
+  ];
+  const roundType = (genN, bank, to) => ({
+    n: 40, min: 20, gen: tb => ({ n: genN(tb) }), bank, scene: () => ({ act: "lineup", n: 1 }),
+    q: ({ n }) => { const ans = to === 10 ? near10(n) : near100(n), digit = to === 10 ? n % 10 : n % 100;
+      return { v: { n }, nums: [n], ans, eq: "about = ?", fact: `${n} is closest to ${ans}.`,
+        hint: to === 10 ? "Look at the ones digit. If it is 5 or more, go up to the next ten. If it is less than 5, stay on the ten below." : "Look at the tens digit. If it is 5 or more, go up to the next hundred. If it is less than 5, stay on the hundred below.",
+        key: `${n}`, digit }; },
+    les: ({ n }, Q) => [to === 10 ? "Look at the ones digit. A 5 or more goes up. Less than 5 stays down." : "Look at the tens digit. A 5 or more goes up. Less than 5 stays down.",
+      to === 10 ? `${n} has ${pl(n % 10, "one")}. So it is closest to ${Q.ans}.` : `${n} has ${pl(td(n), "ten")} after the hundreds. So it is closest to ${Q.ans}.`, `${n} is near ${Q.ans}`]
+  });
+  const ROUND_TYPES = {
+    R10: roundType(tb => { for (;;) { const n = tb.int(11, 94); if (n % 10 !== 0 && n % 10 !== 5) return n; } }, ROUND10_BANK, 10),
+    R10B: roundType(tb => { for (;;) { const n = tb.int(101, 994); if (n % 10 !== 0 && n % 10 !== 5) return n; } }, ROUND10_BANK, 10),
+    R10U: roundType(tb => tb.int(0, 8) * 100 + tb.int(96, 99), ROUND10_BANK, 10),
+    R100: roundType(tb => { for (;;) { const n = tb.int(101, 949); if (n % 100 !== 0 && n % 100 !== 50) return n; } }, ROUND100_BANK, 100)
+  };
+  const G3_ROUND_KIND = g3Kind({ name: "Cafe: round to the nearest 10 or 100", group: "count", needs: ["cafe_compare.1"], choice: false, pic: true, lessonKind: "round" }, ROUND_TYPES);
+
+  /* ----- about how many in all (cafe_estimate.2: type, any answer in the reasonable range is right) -----
+     Reasonable range: within 10 of the true answer when the numbers are tens, within 100 when they are hundreds, and 10 percent (to 5, at least 5) for "about 20 in each". */
+  const tolPct = ans => Math.max(5, 5 * Math.round(ans * 0.1 / 5));
+  const rangeNote = (lo, hi) => `Any answer from ${lo} to ${hi} is a good estimate.`;
+  const EST_ADD10_BANK = [
+    ["Mimi bakes {a} cookies in the morning and {b} cookies in the afternoon.", "About how many cookies is that in all? Round each number to the nearest ten first.", "cookie:tray"],
+    ["The cafe sold {a} cups of tea on Monday and {b} cups on Tuesday.", "About how many cups is that in all? Round each number to the nearest ten first.", "cup:table"],
+    ["Mimi has {a} candies in one jar and {b} candies in another.", "About how many candies is that in all? Round each number to the nearest ten first.", "candy:jar"]
+  ];
+  const EST_SUB10_BANK = [
+    ["Mimi has {a} cups. She washes {b} of them.", "About how many cups are left to wash? Round each number to the nearest ten first.", "cup:table"],
+    ["Mimi baked {a} muffins. The guests ate {b} of them.", "About how many muffins are left? Round each number to the nearest ten first.", "muffin:tray"],
+    ["The jar had {a} candies. Mimi gave away {b} of them.", "About how many candies are left? Round each number to the nearest ten first.", "candy:jar"]
+  ];
+  const EST_ADD100_BANK = EST_ADD10_BANK.map(([s, a, r]) => [s, a.replace("ten", "hundred"), r]);
+  const EST_SUB100_BANK = EST_SUB10_BANK.map(([s, a, r]) => [s, a.replace("ten", "hundred"), r]);
+  const EST_BENCH_BANK = [
+    ["Each tray holds about {u} cookies. Mimi fills {n|tray}.", "About how many cookies is that?", "cookie:tray"],
+    ["A full jar holds about {u} candies. Mimi fills {n|jar}.", "About how many candies is that?", "candy:jar"],
+    ["A box holds about {u} tea bags. Mimi opens {n|box|boxes}.", "About how many tea bags is that?", "tea_bag:box"]
+  ];
+  const noTie10 = tb => { for (;;) { const n = tb.int(11, 89); if (n % 5 !== 0) return n; } };
+  const noTie100 = (tb, lo, hi) => { for (;;) { const n = tb.int(lo, hi); if (n % 100 !== 0 && n % 100 !== 50) return n; } };
+  function estType(op, unit) {
+    const r = unit === 10 ? near10 : near100, tol = unit, sign = op === "+";
+    return {
+      n: 40, min: 20,
+      gen: tb => {
+        let a, b;
+        if (unit === 10) { a = sign ? noTie10(tb) : tb.int(40, 99); b = sign ? noTie10(tb) : tb.int(11, a - 15); if (a % 5 === 0 || b % 5 === 0 || b < 11) return null; }
+        else { a = sign ? noTie100(tb, 101, 899) : noTie100(tb, 300, 949); b = sign ? noTie100(tb, 101, 899) : noTie100(tb, 101, a - 150); if (sign && a + b > 899) return null; if (!sign && (a - b < 100)) return null; }
+        return { a, b };
+      },
+      bank: sign ? (unit === 10 ? EST_ADD10_BANK : EST_ADD100_BANK) : (unit === 10 ? EST_SUB10_BANK : EST_SUB100_BANK),
+      scene: () => ({ act: "lineup", n: 2 }),
+      q: ({ a, b }) => {
+        const ra = r(a), rb = r(b), ans = sign ? ra + rb : ra - rb, exact = sign ? a + b : a - b, lo = Math.max(0, exact - tol), hi = exact + tol;
+        return { v: { a, b }, nums: [a, b], ans, eq: "about = ?", fact: `${ra} ${sign ? "plus" : "minus"} ${rb} is ${ans}. ${rangeNote(lo, hi)}`,
+          hint: `Round each number to the nearest ${unit === 10 ? "ten" : "hundred"}. Then ${sign ? "add" : "take away"}.`, key: `${a}:${b}`, range: [lo, hi] };
+      },
+      les: ({ a, b }, Q) => [`Round each number to the nearest ${unit === 10 ? "ten" : "hundred"}. Then the sum is easy.`, `${r(a)} ${sign ? "plus" : "minus"} ${r(b)} is ${Q.ans}.`, `${r(a)} ${sign ? "+" : MINUS} ${r(b)} = ${Q.ans}`]
+    };
+  }
+  const BENCH_TYPE = {
+    noPic: true, n: 40, min: 20, gen: tb => ({ u: tb.pick([10, 20, 50]), n: tb.int(3, 9) }), bank: EST_BENCH_BANK, scene: () => ({ act: "lineup", n: 2 }),
+    q: ({ u, n }) => { const ans = u * n, t = tolPct(ans); return { v: { u, n }, nums: [u, n], ans, eq: `${n} × ${u} = ?`, op: "×", fact: `${n} groups of ${u} is ${ans}. ${rangeNote(ans - t, ans + t)}`,
+      hint: `Skip count by ${u}, ${n} times.`, key: `${u}:${n}`, range: [ans - t, ans + t] }; },
+    les: ({ u, n }, Q) => [`It says about ${u} in each. So count by ${u}, ${n} times.`, `${n} groups of ${u} is ${Q.ans}.`, `${n} × ${u} = ${Q.ans}`]
+  };
+  const ESTIMATE2_TYPES = { EA: estType("+", 10), ED: estType("-", 10), EH: estType("+", 100), EQ: estType("-", 100), EB: BENCH_TYPE };
+  const G3_ESTIMATE2_KIND = g3Kind({ name: "Cafe: about how many in all (an estimate)", group: "count", needs: ["cafe_estimate.1", "sums.7"], choice: false, pic: true, lessonKind: "estimate" }, ESTIMATE2_TYPES);
+
+  /* ----- the best estimate (cafe_estimate.3: tap): one answer in the reasonable range, the others well outside it; and the closest ten or hundred ----- */
+  const BEST_ADD_BANK = [
+    ["Mimi has {a} cookies. She bakes {b} more.", "Which is the best estimate of how many she has now?", "cookie:tray"],
+    ["The cafe sold {a} cups on Monday and {b} cups on Tuesday.", "Which is the best estimate of how many cups it sold?", "cup:table"],
+    ["One jar has {a} candies and another has {b} candies.", "Which is the best estimate of how many candies there are?", "candy:jar"]
+  ];
+  const BEST_SUB_BANK = [
+    ["Mimi has {a} cups. She washes {b} of them.", "Which is the best estimate of how many are left to wash?", "cup:table"],
+    ["Mimi baked {a} muffins. The guests ate {b} of them.", "Which is the best estimate of how many are left?", "muffin:tray"],
+    ["The jar had {a} candies. Mimi gave away {b} of them.", "Which is the best estimate of how many are left?", "candy:jar"]
+  ];
+  const CLOSEST_BANK = [
+    ["Mimi counts {n} cookies on the shelf.", "Which number is closest to how many there are?", "cookie:tray"],
+    ["The jar holds {n} candies.", "Which number is closest to how many there are?", "candy:jar"],
+    ["{n} guests came this month.", "Which number is closest to how many came?", "chair:table"]
+  ];
+  const bestType = sign => ({
+    n: 40, min: 20,
+    gen: tb => {
+      const a = sign ? noTie10(tb) : tb.int(41, 99), b = sign ? noTie10(tb) : tb.int(11, a - 15);
+      if (a % 5 === 0 || b % 5 === 0) return null;
+      const ans = sign ? near10(a) + near10(b) : near10(a) - near10(b), d1 = ans - tb.int(30, 60), d2 = ans + tb.int(30, 60);
+      return d1 < 10 ? null : { a, b, d1, d2 };
+    },
+    bank: sign ? BEST_ADD_BANK : BEST_SUB_BANK, scene: () => ({ act: "lineup", n: 2 }),
+    q: ({ a, b, d1, d2 }) => { const ra = near10(a), rb = near10(b), ans = sign ? ra + rb : ra - rb;
+      return { v: { a, b }, nums: [a, b], ans, eq: "best = ?", fact: `${ra} ${sign ? "plus" : "minus"} ${rb} is ${ans}. So ${ans} is a good estimate.`,
+        hint: `Round each number to the nearest ten. Then ${sign ? "add" : "take away"}.`, key: `${a}:${b}:${d1}:${d2}`, pool: [d1, d2], want: 2, noNear: true }; },
+    les: ({ a, b }, Q) => ["Round each number to the nearest ten. Then the sum is easy.", `${near10(a)} ${sign ? "plus" : "minus"} ${near10(b)} is ${Q.ans}.`, `${near10(a)} ${sign ? "+" : MINUS} ${near10(b)} = ${Q.ans}`]
+  });
+  const closestType = unit => ({
+    n: 40, min: 20,
+    gen: tb => { const n = unit === 10 ? tb.int(11, 99) : tb.int(101, 899); if (unit === 10 ? n % 5 === 0 : (n % 100 === 0 || n % 100 === 50)) return null; return { n }; },
+    bank: CLOSEST_BANK, scene: () => ({ act: "lineup", n: 1 }),
+    q: ({ n }) => {
+      const lower = Math.floor(n / unit) * unit, upper = lower + unit, ans = unit === 10 ? near10(n) : near100(n), other = ans === lower ? upper : lower, far = ans === lower ? lower - unit : upper + unit;
+      return { v: { n }, nums: [n], ans, eq: "closest = ?", fact: `${n} is closer to ${ans} than to ${other}.`,
+        hint: `The two ${unit === 10 ? "tens" : "hundreds"} on each side are ${lower} and ${upper}. Which one is ${n} nearer to?`, key: `${n}`, pool: [other, far >= 0 ? far : upper + unit], want: 2, noNear: true };
+    },
+    les: ({ n }, Q) => [`Find the two ${unit === 10 ? "tens" : "hundreds"} on each side of the number. Which is it nearer to?`, `${n} is nearer to ${Q.ans}.`, `${n} is near ${Q.ans}`]
+  });
+  const ESTIMATE3_TYPES = { ER: bestType(true), EZ: bestType(false), EN: closestType(10), EC: closestType(100) };
+  const G3_ESTIMATE3_KIND = g3Kind({ name: "Cafe: the best estimate (tap)", group: "count", needs: ["cafe_estimate.1"], choice: true, pic: true, lessonKind: "bestguess" }, ESTIMATE3_TYPES);
+
+  /* ----- bills and coins to 100 dollars (Canadian: 5, 10, 20, 50 and 100 dollar bills, loonie 1 dollar, toonie 2 dollars) ----- */
+  const BILL_NAME = { 5: "five-dollar bill", 10: "ten-dollar bill", 20: "twenty-dollar bill", 50: "fifty-dollar bill", 100: "hundred-dollar bill", 2: "toonie", 1: "loonie" };
+  const ITEM_ART = { 5: "bill_5", 10: "bill_10", 20: "bill_20", 50: "bill_50", 100: "bill_100", 2: "toonie", 1: "loonie" };
+  const itemWords = (c, d) => pl(c, BILL_NAME[d]);
+  const sumOf = items => items.reduce((t, [d, c]) => t + d * c, 0);
+  const BILLS2_BANK = [
+    ["A customer pays Mimi with {a} and {b}.", "How many dollars is that in all?", "coin@customer"],
+    ["Mimi finds {a} and {b} in the tips jar.", "How many dollars did she find?", "coin@mimi"],
+    ["Mimi saves {a} and {b} for a new teapot.", "How many dollars has she saved?", "coin@mimi"]
+  ];
+  const BILLS3_BANK = [
+    ["A customer pays Mimi with {a}, {b} and {c}.", "How many dollars is that in all?", "coin@customer"],
+    ["Mimi finds {a}, {b} and {c} in a jar.", "How many dollars did she find?", "coin@mimi"],
+    ["Mimi saves {a}, {b} and {c} for a teapot.", "How many dollars has she saved?", "coin@mimi"]
+  ];
+  // items: [[value of one, how many], ...] in the order of the story (a, b, c)
+  function moneyType(bank, itemsOf, gen, hint, n) {
+    return {
+      n: n || 40, min: 8, gen, bank, scene: p => ({ act: "bills", coins: itemsOf(p).map(([d, c]) => [ITEM_ART[d], c]) }),
+      q: p => {
+        const items = itemsOf(p), ans = sumOf(items), v = {}, nums = [];
+        items.forEach(([d, c], i) => { v["abc"[i]] = itemWords(c, d); nums.push(c); });
+        return { v, nums, ans, eq: "in all = ?", op: "+", fact: `${items.map(([d, c]) => itemWords(c, d)).join(" and ")} make ${pl(ans, "dollar")}.`, hint, key: JSON.stringify(items) };
+      },
+      les: (p, Q) => { const items = itemsOf(p), parts = items.map(([d, c]) => d * c);
+        return ["Find the value of each kind of bill or coin. Then add them up.", `${parts.join(" plus ")} is ${Q.ans}.`, parts.join(" + ")]; }
+    };
+  }
+  const fitsHundred = items => sumOf(items) <= 100;
+  const BILLS_TYPES = {
+    BA: moneyType(BILLS2_BANK, p => [[20, p.x], [10, p.y]], tb => { const p = { x: tb.int(1, 4), y: tb.int(1, 4) }; return fitsHundred([[20, p.x], [10, p.y]]) ? p : null; }, "Count the twenties by 20. Then count on the tens by 10."),
+    BB: moneyType(BILLS2_BANK, p => [[10, p.x], [5, p.y]], tb => ({ x: tb.int(1, 5), y: tb.int(1, 5) }), "Count the tens by 10. Then count on the fives by 5."),
+    BC: moneyType(BILLS2_BANK, p => [[50, 1], [p.s, p.k]], tb => { const s = tb.pick([5, 10, 20]), k = tb.int(1, s === 20 ? 2 : 4); return { s, k }; }, "A fifty-dollar bill is 50 dollars. Count on from 50."),
+    BD: moneyType(BILLS3_BANK, p => [[p.b, 1], [2, p.t], [1, p.l]], tb => ({ b: tb.pick([5, 10, 20, 50]), t: tb.int(1, 4), l: tb.int(1, 4) }), "Add the bill. Then count the toonies by 2. Then add the loonies."),
+    BE: moneyType(BILLS3_BANK, p => [[20, p.x], [10, p.y], [5, p.z]], tb => { const p = { x: tb.int(1, 3), y: tb.int(1, 3), z: tb.int(1, 3) }; return 20 * p.x + 10 * p.y + 5 * p.z <= 100 ? p : null; }, "Count the twenties by 20, then the tens by 10, then the fives by 5."),
+    BF: moneyType(BILLS2_BANK, p => [[2, p.a], [1, p.b]], tb => ({ a: tb.int(3, 9), b: tb.int(2, 9) }), "A toonie is 2 dollars. Count the toonies by 2. Then count on the loonies by 1.")
+  };
+  const G3_BILLS1_KIND = g3Kind({ name: "Cafe: adding bills and coins to 100 dollars", group: "money_time", needs: ["cafe_money.1", "sums.6"], choice: false, lessonKind: "bills" }, BILLS_TYPES);
+
+  // how many bills (division), and the fewest bills or coins
+  const groupedParts = list => { const out = []; [...new Set(list)].forEach(d => { const c = list.filter(x => x === d).length; out.push(c > 1 ? `${c}×${d}` : String(d)); }); const row = out.join(" + "); return row.length > 15 ? out.join(" ") : row; };
+  const fewestBills = x => { const out = []; let left = x; [50, 20, 10, 5].forEach(d => { while (left >= d) { out.push(d); left -= d; } }); return out; };
+  const HOWMANY_BANKS = {
+    5: [["The till holds {x|dollar} in five-dollar bills.", "How many bills are in the till?", "coin:jar"], ["A customer pays {x|dollar} using only five-dollar bills.", "How many bills does the customer use?", "coin@customer"], ["Mimi saves {x|dollar} in five-dollar bills.", "How many bills has she saved?", "coin:jar"]],
+    10: [["The till holds {x|dollar} in ten-dollar bills.", "How many bills are in the till?", "coin:jar"], ["A customer pays {x|dollar} using only ten-dollar bills.", "How many bills does the customer use?", "coin@customer"], ["Mimi saves {x|dollar} in ten-dollar bills.", "How many bills has she saved?", "coin:jar"]],
+    20: [["The till holds {x|dollar} in twenty-dollar bills.", "How many bills are in the till?", "coin:jar"], ["A customer pays {x|dollar} using only twenty-dollar bills.", "How many bills does the customer use?", "coin@customer"], ["Mimi saves {x|dollar} in twenty-dollar bills.", "How many bills has she saved?", "coin:jar"]],
+    2: [["The jar holds {x|dollar} in toonies.", "How many toonies are in the jar?", "coin:jar"], ["A customer pays {x|dollar} using only toonies.", "How many toonies does the customer use?", "coin@customer"], ["Mimi saves {x|dollar} in toonies.", "How many toonies has she saved?", "coin:jar"]]
+  };
+  const howManyType = (d, ks) => ({
+    n: 40, min: 4, gen: tb => ({ k: tb.pick(ks) }), bank: HOWMANY_BANKS[d], scene: () => ({ act: "lineup", n: 1 }),
+    q: ({ k }) => ({ v: { x: k * d }, nums: [k * d], ans: k, eq: `${k * d} ÷ ${d} = ?`, op: "÷", fact: `${pl(k, d === 2 ? "toonie" : "bill")} of ${pl(d, "dollar")} make ${pl(k * d, "dollar")}.`,
+      hint: `Skip count by ${d} until you reach ${k * d}. How many jumps?`, key: `${d}:${k}` }),
+    les: ({ k }, Q) => [`Each ${d === 2 ? "toonie" : "bill"} is ${pl(d, "dollar")}. Skip count by ${d} until you reach ${k * d}.`, `You skip count ${pl(k, "time")}.`, `${k} × ${d} = ${k * d}`]
+  });
+  const FEWEST_BILLS_BANK = [
+    ["Mimi pays {x|dollar} with bills of 5, 10, 20 and 50 dollars. She uses as few as she can.", "How many bills does she use?", "coin@mimi"],
+    ["A customer owes {x|dollar}. He has many bills of 5, 10, 20 and 50 dollars. He uses the fewest he can.", "How many bills does he use?", "coin@customer"],
+    ["Mimi's friend pays {x|dollar} with bills of 5, 10, 20 and 50 dollars. She uses as few as she can.", "How many bills does she use?", "coin@friend"]
+  ];
+  const FEWEST_COINS_BANK = [
+    ["Mimi pays {x|dollar} using only toonies and loonies. She uses as few coins as she can.", "How many coins does she use?", "coin@mimi"],
+    ["A boy pays {x|dollar} for his tea with toonies and loonies. He uses the fewest coins he can.", "How many coins does he use?", "coin@customer"],
+    ["Mimi's friend pays {x|dollar} with toonies and loonies. She uses as few coins as she can.", "How many coins does she use?", "coin@friend"]
+  ];
+  const HOWMANY_TYPES = {
+    HA: howManyType(5, range(3, 20)), HB: howManyType(10, range(2, 10)), HC: howManyType(20, range(2, 5)), HD: howManyType(2, range(3, 15)),
+    HE: {
+      n: 40, min: 12, gen: tb => { const x = 5 * tb.int(3, 19); return [5, 10, 20, 50].includes(x) ? null : { x }; }, bank: FEWEST_BILLS_BANK, scene: () => ({ act: "lineup", n: 1 }),
+      q: ({ x }) => { const f = fewestBills(x); return { v: { x }, nums: [x, 5, 10, 20, 50], ans: f.length, eq: "bills = ?", op: "", fact: `${f.join(" plus ")} makes ${pl(x, "dollar")}. That is ${pl(f.length, "bill")}.`,
+        hint: "Use the biggest bill that fits first. Then the next biggest. Keep going until you reach the amount.", key: `${x}` }; },
+      les: ({ x }, Q) => ["Use the biggest bill that fits first. Then use the biggest that fits in what is left.", `${fewestBills(x).join(" plus ")} is ${x}. That is ${pl(Q.ans, "bill")}.`, groupedParts(fewestBills(x))]
+    },
+    HF: {
+      n: 40, min: 12, gen: tb => ({ x: tb.int(3, 19) }), bank: FEWEST_COINS_BANK, scene: () => ({ act: "lineup", n: 1 }),
+      q: ({ x }) => { const t = Math.floor(x / 2), l = x % 2; return { v: { x }, nums: [x], ans: t + l, eq: "coins = ?", op: "", fact: `${pl(t, "toonie")}${l ? " and 1 loonie" : ""} make ${pl(x, "dollar")}. That is ${pl(t + l, "coin")}.`,
+        hint: "A toonie is 2 dollars. Use as many toonies as you can. A loonie fills in what is left.", key: `${x}` }; },
+      les: ({ x }, Q) => ["A toonie is 2 dollars. Use as many toonies as you can. Use a loonie for what is left.", `${pl(Math.floor(x / 2), "toonie")}${x % 2 ? " and 1 loonie" : ""}. That is ${pl(Q.ans, "coin")}.`, `${Math.floor(x / 2)} × 2${x % 2 ? " + 1" : ""} = ${x}`]
+    }
+  };
+  const G3_BILLS2_KIND = g3Kind({ name: "Cafe: how many bills, how few bills", group: "money_time", needs: ["cafe_bills.1"], choice: false, lessonKind: "billcount" }, HOWMANY_TYPES);
+
+  // paying, change and swapping bills
+  const PAY_BANK = (g) => [
+    [`A cake costs {p|dollar}. The customer pays with a ${g} dollar bill.`, "How much change does Mimi give back?", "cake@customer"],
+    [`Lunch costs {p|dollar}. A man gives Mimi a ${g} dollar bill.`, "How many dollars of change does he get?", "sandwich@customer"],
+    [`A box of cupcakes costs {p|dollar}. A girl pays with a ${g} dollar bill.`, "How much change does she get?", "cupcake@customer"]
+  ];
+  const payType = g => ({
+    n: 40, min: 20, gen: tb => ({ p: g === 50 ? tb.int(11, 49) : tb.int(21, 99) }), bank: PAY_BANK(g), scene: ({ p }) => ({ act: "change", price: p, paid: g }),
+    q: ({ p }) => ({ v: { p }, nums: [p, g], ans: g - p, eq: `${g} ${MINUS} ${p} = ?`, op: "-", fact: `The change from ${g} dollars for ${pl(p, "dollar")} is ${pl(g - p, "dollar")}.`, hint: `Count up from ${p} to ${g}. First to the next ten, then the rest.`, key: `${g}-${p}` }),
+    les: ({ p }, Q) => [`Change is what is left. So it is ${g} minus ${p}. Count up from ${p} to ${g}.`, `From ${p} up to ${g} is ${pl(Q.ans, "dollar")}.`, `${p} + ${Q.ans} = ${g}`]
+  });
+  const TWOBILL_BANK = [
+    ["A box of treats costs {p|dollar}. Mimi's friend pays with {a} and {b}.", "How much change does the friend get?", "cupcake@friend"],
+    ["Tea and a roll cost {p|dollar}. A man pays with {a} and {b}.", "How much change does he get?", "tea@customer"],
+    ["A pie costs {p|dollar}. A lady gives Mimi {a} and {b}.", "How much change does she get?", "pie@customer"]
+  ];
+  const TWO_PAIRS = [[20, 10], [20, 5], [10, 5], [50, 20], [50, 10], [50, 5]];
+  const SWAP_BANK = [
+    ["A customer asks Mimi to change {big} into {small}.", "How many bills does Mimi give?", "coin@customer"],
+    ["Mimi trades {big} for {small}.", "How many bills does she get?", "coin@mimi"],
+    ["Mimi's friend swaps {big} for {small}.", "How many bills does her friend get?", "coin@friend"]
+  ];
+  const SWAPS = [[10, 5], [20, 5], [20, 10], [50, 5], [50, 10], [100, 5], [100, 10], [100, 20], [100, 50]];
+  const MORE_NEED_BANK = [
+    ["Mimi has {a|dollar}. A new teapot costs {c|dollar}.", "How many more dollars does she need?", "coin@mimi"],
+    ["Mimi has saved {a|dollar} for a cake stand. The stand costs {c|dollar}.", "How many more dollars does she need to save?", "coin@mimi"],
+    ["A girl has {a|dollar}. A box of cookies costs {c|dollar}.", "How many more dollars does she need?", "coin@customer"]
+  ];
+  const ONE_BILL_BANK = [
+    ["A box of cupcakes costs {p|dollar}. Mimi's friend wants to pay with one bill.", "Which is the smallest bill that is enough? Type its number.", "cupcake@friend"],
+    ["A cake costs {p|dollar}. A customer will pay with one bill.", "Which is the smallest bill that is enough? Type its number.", "cake@customer"],
+    ["Lunch costs {p|dollar}. A man pays with only one bill.", "Which is the smallest bill that is enough? Type its number.", "sandwich@customer"]
+  ];
+  const TWO_PRICES_BANK = [
+    ["A cake costs {a|dollar} and tea costs {b|dollar}.", "How many dollars do they cost in all?", "cake@customer"],
+    ["Mimi buys a pie for {a|dollar} and a roll for {b|dollar}.", "How many dollars does she spend?", "pie@mimi"],
+    ["A boy buys a muffin for {a|dollar} and cocoa for {b|dollar}.", "How many dollars does he pay in all?", "muffin@customer"]
+  ];
+  const SPEND_BANK = [
+    ["Mimi has {a|dollar}. She spends {b|dollar} on flowers.", "How many dollars does she have left?", "flower@mimi"],
+    ["A girl has {a|dollar}. She buys a muffin for {b|dollar}.", "How many dollars does she have left?", "muffin@customer"],
+    ["Mimi's till has {a|dollar}. She pays {b|dollar} for flour.", "How many dollars are left in the till?", "coin@mimi"]
+  ];
+  const smallestBill = p => [5, 10, 20, 50, 100].find(b => b >= p);
+  const PAY_TYPES = {
+    PC: payType(50), PH: payType(100),
+    PM: {
+      n: 40, min: 15, gen: tb => { const [x, y] = tb.pick(TWO_PAIRS), p = tb.int(Math.max(x, y) + 1, x + y - 1); return { x, y, p }; }, bank: TWOBILL_BANK,
+      scene: ({ x, y }) => ({ act: "bills", coins: [[ITEM_ART[x], 1], [ITEM_ART[y], 1]] }),
+      q: ({ x, y, p }) => ({ v: { p, a: "a " + BILL_NAME[x], b: "a " + BILL_NAME[y] }, nums: [p], ans: x + y - p, eq: `${x + y} ${MINUS} ${p} = ?`, op: "-",
+        fact: `${x} plus ${y} is ${x + y} dollars. The change from ${x + y} dollars for ${pl(p, "dollar")} is ${pl(x + y - p, "dollar")}.`, hint: `Add the two bills first. Then count up from ${p} to the total.`, key: `${x}:${y}:${p}` }),
+      les: ({ x, y, p }, Q) => ["First add the two bills. Then find the change from that total.", `${x} plus ${y} is ${x + y}. Count up from ${p} to ${x + y}.`, `${x} + ${y} = ${x + y}`]
+    },
+    PW: {
+      n: 40, min: 8, gen: tb => { const [D, d] = tb.pick(SWAPS); return { D, d }; }, bank: SWAP_BANK, scene: () => ({ act: "lineup", n: 1 }),
+      q: ({ D, d }) => ({ v: { big: "a " + BILL_NAME[D], small: BILL_NAME[d] + "s" }, nums: [], ans: D / d, eq: `${D} ÷ ${d} = ?`, op: "÷",
+        fact: `${pl(D / d, BILL_NAME[d])} make the same as a ${BILL_NAME[D]}. That is ${pl(D, "dollar")}.`, hint: `How many ${d}s fit in ${D}? Skip count by ${d} to ${D}.`, key: `${D}:${d}` }),
+      les: ({ D, d }, Q) => [`The two ways make the same amount, ${pl(D, "dollar")}. Skip count by ${d} until you reach ${D}.`, `You skip count ${pl(D / d, "time")}.`, `${D / d} × ${d} = ${D}`]
+    },
+    PN: {
+      n: 40, min: 20, gen: tb => { const a = tb.int(11, 89), c = a + tb.int(5, Math.min(40, 100 - a)); return c > 100 ? null : { a, c }; }, bank: MORE_NEED_BANK, scene: () => ({ act: "lineup", n: 1 }),
+      q: ({ a, c }) => ({ v: { a, c }, nums: [a, c], ans: c - a, eq: `${c} ${MINUS} ${a} = ?`, op: "-", fact: `${c} minus ${a} is ${c - a}. She needs ${pl(c - a, "more dollar")}.`,
+        hint: `Count up from ${a} to ${c}.`, key: `${a}:${c}` }),
+      les: ({ a, c }, Q) => [`We want to know how much more. So it is ${c} minus ${a}. Count up from ${a} to ${c}.`, `From ${a} up to ${c} is ${pl(Q.ans, "dollar")}.`, `${a} + ${Q.ans} = ${c}`]
+    },
+    PX: {
+      n: 40, min: 20, gen: tb => ({ p: tb.int(3, 99) }), bank: ONE_BILL_BANK, scene: ({ p }) => ({ act: "lineup", n: 1 }),
+      q: ({ p }) => ({ v: { p }, nums: [p], ans: smallestBill(p), eq: "bill = ?", op: "", fact: `The ${smallestBill(p)} dollar bill is enough for ${pl(p, "dollar")}.${smallestBill(p) === 5 ? "" : " The bill before it is too small."}`,
+        hint: "The bills are 5, 10, 20, 50 and 100 dollars. Find the smallest one that is at least as much as the price.", key: `${p}` }),
+      les: ({ p }, Q) => ["The bills are 5, 10, 20, 50 and 100 dollars. Look for the smallest one that is enough.", `The ${Q.ans} dollar bill is the smallest one that is enough for ${pl(p, "dollar")}.`, `${p} fits in ${Q.ans}`]
+    },
+    PS: {
+      n: 40, min: 20, gen: tb => { const a = tb.int(10, 60), b = tb.int(10, 60); return a + b > 100 ? null : { a, b }; }, bank: TWO_PRICES_BANK, scene: () => ({ act: "lineup", n: 2 }),
+      q: ({ a, b }) => ({ v: { a, b }, nums: [a, b], ans: a + b, eq: `${a} + ${b} = ?`, op: "+", fact: `${a} plus ${b} is ${a + b} dollars.`, hint: "Add the tens first. Then add the ones.", key: `${a}:${b}` }),
+      les: ({ a, b }, Q) => ["Add the two prices. Add the tens first, then the ones.", `${a} plus ${b} is ${Q.ans}.`, `${a} + ${b} = ${Q.ans}`]
+    },
+    PL: {
+      n: 40, min: 20, gen: tb => { const a = tb.int(30, 100), b = tb.int(10, a - 5); return { a, b }; }, bank: SPEND_BANK, scene: () => ({ act: "lineup", n: 1 }),
+      q: ({ a, b }) => ({ v: { a, b }, nums: [a, b], ans: a - b, eq: `${a} ${MINUS} ${b} = ?`, op: "-", fact: `${a} minus ${b} is ${a - b} dollars.`, hint: `Count up from ${b} to ${a}. Or take away the tens first.`, key: `${a}:${b}` }),
+      les: ({ a, b }, Q) => ["She spends some, so we take it away.", `${a} minus ${b} is ${Q.ans}.`, `${a} ${MINUS} ${b} = ${Q.ans}`]
+    }
+  };
+  const G3_BILLS3_KIND = g3Kind({ name: "Cafe: paying, change and swapping bills", group: "money_time", needs: ["cafe_bills.1", "cafe_money.2"], choice: false, lessonKind: "paying" }, PAY_TYPES);
+
   const KINDS = {
     "cafe_tens.1": TENS_KIND,
     "cafe_times.1": timesKind("Cafe: equal groups of 2, 5 and 10", [2, 5, 10], 2, ["sums.3"]),
@@ -1142,7 +1758,17 @@
     "cafe_count.1": tapCountKind("Cafe: counting by tapping, up to 20", 3, 20, 1, []),
     "cafe_count.2": tapCountKind("Cafe: counting by tapping, up to 50", 21, 50, 2, ["cafe_count.1"]),
     "cafe_pattern.1": NUMPAT_KIND,
-    "cafe_time.2": TIME2_KIND
+    "cafe_time.2": TIME2_KIND,
+    "cafe_compare.1": G3_COMPARE_KIND,
+    "cafe_order.1": G3_ORDER_KIND,
+    "cafe_order.2": G3_STEP_KIND,
+    "cafe_evenodd.1": G3_EVENODD_KIND,
+    "cafe_estimate.1": G3_ROUND_KIND,
+    "cafe_estimate.2": G3_ESTIMATE2_KIND,
+    "cafe_estimate.3": G3_ESTIMATE3_KIND,
+    "cafe_bills.1": G3_BILLS1_KIND,
+    "cafe_bills.2": G3_BILLS2_KIND,
+    "cafe_bills.3": G3_BILLS3_KIND
   };
   Object.keys(KINDS).forEach(id => Object.keys(KINDS[id].bank).forEach(t => {
     if (!KINDS[id].sceneRows || !KINDS[id].sceneRows[t] || KINDS[id].sceneRows[t].length !== KINDS[id].bank[t].length) throw new Error("KS: " + id + " needs one scene entry per " + t + " story");
@@ -1201,6 +1827,8 @@
   const OFF = ["kinder.count20"];
   // Optional skills (Marie's counting by tapping): in the engine's skill map, but the game marks them ready only when a grown-up asks or
   // the record shows counting slips (game/counting_need.js). KS.fits is still true for her theme; the game checks KS.optional too.
+  // A typed estimate is right anywhere in Q.range (round of 23 Oct 2026); every other answer must equal Q.ans. The game asks this one question.
+  const isRight = (Q, given) => given === Q.ans || (Array.isArray(Q.range) && Number.isFinite(given) && given >= Q.range[0] && given <= Q.range[1]);
   const optional = id => !!(KINDS[id] && KINDS[id].optional);
   const extraSkills = () => Object.keys(KINDS).filter(id => !OFF.includes(id)).map(id => ({ id, name: KINDS[id].name, grade: KINDS[id].grade, group: KINDS[id].group,
     needs: KINDS[id].needs.slice(), play: { src: "story" }, ready: true }));
@@ -1252,7 +1880,7 @@
     return pieceCache;
   }
 
-  const KS = { optional, PIC, TRAY_ART, SKILLS, THEMES, SCALE, WORDS, make, build, teach, sentences, pieces, templates: theme => TEMPLATES[theme].slice(), usable, allPairs, lineWindow,
+  const KS = { isRight, optional, PIC, TRAY_ART, SKILLS, THEMES, SCALE, WORDS, make, build, teach, sentences, pieces, templates: theme => TEMPLATES[theme].slice(), usable, allPairs, lineWindow,
     OLD_SKILLS, KIND_IDS: Object.keys(KINDS), SCENE_ACTS, SCENE_NOUNS, SCENE_WHO, fits, kindTheme, extraSkills, kindAll, buildKind, kindBank: id => KINDS[id].bank, eachKindQuestion };
   if (typeof module !== "undefined" && module.exports) module.exports = KS; else root.KS = KS;
 })(typeof window !== "undefined" ? window : globalThis);
