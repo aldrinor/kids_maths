@@ -157,5 +157,20 @@ ok("no circular needs", !cyc);
   ok("speed practice takes at most 2 sets in 10", speedSets <= Math.ceil(total * 0.2) + 1 && speedSets >= 1, [speedSets, total]);
   ok("Kennedy never gets speed sets", ok_k);
 }
+
+// 11. A stuck skill with nothing underneath (22 Oct 2026): the game asks for a second picture instead of parking it with no help.
+//     The old app does not ask, so for it nothing changes.
+{ const stuckState = () => { const st = E.createState("marie"); st.place.done = true; st.day = E.dayKey(Date.UTC(2026, 9, 22, 12)); const s = st.skills["sums.1"] = { lvl: 2, streak: 0, n: 12, right: 2, recent: [0,0,1,0,0,0,1,0,0,0], due: 0, gap: 0, recheck: null, stuckN: 12, stuckRight: 2, repairs: 0, parkedUntil: 0, first2: [0, 0] }; return st; };
+  const now = Date.UTC(2026, 9, 22, 12);
+  ok("sums.1 has nothing underneath in this map", M.map["sums.1"].needs.length === 0 || M.map["sums.1"].needs.every(n => !M.map[n].ready), M.map["sums.1"].needs);
+  const a = stuckState(), alt = E.nextSet(a, M, now, seeded(1), { altRepair: true });
+  ok("opts.altRepair: a stuck skill with nothing underneath gets a repair set on itself", alt.kind === "repair" && alt.alt === true && alt.target === "sums.1" && alt.items.filter(x => x === "sums.1").length >= 1, alt);
+  ok("the repair is counted so it cannot repeat for ever", a.skills["sums.1"].repairs === 1 && a.skills["sums.1"].stuckN === 0);
+  const b = stuckState(), plain = E.nextSet(b, M, now, seeded(1));
+  ok("without the option the old behaviour stays (no alt set)", !plain.alt, plain.kind);
+  const c = stuckState(); c.skills["sums.1"].repairs = 2;
+  const parked = E.nextSet(c, M, now, seeded(1), { altRepair: true });
+  ok("after 2 second-picture rounds the skill is parked as before", c.skills["sums.1"].parkedUntil > now && !parked.alt, c.skills["sums.1"]);
+}
 console.log(`RESULT ${pass}/${pass + fail} passed`);
 process.exit(fail ? 1 : 0);

@@ -74,7 +74,7 @@ with sync_playwright() as p:
         # ---- hint: spoken
         pg.click("#qbody .bulb"); pg.wait_for_timeout(200)
         sizes_and_words(pg, "hint open", tag)
-        ok(f"{tag} hint is spoken", pg.evaluate("()=>__sayLog.includes(__game.Q.hint)"))
+        ok(f"{tag} hint is spoken (step 1, the nudge)", pg.evaluate("()=>__sayLog.includes(HintLadder.nudge(__game.Q))"))
         pg.click("#qbody .bulb"); pg.wait_for_timeout(100)
         # ---- one tap on a wrong answer: it speaks the number and goes in (no Check)
         wrong = pg.evaluate("()=>__game.Q.opts.find(o => o !== __game.Q.ans)")
@@ -85,9 +85,11 @@ with sync_playwright() as p:
         ok(f"{tag} a tap sends the answer", pg.evaluate("()=>__game.QS.tries === 1"))
         pg.wait_for_function("()=>__game.QS.board", timeout=8000)
         sizes_and_words(pg, "lesson", tag)
-        pg.wait_for_function("()=>!__game.QS.teaching", timeout=60000)
+        pg.wait_for_function("()=>!document.querySelector('#boardbtns .again').hidden", timeout=60000)      # after a miss the lesson ends and the child taps for a NEW question
         sizes_and_words(pg, "lesson finished", tag)
-        pg.evaluate("()=>{document.querySelector('#boardbtns .bx').click()}"); pg.wait_for_timeout(200)
+        pg.evaluate("()=>{document.querySelector('#boardbtns .bx').click()}")
+        pg.wait_for_function("()=>__game.QS.afterMiss===true", timeout=8000)
+        wrong = pg.evaluate("()=>__game.Q.opts.find(o => o !== __game.Q.ans)")
         # ---- second wrong: kind words, then a picture "see the answer" and it is spoken what to tap
         pg.evaluate("()=>{__sayLog.length = 0}")
         pg.click(f'#qbody .opt[data-v="{wrong}"]')

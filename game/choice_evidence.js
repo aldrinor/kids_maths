@@ -27,13 +27,18 @@
     const s = state.skills[r.skill], b = snap.snap;
     if (!s || !b || b.lvl >= KNOWS || s.lvl < KNOWS) return false;     // no new promotion happened
     if (ev[r.skill] >= r.need + EXTRA) return false;                    // enough evidence
-    /* undo only the promotion; the counts of this answer stay */
-    s.lvl = b.lvl; s.learntAt = b.learntAt; s.gap = b.gap; s.due = b.due; s.repairs = b.repairs;
-    s.streak = b.streak + 1; s.stuckN = b.stuckN + 1; s.stuckRight = b.stuckRight + (r.clean ? 1 : 0);
-    if (b.learntAt === undefined) delete s.learntAt;
+    undo(b, s, r.clean);
     return true;
   }
 
-  const api = { EXTRA, before, after };
+  /* undo only the promotion that this answer caused (b = the skill as it was before, s = the skill now); the counts of this answer stay.
+     mastery_bkt.js uses the same undo when the probability estimate says "not yet". */
+  function undo(b, s, clean) {
+    s.lvl = b.lvl; s.learntAt = b.learntAt; s.gap = b.gap; s.due = b.due; s.repairs = b.repairs;
+    s.streak = b.streak + 1; s.stuckN = b.stuckN + 1; s.stuckRight = b.stuckRight + (clean ? 1 : 0);
+    if (b.learntAt === undefined) delete s.learntAt;
+  }
+
+  const api = { EXTRA, FULL, before, after, undo };
   if (typeof module === "object" && module.exports) module.exports = api; else root.ChoiceEvidence = api;
 })(typeof window !== "undefined" ? window : globalThis);

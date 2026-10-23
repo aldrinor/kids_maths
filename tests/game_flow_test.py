@@ -31,6 +31,18 @@ def tap_next(pg):
     pg.click("#tile")
 
 
+def new_question_after_miss(pg):
+    """22 Oct 2026: after a first miss the lesson ends on the fact and the answer is locked; the child taps the next arrow and
+    gets a NEW question of the same skill (new numbers). Returns (old key, new key)."""
+    pg.wait_for_selector("#boardbtns .again", state="attached", timeout=20000)
+    pg.wait_for_function("()=>!document.querySelector('#boardbtns .again').hidden", timeout=90000)
+    old = pg.evaluate("()=>({k:__game.Q.key, s:__game.Q.skill, teaching:__game.QS.teaching})")
+    pg.click("#boardbtns .bnext")
+    pg.wait_for_function("(k)=>__game.QS && __game.QS.afterMiss===true && __game.QS.phase==='ask' && __game.Q.key!==k && !document.querySelector('#board')", arg=old["k"], timeout=15000)
+    new = pg.evaluate("()=>({k:__game.Q.key, s:__game.Q.skill, tries:__game.QS.tries})")
+    return old, new
+
+
 def wait_ask(pg, answered):
     pg.wait_for_function(f"()=>__game.QS && __game.QS.phase==='ask' && __game.P.game.answered==={answered} && !__game.QS.teaching", timeout=90000)
 
@@ -69,7 +81,9 @@ with sync_playwright() as p:
         answer(pg, False)
         pg.wait_for_selector("#board", timeout=8000)
         ok(f"{who} wrong: lesson shown", pg.locator("#board").count() == 1)
-        pg.wait_for_function("()=>!__game.QS.teaching && !document.querySelector('#boardbtns .again').hidden", timeout=90000)
+        was, now_q = new_question_after_miss(pg)
+        ok(f"{who} locked while the lesson is up", was["teaching"] is True)
+        ok(f"{who} after a miss: a NEW question of the same skill", now_q["k"] != was["k"] and now_q["s"] == was["s"] and now_q["tries"] == 1, [was, now_q])
         answer(pg, True)
         pg.wait_for_function("()=>__game.P.game.answered===2", timeout=8000)
         ok(f"{who} right after lesson: +1 coin", pg.evaluate("()=>__game.P.coins") == c1 + 1)
@@ -79,7 +93,8 @@ with sync_playwright() as p:
         c2 = pg.evaluate("()=>__game.P.coins")
         pg.evaluate("()=>{__game.QS.t0=Date.now()-6000}")        # a thought-about answer, not a rushed tap
         answer(pg, False)
-        pg.wait_for_function("()=>!__game.QS.teaching && !document.querySelector('#boardbtns .again').hidden", timeout=90000)
+        new_question_after_miss(pg)
+        pg.evaluate("()=>{__game.QS.t0=Date.now()-6000}")
         answer(pg, False)
         pg.wait_for_function("()=>__game.QS.phase==='final'", timeout=8000)
         ok(f"{who} wrong twice: See The Answer", "See The Answer" in (pg.inner_text("#tile") + (pg.get_attribute("#tile", "aria-label") or "")))
@@ -102,6 +117,13 @@ with sync_playwright() as p:
         pg.wait_for_function("()=>!document.querySelector('.rewardhost') && __game.QS && __game.QS.phase==='ask'", timeout=15000)
         ok(f"{who} counter back to 0 after the reward", pg.evaluate("()=>__game.P.game.sinceReward") == 0)
         ok(f"{who} engine recorded answers", pg.evaluate("()=>{const d=__game.P.days, k=Object.keys(d)[0]; return d[k].n}") == 5)
+        # the answer log: one line per answer given (7 here: right, miss + right, miss + miss, right, right), kept apart from the save
+        lg = pg.evaluate("()=>__game.log.all()")
+        ok(f"{who} answer log has one line per answer", len(lg) == 7, len(lg))
+        ok(f"{who} log lines carry the parts", all(e["s"] and e["q"] and e["t"] and "g" in e and "a" in e and "ms" in e and "sc" in e and e["r"] >= 1 for e in lg), lg[:2])
+        ok(f"{who} log: right / wrong marks", [e["ok"] for e in lg] == [1, 0, 1, 0, 0, 1, 1], [e["ok"] for e in lg])
+        ok(f"{who} log: a miss has a kind, the new question after a miss is flagged", lg[1]["c"] != "" and "fresh" in lg[2]["f"] and "fresh" not in lg[0]["f"], [lg[1]["c"], lg[2]["f"]])
+        ok(f"{who} log is stored under its own key, not in the save", pg.evaluate("(w)=>{const s=JSON.parse(localStorage.getItem('kidsMaths.game.'+w)); return !('e' in s) && !!localStorage.getItem('kidsMaths.game.log.'+w)}", who))
         # save survives a reload; the old app's key is not touched
         saved = pg.evaluate("()=>JSON.parse(localStorage.getItem('kidsMaths.game.%s')).game.answered" % who)
         ok(f"{who} saved", saved == 5, saved)

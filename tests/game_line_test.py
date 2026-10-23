@@ -168,13 +168,20 @@ with sync_playwright() as p:
 
     # See The Answer on the ruler: hundreds, tens, ones from 47 to 85
     level(pg, "sums.7", False); ask(pg, "sums.7", 47, 38, "+")
-    for _ in range(2):
+    for i in range(2):
         pg.evaluate("()=>{__game.QS.typed='1'; document.getElementById('tile').click()}")
-        pg.wait_for_function("()=>!__game.QS.teaching && (__game.QS.phase==='final' || !document.querySelector('#boardbtns .again').hidden)", timeout=90000)
+        if i == 0:                                      # 22 Oct: the first miss brings the lesson, then a NEW question; the second miss ends in See The Answer
+            pg.wait_for_selector("#boardbtns .again", state="attached", timeout=20000)
+            pg.wait_for_function("()=>!document.querySelector('#boardbtns .again').hidden", timeout=90000)
+            pg.click("#boardbtns .bnext")
+            pg.wait_for_function("()=>__game.QS.afterMiss===true && !document.querySelector('#board')", timeout=15000)
+        else:
+            pg.wait_for_function("()=>__game.QS.phase==='final'", timeout=90000)
     pg.wait_for_function("()=>__game.QS.phase==='final' && !document.getElementById('tile').classList.contains('dim')", timeout=10000)
+    want = pg.evaluate("()=>[__game.Q.result, Math.floor(__game.Q.result/10)*10]")          # the NEW question after the first miss has its own numbers
     pg.click("#tile")
-    pg.wait_for_function("()=>__game.QS.line===85 && !__game.QS.walking", timeout=30000)
-    ok("See The Answer ends on 85 with the 80-90 ruler", pg.evaluate("()=>[__game.QS.line,__game.QS.lo]") == [85, 80], pg.evaluate("()=>[__game.QS.line,__game.QS.lo]"))
+    pg.wait_for_function("(w)=>__game.QS.line===w && !__game.QS.walking", arg=want[0], timeout=30000)
+    ok("See The Answer ends on the answer with its ten-ruler", pg.evaluate("()=>[__game.QS.line,__game.QS.lo]") == want, [pg.evaluate("()=>[__game.QS.line,__game.QS.lo]"), want])
 
     # 8 castle: the knight picture
     pg.evaluate("()=>{__game.doors()}"); pg.wait_for_timeout(300)

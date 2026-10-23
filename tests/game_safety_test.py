@@ -97,6 +97,13 @@ def lesson_done(pg):
     pg.wait_for_function("()=>!__game.QS.teaching && !document.querySelector('#boardbtns .again').hidden", timeout=90000)
 
 
+def miss_lesson_done(pg):
+    pg.wait_for_selector("#boardbtns .again", state="attached", timeout=20000)
+    pg.wait_for_function("()=>!document.querySelector('#boardbtns .again').hidden", timeout=90000)
+    pg.click("#boardbtns .bnext")                      # 22 Oct: after a miss the lesson ends and the child taps for a NEW question of the same skill
+    pg.wait_for_function("()=>__game.QS.afterMiss===true && !document.querySelector('#board')", timeout=15000)
+
+
 def wait_ask(pg, n=None):
     cond = "()=>__game.QS && __game.QS.phase==='ask' && !__game.QS.teaching" + (f" && __game.P.game.answered==={n}" if n is not None else "")
     pg.wait_for_function(cond, timeout=90000)
@@ -163,7 +170,7 @@ with sync_playwright() as p:
         c0 = pg.evaluate("()=>__game.P.coins")
         answer(pg, False)
         first = pg.inner_text("#msg")
-        lesson_done(pg)
+        miss_lesson_done(pg)
         answer(pg, False)
         pg.wait_for_function("()=>__game.QS.phase==='final'", timeout=8000)
         msg, icon = pg.inner_text("#msg"), pg.inner_text("#msg .mi")

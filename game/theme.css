@@ -390,3 +390,12 @@ body[data-theme="castle"] #tile { border: 3px solid var(--accent); box-shadow: 0
 .grownote p { margin: 6px 0; color: #3d3550; }
 .panel .go.small { min-width: 0; min-height: 48px; font-size: 17px; padding: 0 18px; margin-top: 8px; }
 .story:focus, .over:focus, #boardbtns:focus, .bubble:focus, .rewardhost:focus, .pw-host:focus { outline: none; }
+
+/* three-step hints (hint_ladder.js): the picture and the "more help" button inside the hint bubble; the second picture that replaces the number line */
+.bubble .hintpic { display: block; margin: 8px auto 0; width: 100%; max-height: 92px; }
+.bubble .hmore { display: block; margin: 10px auto 0; min-height: 48px; min-width: 48px; padding: 0 18px; border-radius: 999px; border: 3px solid var(--primary-dark); background: var(--paper); color: var(--primary-dark); font-weight: 800; font-size: 17px; }
+.bubble .hmore svg { width: 30px; height: 30px; display: block; margin: 0 auto; }
+.altpic { display: grid; place-items: center; width: 100%; min-height: 80px; }
+.altpic svg { width: min(360px, 100%); max-height: 110px; }
+#qbody .hoprow.solo { display: flex; justify-content: center; width: 100%; }
+#qbody .hoprow.solo #tile { flex: 0 1 260px; }

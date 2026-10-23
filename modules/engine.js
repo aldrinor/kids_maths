@@ -155,7 +155,7 @@
   function stuck(s) { return s.stuckN >= 10 && s.recent.slice(-10).reduce((a, b) => a + b, 0) < 3; }
   function acc(s) { return s.recent.length ? s.recent.reduce((a, b) => a + b, 0) / s.recent.length : 1; }
 
-  function nextSet(st, M, now, rng) {
+  function nextSet(st, M, now, rng, opts) {
     rng = rng || Math.random;
     const coreOpen = () => M.order.some(id => isCore(st, id) && M.map[id].ready && (st.skills[id]?.lvl || 0) < LV.KNOWS && !(st.skills[id]?.parkedUntil > now));
     if (st.paused) return { kind: "paused", items: [] };
@@ -191,6 +191,9 @@
       s.repairs++; s.stuckN = 0; s.stuckRight = 0;
       const under = M.map[id].needs.filter(usable).sort((a, b) => (st.skills[a]?.lvl || 0) - (st.skills[b]?.lvl || 0))[0];
       if (under) { sk(st, under).due = now; return make("repair", under, 5); }
+      // Nothing underneath to teach. When the caller asks for it (opts.altRepair, used by game/index.html), the same skill comes back
+      // with a second picture (alt:true) so a stuck child still gets help before the skill rests. The old app does not ask, so it is unchanged.
+      if (opts && opts.altRepair) { const same = make("repair", id, 5); same.alt = true; return same; }
     }
 
     // 4. Parent focus skills, then weak skills, then a skill already being learnt.

@@ -1,0 +1,19 @@
+/* The "For grown-ups" card: plain, high contrast, big targets. Uses the colours of the theme. */
+.over.parentarea { overflow: auto; place-items: start center; background: rgba(30, 30, 40, .6); }
+.panel.pa { text-align: left; margin: 12px 0; }
+.panel.pa.wide { width: min(760px, 100%); }
+.panel.pa h1 { text-align: center; }
+.panel.pa h2 { font-size: clamp(19px, 2.4vw, 24px); margin: 18px 0 4px; color: var(--ink); }
+.panel.pa label { display: block; margin-top: 10px; font-size: 18px; font-weight: 700; color: var(--ink); }
+.panel.pa input[type="text"] { width: 100%; box-sizing: border-box; min-height: 56px; font-size: 26px; padding: 6px 14px; border: 3px solid var(--primary-dark); border-radius: 14px; margin-top: 6px; }
+.panel.pa .pa-row, .panel.pa .pa-actions { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; margin-top: 8px; }
+.panel.pa .go.small { margin-top: 0; min-height: 52px; min-width: 0; font-size: 18px; }
+.panel.pa .go.alt { background: var(--paper); color: var(--primary-dark); }
+.panel.pa .filebtn { display: inline-flex; align-items: center; margin: 0; cursor: pointer; }
+.panel.pa .pa-file { position: absolute; width: 1px; height: 1px; opacity: 0; overflow: hidden; }
+.panel.pa .pa-file:focus-visible + .filebtn { outline: 4px solid var(--primary-dark); outline-offset: 3px; }
+.panel.pa .pa-body { max-height: 48vh; overflow: auto; border: 2px solid var(--paper-edge); border-radius: 14px; padding: 4px 16px 12px; margin-top: 12px; background: #fff; }
+.panel.pa .pa-body p { text-align: left; margin: 6px 0; font-size: 17px; }
+.panel.pa .pa-wrong { color: #8a2c2c; font-weight: 700; }
+.panel.pa #pa-status { min-height: 1.5em; text-align: center; font-weight: 700; }
+.over.start .panel .linkbtn { margin: 18px auto 0; display: block; background: transparent; border: 0; color: #5d5470; font-size: 17px; text-decoration: underline; min-height: 48px; padding: 6px 16px; cursor: pointer; }
