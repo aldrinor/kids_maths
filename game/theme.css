@@ -344,7 +344,10 @@ body[data-theme="castle"] #tile { border: 3px solid var(--accent); box-shadow: 0
   #pad button { min-height: 38px; } #tile { min-height: 42px; }
 }
 /* phones: during a lesson the word story steps aside, so the board is big enough to draw on (the board writes it as a sum); the answer box stays */
-@media (max-height: 700px) and (orientation: portrait), (max-width: 640px) and (orientation: portrait) { #app.lesson .story { display: none; } }
+/* every screen size now (iPad too): the board needs the room, the lesson says and writes the sum itself */
+#app.lesson .story { display: none; }
+/* iPad held sideways (short and wide): the picture strip steps aside during a lesson too, so the board gets about twice the height */
+@media (max-height: 860px) and (orientation: landscape) { #app.lesson #scene { display: none !important; } }
 /* short wide screens: give the castle shield enough height for the word Check above its point */
 
 /* Watch again and Next: always the same width */

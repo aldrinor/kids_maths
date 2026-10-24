@@ -22,7 +22,7 @@
        little game and before the play world (at answer 25 the rest card is that card); the keepsake of a game is saved with the counters, shown on a card, on the world
        shelf and in the small room beside the coins; a break button; an end-of-day card. Every card waits for a tap.
      - Own save per child (kidsMaths.game.<child>); the old app's save is read once and never written. -->
-<link rel="stylesheet" href="theme.css?v=4">
+<link rel="stylesheet" href="theme.css?v=5">
 <link rel="stylesheet" href="kid_mode.css?v=3">
 <link rel="stylesheet" href="parent_area.css?v=2">
 <link rel="stylesheet" href="new_skills.css?v=2">
@@ -470,7 +470,8 @@ function renderBody() {
   const kid = KidMode.on(), tapQ = kid && Q.kind === "choice", altOn = altShown(), solo = tapQ || altOn || !!Q.noLine || (kid && watch);   // Kennedy on a tap question: picture buttons only, no Back / Forward / Restart
   const w = (word, kidWord = "") => kid ? kidWord : word;       // words on buttons are for readers; Kennedy gets arrows and numbers
   const hopBtns = watch ? `<button class="watch" aria-label="Watch how it works"><span class="play">${ICON.play}</span>${w("Watch how it works")}</button>`
-    : tapQ || altOn || Q.noLine ? "" : `<button data-h="-1"${off} aria-label="Hop back${hz}"><i class="ar">◀ </i>${w("Back")}${sz("−")}</button><button data-h="1" class="fwd"${off} aria-label="Hop forward${hz}">${w("Forward")}${sz("+")}<i class="ar"> ▶</i></button><button data-h="0"${off} aria-label="Start again"><i class="ar">↺ </i>${w("Restart")}</button>`;
+    : altOn || Q.noLine ? "" : tapQ ? `<button data-h="-1"${off} aria-label="Hop back${hz}"><i class="ar">◀</i></button><button data-h="1" class="fwd"${off} aria-label="Hop forward${hz}"><i class="ar">▶</i></button>`   // Kennedy on a tap question: two big arrow buttons so he can still add and take away on the line, no words
+    : `<button data-h="-1"${off} aria-label="Hop back${hz}"><i class="ar">◀ </i>${w("Back")}${sz("−")}</button><button data-h="1" class="fwd"${off} aria-label="Hop forward${hz}">${w("Forward")}${sz("+")}<i class="ar"> ▶</i></button><button data-h="0"${off} aria-label="Start again"><i class="ar">↺ </i>${w("Restart")}</button>`;
   b.innerHTML = `<div class="qtop">${top}</div><div class="room">${Q.tray ? trayHtml() : ""}</div>
     <div class="qbottom"><div class="nlbox${Q.noLine ? " noline" : ""}"${Q.noLine ? "" : ` aria-label="Number line"`}></div>
     <div class="hoprow${solo ? " solo" : ""}">${hopBtns}</div></div>`;
@@ -708,7 +709,7 @@ function placeBoard() {
 }
 function closeBoard() {
   const bd = $("#board"); if (bd) bd.remove(); const bb = $("#boardbtns"); if (bb) bb.remove();
-  $("#app").classList.remove("lesson");
+  $("#app").classList.remove("lesson"); sizeDraw();
   if (QS) { QS.board = false; QS.teachRun = (QS.teachRun || 0) + 1; QS.teaching = false; if (QS.phase === "right") $("#tile").hidden = false; }
   if (bb) FocusGuard.leave(bb, "#tile");                     // after the screen is back, so focus can return to the button it came from
 }
@@ -728,7 +729,7 @@ async function teach() {
     bb.querySelector(".bx").onclick = () => { if (QS && QS.missedFirst) return swapFresh(); stopVoice(); closeBoard(); $("#app").classList.remove("locked"); if (QS && QS.phase === "right") renderBody(); };   // after a miss, closing the lesson brings the new question
   }
   const bb = $("#boardbtns");
-  QS.board = true; $("#app").classList.add("lesson"); placeBoard();
+  QS.board = true; $("#app").classList.add("lesson"); sizeDraw(); placeBoard();   // the page may have changed size (the picture strip steps aside on a tablet held sideways)
   const run = QS.teachRun = (QS.teachRun || 0) + 1, me = QS;
   const live = () => QS === me && me.teachRun === run;
   const nextOk = QS.phase === "right" || QS.phase === "shown";          // close and Next are there from the start, so she is never stuck in a lesson
@@ -741,7 +742,7 @@ async function teach() {
   const cv = bd.querySelector("canvas"), r = bd.getBoundingClientRect(), dpr = window.devicePixelRatio || 1;
   cv.width = Math.round(r.width * dpr); cv.height = Math.round(r.height * dpr);
   const g = cv.getContext("2d"); g.setTransform(dpr, 0, 0, dpr, 0, 0);
-  const W = r.width, H = r.height, plan = KS.teach(Q, QS.phase === "right" || !!QS.missedFirst), BTN = 58;     // after a miss the lesson ends on the fact, not on "Type 7": the new question comes next
+  const W = r.width, H = r.height, plan = KS.teach(Q, QS.phase === "right" || !!QS.missedFirst), BTN = 66;     // after a miss the lesson ends on the fact, not on "Type 7": the new question comes next
   if (QS.missedFirst && QS.missCls) plan.steps.unshift({ say: MissStudy.leadSentence(QS.missCls), draw: [] });      // first, the help that matches this kind of mistake
   const draws = plan.steps.flatMap(s => s.draw || []);
   const split = draws.some(d => d.split), maxRow = Math.max(0, ...draws.filter(d => d.tokens).map(d => d.row));

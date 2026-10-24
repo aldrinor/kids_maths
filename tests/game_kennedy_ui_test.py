@@ -68,7 +68,7 @@ with sync_playwright() as p:
         ok(f"{tag} first question is a tap question", q["kind"] == "choice", q)
         sizes_and_words(pg, "choice question", tag)
         ok(f"{tag} no a) b) c) labels", pg.evaluate("()=>document.querySelectorAll('#qbody .opt small').length === 0 && !/[abc]\\)/.test(document.querySelector('#qbody .bars').innerText)"))
-        ok(f"{tag} no Back / Forward / Restart", pg.evaluate("()=>[...document.querySelectorAll('.hoprow button[data-h]')].every(b => b.getBoundingClientRect().width === 0)"))
+        ok(f"{tag} only the two arrow buttons, no words, no Restart", pg.evaluate("()=>{const b=[...document.querySelectorAll('.hoprow button[data-h]')].filter(x=>x.getBoundingClientRect().width>0);return b.length===2&&b.every(x=>!/[A-Za-z]/.test(x.textContent))}"))
         ok(f"{tag} one pencil only", pg.evaluate("()=>document.querySelectorAll('#tools .pencil').length === 1"))
         ok(f"{tag} no Check button before an answer on a tap question", pg.evaluate("()=>document.getElementById('tile').getBoundingClientRect().width === 0"))
         # ---- hint: spoken
