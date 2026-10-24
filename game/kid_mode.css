@@ -82,7 +82,7 @@ body[data-who="kennedy"] .bubble .hmore { min-width: 64px; min-height: 64px; }  
 
 
 /* number buttons beside the line: big, numbers only */
-body[data-who="kennedy"] .hoprow .hgrp button { min-width: calc(var(--touch) + 12px); min-height: var(--touch); font-size: 30px; }
+body[data-who="kennedy"] .hoprow .hgrp button { font-size: 30px; }
 body[data-who="kennedy"] .hmid button, body[data-who="kennedy"] #qbody .hmid #tile { min-width: var(--touch); min-height: var(--touch); flex: none; }
 @media (max-width: 640px) { body[data-who="kennedy"] .hoprow .hgrp button { min-width: 0; flex: 1 1 0; font-size: 22px; } body[data-who="kennedy"] .hoprow .hgrp:has(button:nth-child(3)) button { font-size: 16px; } }
 /* small phones: one row for Kennedy (take away, Restart and the tick, add), so the row stays short */
@@ -93,3 +93,12 @@ body[data-who="kennedy"] .hmid button, body[data-who="kennedy"] #qbody .hmid #ti
   body[data-who="kennedy"] .hoprow .hgrp button { min-height: var(--touch); }
   body[data-who="kennedy"] .hmid button, body[data-who="kennedy"] #qbody .hmid #tile { min-width: var(--touch); }
 }
+
+/* Kennedy: every button in the row is 64 by 64. On a small phone the row has no Restart, so five buttons fit in one row. */
+body[data-who="kennedy"] .hoprow { --bw: var(--touch); --bh: var(--touch); }
+@media (max-width: 640px) {
+  body[data-who="kennedy"] .hoprow { --bw: var(--touch); --bh: var(--touch); }
+  body[data-who="kennedy"] .hoprow .hmid [data-h="0"] { display: none; }
+  body[data-who="kennedy"] .hoprow .hgrp { justify-content: center; }
+}
+@media (max-width: 640px) and (max-height: 800px) { body[data-who="kennedy"] .hoprow { --bh: 50px; } }

@@ -22,7 +22,7 @@
        little game and before the play world (at answer 25 the rest card is that card); the keepsake of a game is saved with the counters, shown on a card, on the world
        shelf and in the small room beside the coins; a break button; an end-of-day card. Every card waits for a tap.
      - Own save per child (kidsMaths.game.<child>); the old app's save is read once and never written. -->
-<link rel="stylesheet" href="theme.css?v=11">
+<link rel="stylesheet" href="theme.css?v=15">
 <link rel="stylesheet" href="kid_mode.css?v=3">
 <link rel="stylesheet" href="parent_area.css?v=2">
 <link rel="stylesheet" href="new_skills.css?v=2">
@@ -1020,6 +1020,19 @@ function updateBadge() {
   const el = $("#homebadge"); if (!el) return;
   const info = who ? worldInfo() : null;
   el.innerHTML = info ? Journey.badge(info, P.keepsakes) : "";
+  el.onclick = info ? visitWorld : null;                       // the little room in the corner is a real button: it opens her own cafe or castle
+  if (info) { el.setAttribute("role", "button"); el.setAttribute("tabindex", "0"); el.setAttribute("aria-label", theme === "castle" ? "Visit my castle" : "Visit my cafe"); el.onkeydown = e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); visitWorld(); } }; }
+  else { el.removeAttribute("role"); el.removeAttribute("tabindex"); el.removeAttribute("aria-label"); }
+}
+/* a visit: the child taps the corner and goes to her own world. The question she was on waits, and her thinking time does not count the visit. */
+async function visitWorld() {
+  if (!who || !P || breakHold || window.__noWorld || !window.PlayWorlds || !PlayWorlds.has(theme) || document.querySelector(".over, .pw-host, .rewardhost")) return;
+  const me = QS, started = Date.now();
+  if (me && me.walking) return;
+  stopVoice(); if (me) addTime();
+  await playWorld(true);
+  const ms = Date.now() - started; lastAct = Date.now();
+  if (me && QS === me) { me.t0 += ms; save(); if (me.phase === "ask" && !me.teaching && !me.submitting) say(Q.say); }
 }
 let going = false;
 async function goNext() {
@@ -1068,8 +1081,9 @@ async function reward() {
   return res;
 }
 /* the play world after every 25 answers: 5 minutes to spend coins and play */
-async function playWorld() {
-  QS = null; drawDots();
+async function playWorld(visit) {
+  if (!visit) QS = null;
+  drawDots();
   if (window.__noWorld || !window.PlayWorlds || !PlayWorlds.has(theme)) return;
   P.world = P.world || {};
   let host = null;

@@ -221,7 +221,7 @@ with sync_playwright() as p:
                   
                   const ten=document.querySelector('.nlbox .tick.ten text'), one=document.querySelector('.nlbox .tick.one text');
                   const th=ten?r(ten).height:0, oh=one?r(one).height:0; if(th<14) out.push('tens numbers too small '+th); if(oh<10) out.push('ones numbers too small '+oh);
-                  const sb=[...document.querySelectorAll('.hgrp button')].map(e=>r(e).width); if(Math.min(...sb)<40) out.push('number buttons too small '+sb);
+                  const eq=[...document.querySelectorAll('.hoprow button:not(.watch), #tile')].filter(e=>r(e).width>0).map(e=>Math.round(r(e).width)+'x'+Math.round(r(e).height)); if(new Set(eq).size>1) out.push('buttons are not all the same size '+eq.join(' ')); const sb=[...document.querySelectorAll('.hgrp button')].map(e=>r(e).width); if(Math.min(...sb)<40) out.push('number buttons too small '+sb);
                   return out}""")
                 ok(f"{who} {name} {w}x{h} fits", not m, m)
                 if SHOTS:

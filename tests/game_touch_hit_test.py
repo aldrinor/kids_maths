@@ -78,6 +78,19 @@ with sync_playwright() as p:
                         if t: pg.touchscreen.tap(*t); pg.wait_for_timeout(600)
                 except Exception as e:
                     ok(f"{tag} tap flow", False, str(e)[:160])
+                # the little room in the corner is a real button: a finger tap opens the play world, and leaving brings the same question back
+                try:
+                    pg.evaluate("()=>__game.ask('sums.3', 6, 3, '+')"); pg.wait_for_timeout(500)
+                    story = pg.evaluate("()=>__game.Q.story")
+                    ok(f"{tag} the corner room is a button", pg.evaluate("()=>document.getElementById('homebadge').getAttribute('role')") == "button")
+                    pg.touchscreen.tap(*pg.evaluate("()=>{const r=document.getElementById('homebadge').getBoundingClientRect();return [r.left+r.width/2,r.top+r.height/2]}"))
+                    pg.wait_for_selector(".pw-host", timeout=8000)
+                    ok(f"{tag} tapping the corner opens the play world", True)
+                    pg.click(".pw-host .pw-done"); pg.wait_for_timeout(400); pg.click(".pw-host .yes")
+                    pg.wait_for_function("()=>!document.querySelector('.pw-host')", timeout=30000)
+                    ok(f"{tag} leaving the world brings the same question back", pg.evaluate("()=>__game.Q.story") == story and pg.evaluate("()=>__game.QS.phase") == "ask")
+                except Exception as e:
+                    ok(f"{tag} corner room visit", False, str(e)[:120])
                 # drawing: a finger drag on empty space marks the page; a finger tap on empty space marks nothing; a tap on an answer never draws
                 try:
                     pg.evaluate("()=>__game.ask('sums.3', 6, 3, '+')"); pg.wait_for_timeout(700)

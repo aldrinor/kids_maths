@@ -63,7 +63,7 @@ body[data-theme="castle"] .jpanel .jstrip .jst { width: 10px; height: 10px; }
 #tools button.breakbtn svg { width: 70%; height: 70%; }
 
 /* ---------- the small room on the question screen ("my cafe" / "my castle") ---------- */
-#homebadge { grid-column: 4; grid-row: 1; justify-self: end; pointer-events: none; display: none; animation: jfade .25s ease-out; }
+#homebadge { grid-column: 4; grid-row: 1; justify-self: end; pointer-events: auto; cursor: pointer; -webkit-tap-highlight-color: transparent; display: none; animation: jfade .25s ease-out; }
 #app.has-scene #homebadge:not(:empty) { display: block; }
 @media (max-width: 640px) { #top.talking #homebadge { display: none !important; } }      /* the little message needs the room */
 .jroom { position: relative; display: block; width: clamp(50px, 7.5vw, 96px); aspect-ratio: 4 / 3.3; border-radius: 12px; overflow: hidden; box-shadow: 0 0 0 3px var(--paper-edge), 0 2px 6px rgba(0, 0, 0, .15); background: var(--bg-2); }

@@ -140,3 +140,6 @@
 #scene.qs-reduced .qs-heart { animation: qs-fade 1.2s ease forwards; }
 @keyframes qs-fade { 0% { opacity: 0; } 30% { opacity: 1; } 100% { opacity: 0; } }
 @media (prefers-reduced-motion: reduce) { #scene .qs-mimi { animation: none; } }
+
+/* things in two rows stand on a shelf, not in the air (24 Oct 2026) */
+#scene .qs-rows2 { background: linear-gradient(to bottom, transparent calc(50% - 3px), #ecd0a8 calc(50% - 3px), #cfa26b calc(50% + 1px), transparent calc(50% + 1px)) no-repeat center / 100% 100%; border-radius: 4px; }

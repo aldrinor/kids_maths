@@ -52,7 +52,7 @@
   function icons(ctx, noun, n, k = 1, rows) {
     const g = h("div", "qs-grid");
     const r = rows || (n <= 6 ? 1 : 2), cols = Math.max(1, Math.ceil(n / r));
-    g.style.gridTemplateColumns = `repeat(${cols}, auto)`;
+    g.style.gridTemplateColumns = `repeat(${cols}, auto)`; if (r >= 2) g.classList.add("qs-rows2");
     for (let i = 0; i < n; i++) g.appendChild(thing(ctx, noun, k, i));
     return g;
   }

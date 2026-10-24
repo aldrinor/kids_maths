@@ -395,3 +395,19 @@ body[data-theme="castle"] #tile { border: 3px solid var(--accent); box-shadow: 0
 .altpic svg { width: min(360px, 100%); max-height: 110px; }
 #qbody .hoprow.solo { display: flex; justify-content: center; width: 100%; }
 #qbody .hoprow.solo #tile { flex: 0 1 260px; }
+
+/* ---- every button in the hop row is the same size (24 Oct 2026): the number buttons, Restart and Check ---- */
+.hoprow { --bw: clamp(96px, 12.5vw, 128px); --bh: clamp(52px, 7.5vh, 66px); }
+.hoprow .hmid [data-h="0"] .ar { display: none; }
+.hoprow .hgrp button, .hoprow .hmid button:not(.watch), #qbody .hoprow #tile { flex: none; box-sizing: border-box; width: var(--bw); min-width: var(--bw); max-width: var(--bw); height: var(--bh); min-height: var(--bh); padding: 0 4px; font-size: clamp(17px, 2.1vw, 24px); white-space: nowrap; }
+@media (max-width: 640px) {
+  .hoprow { --bw: min(88px, calc((100vw - 48px) / 4)); --bh: 48px; }
+  .hoprow:has(.hgrp button:nth-child(3)) { --bw: calc((100vw - 48px) / 6); }
+  .hoprow .hgrp { justify-content: center; }
+  .hoprow .hgrp button, .hoprow .hmid button:not(.watch), #qbody .hoprow #tile { font-size: 17px; }
+  .hoprow:has(.hgrp button:nth-child(3)) .hgrp button, .hoprow:has(.hgrp button:nth-child(3)) .hmid button:not(.watch), .hoprow:has(.hgrp button:nth-child(3)) #tile { font-size: 13px; }
+}
+@media (max-height: 700px) and (orientation: portrait) { .hoprow { --bh: 42px; } }
+.hoprow:has(.hgrp button:nth-child(3)) { --bw: min(128px, calc((100vw - 96px) / 8)); }
+@media (max-width: 640px) { .hoprow { --bh: 44px; } .hoprow:has(.hgrp button:nth-child(3)) { --bw: calc((100vw - 48px) / 6); }
+  .hoprow:has(.hgrp button:nth-child(3)) .hgrp button, .hoprow:has(.hgrp button:nth-child(3)) .hmid button:not(.watch), .hoprow:has(.hgrp button:nth-child(3)) #tile, #qbody .hoprow:has(.hgrp button:nth-child(3)) #tile { font-size: 12px; padding: 0 1px; } }
