@@ -411,3 +411,6 @@ body[data-theme="castle"] #tile { border: 3px solid var(--accent); box-shadow: 0
 .hoprow:has(.hgrp button:nth-child(3)) { --bw: min(128px, calc((100vw - 96px) / 8)); }
 @media (max-width: 640px) { .hoprow { --bh: 44px; } .hoprow:has(.hgrp button:nth-child(3)) { --bw: calc((100vw - 48px) / 6); }
   .hoprow:has(.hgrp button:nth-child(3)) .hgrp button, .hoprow:has(.hgrp button:nth-child(3)) .hmid button:not(.watch), .hoprow:has(.hgrp button:nth-child(3)) #tile, #qbody .hoprow:has(.hgrp button:nth-child(3)) #tile { font-size: 12px; padding: 0 1px; } }
+/* Check looks the same size as its neighbours: same border, same shadow depth, same letter weight */
+#qbody .hoprow #tile { border-width: 2px; box-shadow: 0 3px 0 var(--primary-dark); font-weight: 800; }
+.hoprow .hgrp button, .hoprow .hmid button:not(.watch) { font-weight: 800; }
