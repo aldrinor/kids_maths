@@ -61,10 +61,10 @@
     const g = h("div", "qs-place"), col = DOT[noun] || "#f490ab";
     g.style.setProperty("--dot", col);
     const H = Math.floor(n / 100), T = Math.floor(n / 10) % 10, O = n % 10;
-    if (H) { const b = h("div", "qs-hs"); b.style.gridTemplateRows = `repeat(${H > 3 ? 2 : 1}, auto)`; for (let i = 0; i < H; i++) b.appendChild(h("i", "qs-h")); g.appendChild(b); }
-    if (T) { const b = h("div", "qs-ts"); for (let i = 0; i < T; i++) b.appendChild(h("i", "qs-t")); g.appendChild(b); }
-    if (O) g.appendChild(icons(ctx, noun === "customer" ? "cupcake" : noun, O, 1.05, O > 5 ? 2 : 1)).classList.add("qs-ones");
-    if (noun === "customer" && O) g.lastChild.querySelectorAll(".qs-o").forEach((x, i) => x.replaceWith(thing(ctx, "customer", 1.05, i)));
+    if (H) { const b = h("div", "qs-hs"); b.style.gridTemplateRows = `repeat(${H > 8 ? 3 : H > 3 ? 2 : 1}, auto)`; for (let i = 0; i < H; i++) b.appendChild(h("i", "qs-h")); g.appendChild(b); }
+    if (T) { const b = h("div", "qs-ts"); if (T > 5) b.style.gridTemplateRows = "repeat(2, auto)"; for (let i = 0; i < T; i++) b.appendChild(h("i", "qs-t")); g.appendChild(b); }
+    if (O) g.appendChild(icons(ctx, noun === "customer" ? "cupcake" : noun, O, 2.2, O > 5 ? 2 : 1)).classList.add("qs-ones");
+    if (noun === "customer" && O) g.lastChild.querySelectorAll(".qs-o").forEach((x, i) => x.replaceWith(thing(ctx, "customer", 2.2, i)));
     return g;
   }
   const amount = (ctx, noun, n, k = 1) => n > 20 ? place(ctx, noun, n) : icons(ctx, noun, n, k);

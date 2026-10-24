@@ -60,8 +60,6 @@ body[data-who="kennedy"] #tools { align-items: center; padding-left: 0; padding-
 .panel .go.pictureok svg { width: 44px; height: 44px; }
 
 /* the +1 / +10 hop-size buttons on the two-digit ruler: 64 px too */
-body[data-who="kennedy"] .hopsize button { width: var(--touch); height: var(--touch); flex: none; }
-body[data-who="kennedy"] .nlbox.compact .hopsize button { width: var(--touch); height: var(--touch); }
 
 /* typed sums on a phone held upright (360 x 740): a 64 px keypad and a 64 px hop row do not fit with the story, the number line and the
    speech bubble, so only those two shrink, to the size the game used before (46 px). The answers, the bulb and the picture buttons on
@@ -82,5 +80,16 @@ body[data-who="kennedy"] .nlbox.compact .hopsize button { width: var(--touch); h
 }
 body[data-who="kennedy"] .bubble .hmore { min-width: 64px; min-height: 64px; }      /* the "more help" plus: a 64 pixel target like every other button of his */
 
-/* the two arrow buttons on a tap question: big, picture only */
-body[data-who="kennedy"] .hoprow.solo button[data-h] { flex: none; width: var(--touch); min-width: var(--touch); padding: 0; font-size: 28px; justify-content: center; }
+
+/* number buttons beside the line: big, numbers only */
+body[data-who="kennedy"] .hoprow .hgrp button { min-width: calc(var(--touch) + 12px); min-height: var(--touch); font-size: 30px; }
+body[data-who="kennedy"] .hmid button, body[data-who="kennedy"] #qbody .hmid #tile { min-width: var(--touch); min-height: var(--touch); flex: none; }
+@media (max-width: 640px) { body[data-who="kennedy"] .hoprow .hgrp button { min-width: 0; flex: 1 1 0; font-size: 22px; } body[data-who="kennedy"] .hoprow .hgrp:has(button:nth-child(3)) button { font-size: 16px; } }
+/* small phones: one row for Kennedy (take away, Restart and the tick, add), so the row stays short */
+@media (max-width: 640px) {
+  body[data-who="kennedy"] .hoprow:not(.solo):not(:has(.hgrp button:nth-child(3))) { display: flex; flex-wrap: nowrap; gap: 4px; align-items: center; }
+  body[data-who="kennedy"] .hoprow:not(:has(.hgrp button:nth-child(3))) .hgrp { flex: 1 1 0; min-width: 0; gap: 4px; } body[data-who="kennedy"] .hoprow:not(:has(.hgrp button:nth-child(3))) .hmid { flex: none; order: 2; gap: 4px; grid-column: auto; }
+  body[data-who="kennedy"] .hoprow .hgrp.minus { order: 1; } body[data-who="kennedy"] .hoprow .hgrp.plus { order: 3; }
+  body[data-who="kennedy"] .hoprow .hgrp button { min-height: var(--touch); }
+  body[data-who="kennedy"] .hmid button, body[data-who="kennedy"] #qbody .hmid #tile { min-width: var(--touch); }
+}

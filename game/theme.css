@@ -113,37 +113,29 @@ body[data-theme="castle"] #dots i { border-radius: 3px; transform: rotate(45deg)
 /* the ones ruler for big numbers: hop-size buttons beside it, a thin tens strip above it */
 .nlbox.ruler { display: flex; align-items: center; gap: clamp(6px, 1.2vw, 14px); padding: 4px clamp(4px, 1vw, 12px); }
 .nlbox .nlsvg { flex: 1; min-width: 0; }
-.hopsize { display: flex; flex-direction: column; gap: clamp(6px, 1vh, 10px); flex: none; }
-.hopsize button { width: clamp(48px, 7vh, 64px); height: clamp(48px, 7vh, 64px); border-radius: 50%; border: 3px solid var(--paper-edge); background: var(--paper); color: var(--ink);
-  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; padding: 0; box-shadow: 0 3px 0 var(--paper-edge); fill: currentColor; }
-.hopsize button b { font-size: clamp(15px, 2.2vh, 20px); font-weight: 800; line-height: 1; }
-.nlbox .hopsize svg { display: block; width: auto; height: clamp(8px, 1.4vh, 12px); max-height: none; }
-.hopsize button.on { background: var(--accent); border-color: var(--accent-dark); color: var(--ink); box-shadow: 0 0 0 3px var(--accent-soft), 0 3px 0 var(--accent-dark); transform: scale(1.06); }
-.hopsize button:not(.on) { opacity: .8; }
 .nlbox .hopr.new { stroke-dasharray: 1; stroke-dashoffset: 1; animation: draw .3s ease forwards; }
 .nlbox .ghost.new { animation: show .12s ease; }
 .nlbox .tenstar { animation: starpop .45s ease; transform-box: fill-box; transform-origin: 50% 50%; }
 @keyframes starpop { 0% { transform: scale(.2); opacity: 0; } 60% { transform: scale(1.15); opacity: 1; } 100% { transform: none; } }
 .nlbox .marks.slidef { animation: slidef .25s ease; } .nlbox .marks.slideb { animation: slideb .25s ease; }
 @keyframes slidef { from { transform: translateX(8%); opacity: .4; } } @keyframes slideb { from { transform: translateX(-8%); opacity: .4; } }
-.hoprow .sz { margin-left: .3em; font-weight: 800; }
 #qbody.rulerq .room { min-height: 6px; }
 /* phones: the size buttons sit in the top left corner, beside the tens strip, so the ruler keeps the full width */
-.nlbox.ruler.compact { display: block; position: relative; padding: 2px 4px; }
-.nlbox.compact .hopsize { position: absolute; left: 6px; top: 5px; flex-direction: row; gap: 6px; z-index: 1; }
-.nlbox.compact .hopsize button { width: 44px; height: 44px; border-width: 2.5px; gap: 1px; }
-.nlbox.compact .hopsize button b { font-size: 14px; }
-.nlbox.compact .hopsize svg { height: 8px; }
-@media (max-width: 640px) { .hoprow .sz { display: block; margin: 0; line-height: 1.1; } #qbody.rulerq .hoprow button[data-h] { line-height: 1.1; white-space: normal; } }
 @media (prefers-reduced-motion: reduce) { .nlbox .tenstar, .nlbox .marks.slidef, .nlbox .marks.slideb, .nlbox .hopr.new { animation: none; stroke-dashoffset: 0; } }
 
-.hoprow { width: min(760px, 100%); display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
+.hoprow { width: min(1000px, 100%); display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); align-items: center; gap: 10px; }
+/* take away on the left, add on the right, Restart and Check in the middle (24 Oct 2026) */
+.hgrp { display: flex; gap: clamp(6px, 1vw, 10px); } .hgrp.minus { justify-content: flex-end; } .hgrp.plus { justify-content: flex-start; } .hgrp:empty { display: none; }
+.hmid { display: flex; gap: 10px; justify-content: center; align-items: center; }
+.hoprow .hgrp button { flex: none; min-width: clamp(60px, 8vw, 92px); min-height: clamp(54px, 7.5vh, 68px); font-size: clamp(22px, 2.8vw, 30px); font-weight: 800; padding: 0 8px; }
+.hoprow .hgrp button b { font-weight: 800; }
+.hoprow.solo { grid-template-columns: minmax(0, 1fr); }
 /* Check lives in this row, beside Restart; the keypad holds only numbers and Delete */
 #qbody .hoprow #tile { min-height: 44px; padding: 2px 6px; font-size: clamp(16px, 2.2vw, 23px); white-space: normal; }
 #app.lesson .hoprow button[data-h] { display: none; }
 .hoprow .ar { font-style: normal; }
-@media (max-width: 640px) { .hoprow { gap: 6px; grid-template-columns: repeat(4, minmax(0, 1fr)); } .hoprow button, #qbody .hoprow #tile { font-size: 15px; padding: 0 2px; } .hoprow .ar { display: none; } }
-#app.lesson .hoprow { grid-template-columns: minmax(0, 1fr); width: min(360px, 100%); }
+@media (max-width: 640px) { .hoprow { gap: 6px; grid-template-columns: repeat(2, minmax(0, 1fr)); } .hmid { grid-column: 1 / -1; order: 3; } .hgrp.minus { order: 1; } .hgrp.plus { order: 2; } .hgrp:empty + .hmid { grid-column: 1 / -1; } .hoprow button, #qbody .hoprow #tile { font-size: 15px; padding: 0 2px; } .hoprow .hgrp button { min-width: 0; flex: 1 1 0; font-size: 22px; } .hoprow .hgrp:has(button:nth-child(3)) button { font-size: 16px; } .hoprow .hgrp button { min-height: 44px; } .hoprow .hmid button, #qbody .hoprow #tile { min-height: 40px; } .hoprow { gap: 4px 6px; } .hoprow .ar { display: none; } }
+#app.lesson .hoprow { grid-template-columns: minmax(0, 1fr); width: min(360px, 100%); } #app.lesson .hgrp { display: none; }
 .hoprow button { min-height: clamp(48px, 7vh, 62px); border-radius: var(--r); border: 2px solid var(--paper-edge); background: var(--paper); font-size: clamp(16px, 2.1vw, 21px); font-weight: 700; color: var(--ink); white-space: nowrap; padding: 0 6px; box-shadow: 0 3px 0 var(--paper-edge); }
 .hoprow button.fwd { background: var(--accent-soft); border-color: var(--accent-dark); color: var(--accent-dark); box-shadow: 0 3px 0 var(--accent-dark); }
 body[data-theme="castle"] .hoprow button { background: linear-gradient(#a8784f, #8a5e3b); color: #fff8ea; border-color: #5a3b22; box-shadow: 0 3px 0 #5a3b22; }
@@ -381,7 +373,7 @@ body[data-theme="castle"] #tile { border: 3px solid var(--accent); box-shadow: 0
 }
 
 /* ---------- calm lesson choice, grown-up notes, focus (game fix round) ---------- */
-.hoprow .watch { grid-column: span 3; display: flex; align-items: center; justify-content: center; gap: 10px; border-color: var(--primary-dark); box-shadow: 0 3px 0 var(--primary-dark); }
+.hoprow .watch { grid-column: auto; display: flex; align-items: center; justify-content: center; gap: 10px; border-color: var(--primary-dark); box-shadow: 0 3px 0 var(--primary-dark); }
 .hoprow .watch .play { width: 30px; height: 30px; border-radius: 50%; background: var(--primary); color: var(--on-primary); display: grid; place-items: center; flex: none; }
 .hoprow .watch .play svg { width: 54%; height: 54%; margin-left: 2px; }
 #app.lesson .hoprow .watch { display: none; }

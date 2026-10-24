@@ -78,9 +78,9 @@
     const g = h("div", "qs-place");
     g.style.setProperty("--dot", DOT[noun] || "#b07a4a");
     const H = Math.floor(n / 100), T = Math.floor(n / 10) % 10, O = n % 10;
-    if (H) { const b = h("div", "qs-hs"); b.style.gridTemplateRows = `repeat(${H > 3 ? 2 : 1}, auto)`; for (let i = 0; i < H; i++) b.appendChild(h("i", "qs-h")); g.appendChild(b); }
-    if (T) { const b = h("div", "qs-ts"); for (let i = 0; i < T; i++) b.appendChild(h("i", "qs-t")); g.appendChild(b); }
-    if (O) g.appendChild(icons(ctx, noun, O, SPR[noun] && SPR[noun][2] > 1.2 ? 0.75 : 1, O > 5 ? 2 : 1, flagKind)).classList.add("qs-ones");
+    if (H) { const b = h("div", "qs-hs"); b.style.gridTemplateRows = `repeat(${H > 8 ? 3 : H > 3 ? 2 : 1}, auto)`; for (let i = 0; i < H; i++) b.appendChild(h("i", "qs-h")); g.appendChild(b); }
+    if (T) { const b = h("div", "qs-ts"); if (T > 5) b.style.gridTemplateRows = "repeat(2, auto)"; for (let i = 0; i < T; i++) b.appendChild(h("i", "qs-t")); g.appendChild(b); }
+    if (O) g.appendChild(icons(ctx, noun, O, SPR[noun] && SPR[noun][2] > 1.2 ? 1.6 : 2.2, O > 5 ? 2 : 1, flagKind)).classList.add("qs-ones");
     return g;
   }
   const amount = (ctx, noun, n, flagKind) => n > 20 ? place(ctx, noun, n, flagKind) : icons(ctx, noun, n, 1, undefined, flagKind);

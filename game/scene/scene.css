@@ -61,14 +61,17 @@
 #scene .qs-stack > .qs-g { grid-area: 1 / 1; }
 #scene .qs-stack > .qs-g.qs-out { opacity: 0; }
 
-/* big amounts: trays of a hundred and boxes of ten (dots in the colour of the thing), then single ones */
-#scene .qs-place { display: flex; align-items: flex-end; gap: calc(var(--u) * 0.16); padding: 0 calc(var(--u) * 0.1); }
-#scene .qs-hs { display: grid; grid-auto-flow: column; gap: calc(var(--u) * 0.08); }
-#scene .qs-ts { display: flex; align-items: flex-end; gap: calc(var(--u) * 0.06); }
-#scene .qs-h, #scene .qs-t { display: block; border: 1.5px solid #563832; border-radius: 3px; background-color: #fffaf4;
-  background-image: radial-gradient(circle, var(--dot) 50%, transparent 56%); background-size: calc(var(--u) * 0.26) calc(var(--u) * 0.26); background-origin: content-box; padding: 1px; }
-#scene .qs-h { width: calc(var(--u) * 2.6 + 5px); height: calc(var(--u) * 2.6 + 5px); }
-#scene .qs-t { width: calc(var(--u) * 0.26 + 5px); height: calc(var(--u) * 2.6 + 5px); }
+/* big amounts (24 Oct 2026): a big carton marked 100 for each hundred, a small carton marked 10 for each ten, then single things drawn large */
+#scene .qs-place { display: flex; align-items: flex-end; gap: calc(var(--u) * 0.3); padding: 0 calc(var(--u) * 0.1); }
+#scene .qs-hs { display: grid; grid-auto-flow: column; gap: calc(var(--u) * 0.14); align-items: end; }
+#scene .qs-ts { display: grid; grid-auto-flow: column; align-items: end; gap: calc(var(--u) * 0.12); }
+#scene .qs-h, #scene .qs-t { position: relative; display: block; box-sizing: border-box; border: 2px solid #7a5230; border-radius: 5px; background: linear-gradient(#ebc791, #d4a366); }
+#scene .qs-h::before, #scene .qs-t::before { content: ""; position: absolute; left: -2px; right: -2px; top: -2px; height: 30%; border: 2px solid #7a5230; border-radius: 5px 5px 0 0; background: #f0d3a6; }
+#scene .qs-h::after, #scene .qs-t::after { position: absolute; left: 50%; top: 62%; transform: translate(-50%, -50%); padding: 0 .2em; border: 1.5px solid #7a5230; border-radius: 5px; background: #fffaf0; color: #4a2e1a; font-weight: 800; line-height: 1.25; white-space: nowrap; }
+#scene .qs-h { width: calc(var(--u) * 2.6); height: calc(var(--u) * 2); }
+#scene .qs-h::after { content: "100"; font-size: max(9px, calc(var(--u) * 0.7)); }
+#scene .qs-t { width: calc(var(--u) * 1.5); height: calc(var(--u) * 1.2); }
+#scene .qs-t::after { content: "10"; font-size: max(9px, calc(var(--u) * 0.58)); }
 
 /* sharing and packing */
 #scene .qs-heap { display: grid; gap: 0; padding: calc(var(--u) * 0.15) calc(var(--u) * 0.2) 0; }

@@ -46,8 +46,8 @@ def ticks(pg):
       return {n:+g.dataset.n, ten:g.classList.contains('ten'), txt:t.textContent, fw:+t.getAttribute('font-weight'), fs:+t.getAttribute('font-size')}})""")
 
 
-def btn(pg, h):
-    return pg.inner_text(f'.hoprow button[data-h="{h}"]').replace("\n", " ").replace("◀", "").replace("▶", "").strip()
+def btn(pg, h, z=1):
+    return pg.inner_text(f'.hoprow button[data-h="{h}"][data-z="{z}"]').replace("\n", " ").strip()
 
 
 with sync_playwright() as p:
@@ -69,22 +69,22 @@ with sync_playwright() as p:
         ok(f"{skill} tens marks bold and big", len(tens) == 2 and all(x["fw"] == 800 for x in tens) and all(x["fs"] > ones[0]["fs"] for x in tens), tens)
         ok(f"{skill} ones marks show the ones digit only", all(x["txt"] == str(x["n"] % 10) and x["fw"] < 800 for x in ones), ones[:3])
         ok(f"{skill} tens strip with a bracket and a dot", pg.locator(".nlbox .tenbox").count() == 1 and pg.locator(".nlbox .posdot").count() == 1)
-        sizes = pg.evaluate("()=>[...document.querySelectorAll('.hopsize button')].map(b=>+b.dataset.z)")
-        ok(f"{skill} hop sizes", sizes == ([1, 10, 100] if skill == "sums.8" else [1, 10]), sizes)
+        plus = pg.evaluate("()=>[...document.querySelectorAll('.hgrp.plus button')].map(b=>+b.dataset.z)")
+        minus = pg.evaluate("()=>[...document.querySelectorAll('.hgrp.minus button')].map(b=>+b.dataset.z)")
+        want = [1, 10, 100] if skill == "sums.8" else [1, 10]   # Marie; Kennedy has ones and tens only
+        ok(f"{skill} +buttons on the right, -buttons on the left (big one furthest out)", plus == want and minus == want[::-1], (plus, minus))
+        ok(f"{skill} no Forward, Back or size buttons", pg.locator(".hopsize").count() == 0 and "Forward" not in pg.inner_text(".hoprow") and "Back" not in pg.inner_text(".hoprow"))
 
-    # 2 default hop size: +1 when weak, +10 when strong; the buttons say the size
+    # 2 the buttons say what they do; Restart and Check sit in the middle
     level(pg, "sums.7", False); ask(pg, "sums.7", 47, 38, "+")
-    ok("weak skill starts on +1", pg.evaluate("()=>__game.QS.hop") == 1 and pg.inner_text(".hopsize button.on").strip().startswith("±1"))
-    ok("weak: Forward says +1", btn(pg, 1).replace(" ", "").startswith("Forward+1"), btn(pg, 1))
-    pg.evaluate("()=>{__game.P.engine.skills['sums.7']={lvl:3,recent:[1,0],streak:0,n:5,right:4}}"); ask(pg, "sums.7", 47, 38, "+")
-    ok("last answer wrong starts on +1", pg.evaluate("()=>__game.QS.hop") == 1)
+    ok("buttons say +1 +10 and -1 -10", [btn(pg, 1, 1), btn(pg, 1, 10), btn(pg, -1, 1), btn(pg, -1, 10)] == ["+1", "+10", "−1", "−10"], [btn(pg, 1, 1), btn(pg, 1, 10), btn(pg, -1, 1), btn(pg, -1, 10)])
+    ok("no icons on the number buttons", pg.locator(".hgrp button svg, .hgrp button i").count() == 0)
+    ok("Restart and Check sit between the - and + buttons", pg.evaluate("""()=>{const r=s=>document.querySelector(s).getBoundingClientRect();const m=r('.hgrp.minus'),p=r('.hgrp.plus'),a=r('.hmid [data-h="0"]'),c=r('#tile');
+      return m.right<=a.left+1 && a.right<=c.left+2 && c.right<=p.left+1}"""))
     level(pg, "sums.7", True); ask(pg, "sums.7", 47, 38, "+")
-    ok("strong skill starts on +10", pg.evaluate("()=>__game.QS.hop") == 10 and pg.inner_text(".hopsize button.on").strip().startswith("±10"))
-    ok("strong: Forward says +10", btn(pg, 1).replace(" ", "").startswith("Forward+10"), btn(pg, 1))
-    ok("strong: Back says -10", btn(pg, -1).replace(" ", "").startswith("Back−10"), btn(pg, -1))
 
     # 3 a +10 hop walks ten steps and lands on 57; the window slides to 50-60; a star pops on 50
-    pg.click('.hoprow button[data-h="1"]')
+    pg.click('.hoprow button[data-h="1"][data-z="10"]')
     pg.wait_for_timeout(60)
     ok("+10 walks (pawn moves step by step)", pg.evaluate("()=>__game.QS.walking"))
     settle(pg)
@@ -97,38 +97,42 @@ with sync_playwright() as p:
     ok("star on the tens mark 50", pg.locator('.nlbox .tenstar[data-n="50"]').count() == 1)
     ok("pawn number shown in full", pg.text_content(".nlbox .tick[data-n='57'] text") == "57")
     ok("pawn is the Mimi picture", pg.evaluate("()=>{const i=document.querySelector('.nlbox .hopper image');return !!i && /mimi_stand\\.png$/.test(i.getAttribute('href'))}"))
-    pg.click('.hoprow button[data-h="1"]'); settle(pg)
+    pg.click('.hoprow button[data-h="1"][data-z="10"]'); settle(pg)
     ok("second +10 lands on 67, label +20", pg.evaluate("()=>__game.QS.line") == 67 and pg.text_content(".nlbox .hoplab") == "+20")
-    pg.click('.hoprow button[data-h="-1"]'); settle(pg)
+    pg.click('.hoprow button[data-h="-1"][data-z="10"]'); settle(pg)
     ok("Back -10 goes to 57", pg.evaluate("()=>__game.QS.line") == 57)
-    # 4 change the size: Forward and Back follow it
-    pg.click('.hopsize button[data-z="1"]'); pg.wait_for_timeout(100)
-    ok("size +1 chosen and highlighted", pg.evaluate("()=>__game.QS.hop") == 1 and pg.get_attribute(".hopsize button.on", "data-z") == "1")
-    ok("Forward now says +1", btn(pg, 1).replace(" ", "").startswith("Forward+1"), btn(pg, 1))
-    pg.click('.hoprow button[data-h="1"]'); settle(pg)
-    ok("Forward +1 goes to 58", pg.evaluate("()=>__game.QS.line") == 58)
-    pg.click('.hoprow button[data-h="-1"]'); settle(pg)
-    ok("Back -1 goes to 57", pg.evaluate("()=>__game.QS.line") == 57)
+    # 4 the +1 and -1 buttons hop one at a time
+    pg.click('.hoprow button[data-h="1"][data-z="1"]'); settle(pg)
+    ok("+1 goes to 58", pg.evaluate("()=>__game.QS.line") == 58)
+    pg.click('.hoprow button[data-h="-1"][data-z="1"]'); settle(pg)
+    ok("-1 goes to 57", pg.evaluate("()=>__game.QS.line") == 57)
     for _ in range(3):
-        pg.click('.hoprow button[data-h="1"]'); settle(pg)
+        pg.click('.hoprow button[data-h="1"][data-z="1"]'); settle(pg)
     ok("+1 to 60 pops a star on 60", pg.evaluate("()=>__game.QS.line") == 60 and pg.locator('.nlbox .tenstar[data-n="60"]').count() == 1)
     pg.click('.hoprow button[data-h="0"]'); pg.wait_for_timeout(150)
     ok("Restart goes back to 47 and the 40-50 ruler", pg.evaluate("()=>[__game.QS.line,__game.QS.lo,__game.QS.hops.length]") == [47, 40, 0])
     ok("size is not saved in the profile", "hop" not in pg.evaluate("()=>JSON.stringify(Object.keys(__game.P))"))
+    # the zoom: touching the thin strip slides the green box to that ten; the next hop brings the ruler back to the hopper
+    box = pg.evaluate("()=>{const r=document.querySelector('.nlbox .striphit').getBoundingClientRect();return [r.left,r.top,r.width,r.height]}")
+    pg.mouse.click(box[0] + box[2] * 0.05, box[1] + 10); pg.wait_for_timeout(150)
+    ok("touching the strip slides the zoom to the first ten", pg.evaluate("()=>[__game.QS.lo,__game.QS.line]") == [0, 47] and pg.evaluate("()=>__game.QS.pan") is True, pg.evaluate("()=>[__game.QS.lo,__game.QS.line]"))
+    ok("the ruler now shows 0 to 10", [x["n"] for x in ticks(pg)] == list(range(0, 11)))
+    ok("the hopper keeps its number", pg.evaluate("()=>__game.QS.line") == 47)
+    pg.click('.hoprow button[data-h="1"][data-z="1"]'); settle(pg)
+    ok("a hop brings the ruler back to the hopper", pg.evaluate("()=>[__game.QS.line,__game.QS.lo,__game.QS.pan]") == [48, 40, False], pg.evaluate("()=>[__game.QS.line,__game.QS.lo,__game.QS.pan]"))
+    pg.click('.hoprow button[data-h="0"]'); pg.wait_for_timeout(100)
     # fast taps never start two walks
-    pg.click('.hopsize button[data-z="10"]'); pg.wait_for_timeout(80)
-    pg.evaluate("()=>{const f=document.querySelector('.hoprow button[data-h=\"1\"]'); f.click(); f.click(); f.click();}")
+    pg.evaluate("()=>{const f=document.querySelector('.hoprow button[data-h=\"1\"][data-z=\"10\"]'); f.click(); f.click(); f.click();}")
     settle(pg)
     ok("fast taps: one +10 hop only", pg.evaluate("()=>__game.QS.line") == 57, pg.evaluate("()=>__game.QS.line"))
 
     # 5 subtraction and 3 digits
     level(pg, "sums.7", True); ask(pg, "sums.7", 83, 26, "-")
-    pg.click('.hoprow button[data-h="-1"]'); settle(pg)
+    pg.click('.hoprow button[data-h="-1"][data-z="10"]'); settle(pg)
     ok("83 back 10 is 73, ruler 70-80", pg.evaluate("()=>[__game.QS.line,__game.QS.lo]") == [73, 70], pg.evaluate("()=>[__game.QS.line,__game.QS.lo]"))
     ok("80 star on the way back", pg.locator('.nlbox .tenstar[data-n="80"]').count() == 1)
     level(pg, "sums.8", True); ask(pg, "sums.8", 345, 232, "+")
-    pg.click('.hopsize button[data-z="100"]'); pg.wait_for_timeout(80)
-    pg.click('.hoprow button[data-h="1"]'); settle(pg)
+    pg.click('.hoprow button[data-h="1"][data-z="100"]'); settle(pg)
     q = pg.evaluate("()=>({line:__game.QS.line, strail:__game.QS.strail.slice(), lo:__game.QS.lo, slo:__game.QS.slo})")
     ok("+100 lands on 445, walks ten tens", q["line"] == 445 and len(q["strail"]) == 10 and q["lo"] == 440 and q["slo"] == 400, q)
 
@@ -138,7 +142,7 @@ with sync_playwright() as p:
         q = pg.evaluate("()=>({ruler:!!__game.QS.ruler, step:__game.QS.step, qstep:__game.Q.line.step, lo:__game.QS.lo, qlo:__game.Q.line.lo})")
         t = ticks(pg)
         ok(f"{skill} line unchanged", not q["ruler"] and q["step"] == q["qstep"] and len(t) == 11 and t[1]["n"] - t[0]["n"] == q["qstep"]
-           and pg.locator(".hopsize").count() == 0 and "+" not in btn(pg, 1), (q, btn(pg, 1)))
+           and pg.locator(".hopsize").count() == 0 and pg.locator(".hgrp.plus button").count() == 1 and pg.locator(".hgrp.minus button").count() == 1, (q,))
     for _ in range(30):     # tens and ones, type D: "how many tens" counts hops of 10
         pg.evaluate("()=>nextQuestion(KS.make('cafe_tens.1','cafe',Math.random))")
         if pg.evaluate("()=>__game.Q.type") == "D":
@@ -158,13 +162,12 @@ with sync_playwright() as p:
     ok("lesson 10-hops show ten steps", lr["maxTrail"] == 10, lr)
     ok("lesson ends on 85", lr["line"] == 85, lr)
     pg.click("#boardbtns .bx"); pg.wait_for_timeout(200)
-    # a lesson closed in the middle: the size button and Forward still agree
+    # a lesson closed in the middle: the number buttons are back and work
     level(pg, "sums.7", False); ask(pg, "sums.7", 47, 38, "+")
     pg.evaluate("()=>{__game.lesson()}")
     pg.wait_for_function("()=>__game.QS.lessonHop===10 && __game.QS.walking", timeout=60000)
     pg.evaluate("()=>{document.querySelector('#boardbtns .bx').hidden=false; document.querySelector('#boardbtns .bx').click()}"); pg.wait_for_timeout(300)
-    ok("lesson closed early: size button matches Forward", pg.get_attribute(".hopsize button.on", "data-z") == str(pg.evaluate("()=>__game.QS.hop"))
-       and btn(pg, 1).replace(" ", "").startswith("Forward+" + str(pg.evaluate("()=>__game.QS.hop"))), (pg.get_attribute(".hopsize button.on", "data-z"), btn(pg, 1)))
+    ok("lesson closed early: the number buttons are back", pg.locator(".hgrp.plus button").count() == 2 and pg.evaluate("()=>!__game.QS.walking && !__game.QS.teaching"))
 
     # See The Answer on the ruler: hundreds, tens, ones from 47 to 85
     level(pg, "sums.7", False); ask(pg, "sums.7", 47, 38, "+")
@@ -201,24 +204,24 @@ with sync_playwright() as p:
             for name, skill, a, b, op in cases:
                 level(pg, skill, name != "sub_83_26"); ask(pg, skill, a, b, op)
                 if name != "sub_83_26":
-                    pg.click('.hoprow button[data-h="1"]'); settle(pg)
+                    pg.click('.hoprow button[data-h="1"][data-z="10"]'); settle(pg)
                 else:
-                    pg.click('.hoprow button[data-h="-1"]'); settle(pg)
-                    pg.click('.hoprow button[data-h="-1"]'); settle(pg)
+                    pg.click('.hoprow button[data-h="-1"][data-z="10"]'); settle(pg)
+                    pg.click('.hoprow button[data-h="-1"][data-z="10"]'); settle(pg)
                 pg.wait_for_timeout(500)
                 m = pg.evaluate("""()=>{const W=innerWidth,H=innerHeight,r=e=>e.getBoundingClientRect(), out=[];
                   if (document.scrollingElement.scrollWidth>W+1) out.push('page scrolls sideways');
-                  document.querySelectorAll('.nlbox, .hoprow, .hoprow button, .hopsize button, #tile').forEach(e=>{const b=r(e);
+                  document.querySelectorAll('.nlbox, .hoprow, .hoprow button, #tile').forEach(e=>{const b=r(e);
                     if(b.left<-1||b.right>W+1||b.bottom>H+1) out.push((e.className||e.tagName)+' off screen '+Math.round(b.left)+','+Math.round(b.right)+','+Math.round(b.bottom));
                     if(e.matches('.hoprow button')&&(e.scrollWidth>e.clientWidth+1||e.scrollHeight>e.clientHeight+2)) out.push('text spills out of '+e.innerText.replace(/\\n/g,' '))});
                   const keys=document.getElementById('keys'), hr=r(document.querySelector('.hoprow')), nb=r(document.querySelector('.nlbox')), box=r(document.getElementById('ansBox'));
                   if(keys&&getComputedStyle(keys).display!=='none'&&hr.bottom>r(keys).top+1) out.push('hop row hidden under the keypad '+Math.round(hr.bottom)+'>'+Math.round(r(keys).top));
                   if(nb.top<box.bottom-1) out.push('number line covers the answer box');
                   if(hr.top<nb.bottom-1) out.push('hop row covers the number line');
-                  const hb=[...document.querySelectorAll('.hoprow > *')].map(e=>Math.round(r(e).width)); if(new Set(hb).size>1||hb.length!==4) out.push('hop row not 4 equal buttons '+hb);
+                  
                   const ten=document.querySelector('.nlbox .tick.ten text'), one=document.querySelector('.nlbox .tick.one text');
                   const th=ten?r(ten).height:0, oh=one?r(one).height:0; if(th<14) out.push('tens numbers too small '+th); if(oh<10) out.push('ones numbers too small '+oh);
-                  const sb=[...document.querySelectorAll('.hopsize button')].map(e=>r(e).width); if(Math.min(...sb)<40) out.push('size buttons too small '+sb);
+                  const sb=[...document.querySelectorAll('.hgrp button')].map(e=>r(e).width); if(Math.min(...sb)<40) out.push('number buttons too small '+sb);
                   return out}""")
                 ok(f"{who} {name} {w}x{h} fits", not m, m)
                 if SHOTS:
