@@ -25,3 +25,17 @@
 #qbody .tapitem.on { opacity: .5; border-color: var(--primary-dark, #8a5a3a); background: var(--strip, #fffaf0); }
 #qbody .tapitem.on::after { content: "\2713"; position: absolute; right: 1px; top: -3px; font-size: 20px; font-weight: 800; color: var(--primary-dark, #8a5a3a); }
 #qbody .tapitem:focus-visible { outline: 3px solid var(--primary-dark, #8a5a3a); outline-offset: 2px; }
+
+/* round of 23 Oct 2026, round 2 (Grade 3 round 2): the figure under the story, and answer buttons that are words, fractions, solids or small figures */
+#qbody .figure { display: flex; justify-content: center; align-items: center; margin: 2px 0 4px; pointer-events: none; }
+#qbody .figure svg.fig { width: auto; max-width: 100%; }
+#qbody .opt.pic.word { min-height: var(--touch, 64px); font-weight: 800; font-size: clamp(17px, 2.8vh, 24px); padding-left: 4px; padding-right: 4px; }
+#qbody .opt.pic.word.long { font-size: clamp(14px, 2.2vh, 19px); }
+#qbody .opt.pic.word.fig { min-height: calc(var(--touch, 64px) + 8px); }
+#qbody .opt .wordpic { pointer-events: none; text-align: center; line-height: 1.15; max-width: 100%; overflow-wrap: anywhere; }
+#qbody .opt .optpic svg { height: clamp(40px, 7vh, 62px); width: auto; max-width: 100%; }
+#qbody .frac { display: inline-flex; flex-direction: column; align-items: center; font-weight: 800; line-height: 1; font-size: clamp(20px, 3.4vh, 30px); pointer-events: none; }
+#qbody .frac .fn { padding: 0 .4em .12em; border-bottom: 3px solid currentColor; }
+#qbody .frac .fd { padding-top: .12em; }
+.hintpic.fig, .altpic svg.fig { max-width: 100%; }
+#qbody .bars:has(> .opt:nth-child(4):last-child) { grid-template-columns: repeat(2, minmax(0, 1fr)); width: min(440px, 100%); }   /* four words: certain, likely, unlikely, impossible */

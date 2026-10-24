@@ -65,6 +65,10 @@
      Amounts only: no numerals, never the answer. */
   function kindPicture(Q) {
     const P = Q.hintPic; let svg = "", W = 60, H = 30;
+    if (P.figure) {                                                           // the same figure as in the question, with the guide of the second hint (game/figure.js)
+      const Fg = root.Figure || (typeof require === "function" ? require("./figure.js") : null);
+      return Fg ? { caption: CAPTION, svg: Fg.svg(P.figure, { help: P.help || true }) } : null;
+    }
     if (P.blocks) P.blocks.forEach((n, i) => { const r = blocks(n, 0, 0, i % 2 ? C2 : C1); svg += `<g transform="translate(0 ${i * 32})">${r.g}</g>`; W = Math.max(W, r.w); H = i * 32 + r.h; });
     else if (Number.isInteger(P.pairs)) {
       for (let i = 0; i < P.pairs; i++) {

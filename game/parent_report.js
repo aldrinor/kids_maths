@@ -28,7 +28,13 @@
     choice_near: "These are taps on a close answer. Count together, slowly, then tap.",
     choice_far: "These are taps on an answer far away. Look at the picture in the question together.",
     wrong_end: "The child tapped the other end: the least when asked for the most. Ask her to say the question word out loud, more or less, before tapping.",
-    last_digit: "Even or odd is told by the last digit only. Say it together: 0, 2, 4, 6 and 8 are even. 1, 3, 5, 7 and 9 are odd."
+    last_digit: "Even or odd is told by the last digit only. Say it together: 0, 2, 4, 6 and 8 are even. 1, 3, 5, 7 and 9 are odd.",
+    unit_size: "The unit family was right but the size was wrong. Hold up a ruler or a litre jug and ask: is this small or big?",
+    other_part: "Faces, edges and corners were mixed up. Point to each one on a real box: a face is flat, an edge is where two faces meet, a corner is where edges meet.",
+    scale_slip: "The key or the side numbers were not used. Ask: how many does one picture, or one line, stand for?",
+    bigger_parts: "More parts was taken to mean a bigger piece. Cut a real piece of paper into 2 and into 4 and compare the pieces.",
+    one_group: "The size of one group was given. Say it together: share into equal groups first, then take the number of groups the fraction asks for.",
+    count_marks: "The marks were counted, not the equal parts. Count the spaces between the marks, or the hops."
   };
 
   function classCounts(list) {

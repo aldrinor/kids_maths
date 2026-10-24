@@ -12,7 +12,7 @@
  */
 "use strict";
 /*FILES-BEGIN*/
-const VERSION = "v969db23d";
+const VERSION = "v7e8429c8";
 const FILES = [
   "index.html",
   "app.webmanifest",
@@ -24,7 +24,8 @@ const FILES = [
   "../modules/knight_art.js",
   "../modules/engine.js?v=2",
   "../topics/kinder.js",
-  "stories.js?v=2",
+  "stories.js?v=3",
+  "figure.js?v=1",
   "rewards/reward_kit_spring.js",
   "rewards/reward_kit_drag.js",
   "rewards/reward_kit_sound.js",
@@ -60,7 +61,7 @@ const FILES = [
   "theme.css?v=4",
   "kid_mode.css?v=3",
   "parent_area.css?v=2",
-  "new_skills.css?v=1",
+  "new_skills.css?v=2",
   "scene/scene.css?v=1",
   "journey.css?v=2",
   "rewards/reward_styles.css"
