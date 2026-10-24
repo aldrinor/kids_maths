@@ -22,7 +22,7 @@
        little game and before the play world (at answer 25 the rest card is that card); the keepsake of a game is saved with the counters, shown on a card, on the world
        shelf and in the small room beside the coins; a break button; an end-of-day card. Every card waits for a tap.
      - Own save per child (kidsMaths.game.<child>); the old app's save is read once and never written. -->
-<link rel="stylesheet" href="theme.css?v=19">
+<link rel="stylesheet" href="theme.css?v=22">
 <link rel="stylesheet" href="kid_mode.css?v=3">
 <link rel="stylesheet" href="parent_area.css?v=2">
 <link rel="stylesheet" href="new_skills.css?v=2">
@@ -551,10 +551,12 @@ function hopTo(v) {
    a thin tens strip above it, and hop-size buttons (+1, +10, +100). A +10 hop walks its ten ones. ---------- */
 const isRuler = q => !!q && !q.parent && (/^sums\.[5-9]$/.test(q.skill) || (q.skill === "cafe_tens.1" && q.line && q.line.step === 1));
 const rulerDir = () => endOf() < startOf() ? -1 : 1;
+/* 2- and 3-digit sums are worked with blocks (hundreds, tens, ones): a box of 100, a box of 10, single ones. ?sums=line brings the older number line back. */
+const MAT_ON = !/[?&]sums=line(&|$)/.test(location.search);
 function rulerSetup() {
   const big = Q.scale >= 999 ? 100 : 10, s = P && P.engine && P.engine.skills[Q.skill];
   const weak = !s || s.lvl < KidsEngine.LV.KNOWS || (s.recent && s.recent.length > 0 && s.recent[s.recent.length - 1] === 0);
-  Object.assign(QS, { ruler: true, big, top: big === 100 ? 1000 : 100, hop: weak ? 1 : 10, trail: [], strail: [], stars: [] });
+  Object.assign(QS, { mat: MAT_ON && /^sums\.[5-9]$/.test(Q.skill), matPrev: null, ruler: true, big, top: big === 100 ? 1000 : 100, hop: weak ? 1 : 10, trail: [], strail: [], stars: [] });
   rulerPlace(startOf(), rulerDir());
 }
 function rulerPlace(v, dir) {                      // put the hopper on v and the ruler on the ten that holds v
@@ -576,6 +578,7 @@ function hopBy(dir, z) {
 }
 async function rulerWalk(to, z, alive = () => true) {   // z 1: one hop; z 10: ten steps of 1; z 100: ten steps of 10
   const me = QS, from = QS.line, dir = to > from ? 1 : -1;
+  if (QS.mat) { QS.hops.push([from, to, z]); QS.line = to; QS.fresh = true; drawLine(); return; }      // blocks: a box of 10 is one box, added at once
   QS.walking = true; QS.trail = []; QS.strail = []; QS.stars = []; QS.hops.push([from, to, z]); QS.freshArc = true;
   if (z === 1 || Math.abs(to - from) !== z) {
     QS.line = to; if (to % 10 === 0) QS.stars = [to]; QS.slide = rulerFollow(dir); QS.fresh = true; drawLine(); QS.walking = false; return;
@@ -617,6 +620,8 @@ async function rulerShow(me, s0, target) {           // "See The Answer": hundre
   }
 }
 function drawRuler(box) {
+  if (QS.mat) return drawMat(box);
+  box.classList.remove("matbox");
   box.classList.add("ruler"); box.classList.remove("compact");
   box.innerHTML = `<div class="nlsvg"></div>`;
   const host = box.querySelector(".nlsvg");
@@ -626,6 +631,17 @@ function drawRuler(box) {
   if (maxH > 0 && H0 > maxH * 1.02) rulerSvg(host, Math.max(.55, maxH / H0), [0, 0]);
   QS.fresh = false; QS.freshArc = false; QS.slide = 0;
   host.querySelectorAll(".tick").forEach(t => t.onclick = () => hopTo(+t.dataset.n));
+}
+function drawMat(box) {
+  box.classList.remove("ruler", "compact"); box.classList.add("matbox");
+  const n = QS.line, H = Math.floor(n / 100), T = Math.floor(n / 10) % 10, O = n % 10, kid = KidMode.on();
+  const was = QS.matPrev || [H, T, O]; QS.matPrev = [H, T, O];
+  const blocks = (cls, count, before) => Array.from({ length: count }, (_, i) => `<i class="mb ${cls}${i >= before ? " pop" : ""}"></i>`).join("");
+  const col = (cls, head, word, count, before) => `<div class="mcol"><b class="mhead">${kid ? head : `${head} <small>${word}</small>`}</b><div class="mbin ${cls}s">${blocks(cls, count, before)}</div></div>`;
+  box.innerHTML = `<div class="mat" role="img" aria-label="${n} as blocks: ${H} boxes of a hundred, ${T} boxes of ten, ${O} ones">${QS.big === 100 ? col("mh", "100", "hundreds", H, was[0]) : ""}${col("mt", "10", "tens", T, was[1])}${col("mo", "1", "ones", O, was[2])}<div class="mnum"><span>${n}</span></div></div>`;
+  const mat = box.querySelector(".mat"), vhU = Math.max(24, Math.min(42, innerHeight * .046)), need = QS.big === 100 ? 19.6 : 11.4, numW = box.clientWidth < 500 ? 96 : 150;
+  mat.style.setProperty("--u", Math.max(13, Math.min(vhU, (box.clientWidth - numW - 20) / need)).toFixed(1) + "px");      // the blocks shrink to fit the width, so nothing is cut off
+  QS.fresh = false; QS.freshArc = false; QS.slide = 0;
 }
 function rulerSvg(host, k, [sL, topH]) {
   const lo = QS.lo, hi = QS.hi, slo = QS.slo, line = QS.line;

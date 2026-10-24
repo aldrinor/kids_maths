@@ -8,7 +8,7 @@ import os
 import sys
 from playwright.sync_api import sync_playwright
 
-URL = sys.argv[1]
+URL = sys.argv[1] + ("" if "sums=line" in sys.argv[1] else ("&" if "?" in sys.argv[1] else "?") + "sums=line")      # this test is about the number line; blocks are tested in game_mat_test.py
 ENGINE = sys.argv[2] if len(sys.argv) > 2 else "chromium"
 SHOTS = sys.argv[3] if len(sys.argv) > 3 else ""
 STUB = ("window.__demoFast=true;window.__noVoice=true;window.__noRewards=true;window.__noWorld=true;"
@@ -183,7 +183,7 @@ with sync_playwright() as p:
         else:
             pg.wait_for_function("()=>__game.QS.phase==='final'", timeout=90000)
     pg.wait_for_function("()=>__game.QS.phase==='final' && !document.getElementById('tile').classList.contains('dim')", timeout=10000)
-    want = pg.evaluate("()=>[__game.Q.result, Math.floor(__game.Q.result/10)*10]")          # the NEW question after the first miss has its own numbers
+    want = pg.evaluate("()=>[__game.Q.result, __game.Q.result % 10 === 0 ? __game.Q.result - 10 : Math.floor(__game.Q.result/10)*10]")      # landing exactly on a tens mark from below keeps that mark as the right-hand end          # the NEW question after the first miss has its own numbers
     pg.click("#tile")
     pg.wait_for_function("(w)=>__game.QS.line===w && !__game.QS.walking", arg=want[0], timeout=30000)
     ok("See The Answer ends on the answer with its ten-ruler", pg.evaluate("()=>[__game.QS.line,__game.QS.lo]") == want, [pg.evaluate("()=>[__game.QS.line,__game.QS.lo]"), want])
