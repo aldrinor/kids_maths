@@ -60,7 +60,22 @@
     return { g, w: x - x0, h: 26 };
   }
 
+  /* the pictures of the number-sense kinds (23 Oct 2026): Q.hintPic = { blocks: [n, ...] } place-value blocks, one row for each number (hundreds are squares,
+     tens are rods, ones are dots), or { pairs: n } a pile of n dots put two by two, so a single one is left on its own when n is odd.
+     Amounts only: no numerals, never the answer. */
+  function kindPicture(Q) {
+    const P = Q.hintPic; let svg = "", W = 60, H = 30;
+    if (P.blocks) P.blocks.forEach((n, i) => { const r = blocks(n, 0, 0, i % 2 ? C2 : C1); svg += `<g transform="translate(0 ${i * 32})">${r.g}</g>`; W = Math.max(W, r.w); H = i * 32 + r.h; });
+    else if (Number.isInteger(P.pairs)) {
+      for (let i = 0; i < P.pairs; i++) {
+        const pair = Math.floor(i / 2), cx = DOT + (pair % 8) * (GAP * 1.6) + (i % 2) * GAP * 0.8, cy = DOT + Math.floor(pair / 8) * GAP;
+        svg += `<circle cx="${cx}" cy="${cy}" r="${DOT}" fill="${C1}"/>`; W = Math.max(W, cx + DOT); H = Math.max(H, cy + DOT);
+      }
+    } else return null;
+    return { caption: CAPTION, svg: `<svg class="hintpic" viewBox="-6 -4 ${W + 12} ${H + 8}" role="img" aria-label="A picture of the story" preserveAspectRatio="xMidYMid meet" style="max-height:92px;width:100%">${svg}</svg>` };
+  }
   function picture(Q) {
+    if (Q && !Q.parent && Q.hintPic) return kindPicture(Q);
     if (!Q || Q.parent || isKind(Q) || !Number.isFinite(Q.a)) return null;
     const type = Q.type, a = Q.a, b = Q.b, res = Q.result, big = Q.scale > 20;
     let svg = "", W = 0, H = 0;

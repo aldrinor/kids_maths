@@ -12,7 +12,7 @@
  */
 "use strict";
 /*FILES-BEGIN*/
-const VERSION = "v72c66df2";
+const VERSION = "v969db23d";
 const FILES = [
   "index.html",
   "app.webmanifest",
@@ -80,7 +80,10 @@ const ART = [
   "scene/art/cafe/hold_tray.png",
   "scene/art/cafe/hold_vase.png",
   "scene/art/cafe/item_bill_10.png",
+  "scene/art/cafe/item_bill_100.png",
   "scene/art/cafe/item_bill_20.png",
+  "scene/art/cafe/item_bill_5.png",
+  "scene/art/cafe/item_bill_50.png",
   "scene/art/cafe/item_biscuit.png",
   "scene/art/cafe/item_cake_box.png",
   "scene/art/cafe/item_candy.png",

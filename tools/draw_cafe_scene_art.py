@@ -287,7 +287,8 @@ def nickel(A):
 
 
 def bill(value):
-    pal = {10: ("#f0e6fb", "#cdb6ee", "#a98fd0"), 20: ("#e2f6e8", "#a9dcb6", "#7cbf8e")}[value]
+    pal = {5: ("#e4f0fb", "#abcdee", "#7ea9d6"), 10: ("#f0e6fb", "#cdb6ee", "#a98fd0"), 20: ("#e2f6e8", "#a9dcb6", "#7cbf8e"),
+           50: ("#fde8e5", "#f2b0a8", "#d98179"), 100: ("#f7ecdb", "#dfc7a0", "#bda078")}[value]
 
     def body(A):
         o = [rect(A, 6, 10, 228, 100, 10, pal, sw=5, hl=0.3)]
@@ -419,6 +420,8 @@ def jobs():
         j["item_" + name] = (lambda b=fn: sv(b), 160, 160)
     j["item_bill_10"] = (bill(10), 240, 120)
     j["item_bill_20"] = (bill(20), 240, 120)
+    for v in (5, 50, 100):   # 23 Oct 2026: the other Canadian bills (blue, red, brown), same plain style
+        j["item_bill_%d" % v] = (bill(v), 240, 120)
     for name, fn, w, h in (("tray", tray, 320, 90), ("plate", plate, 240, 80), ("box", box, 240, 140), ("bag", bag, 140, 176), ("jar", jar, 140, 176),
                            ("vase", vase, 140, 176), ("table", table, 240, 160), ("jug", jug, 160, 176), ("basket", basket, 280, 126), ("cake", cake_small, 240, 120)):
         j["hold_" + name] = (lambda b=fn, w=w, h=h: sv(b, w, h), w, h)

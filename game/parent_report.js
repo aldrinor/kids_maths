@@ -26,7 +26,9 @@
     slip: "These are small counting slips. Counting one hop at a time on the number line helps.",
     guess: "These answers have no pattern. Ask the child to explain how they got the answer, or to use the hint picture.",
     choice_near: "These are taps on a close answer. Count together, slowly, then tap.",
-    choice_far: "These are taps on an answer far away. Look at the picture in the question together."
+    choice_far: "These are taps on an answer far away. Look at the picture in the question together.",
+    wrong_end: "The child tapped the other end: the least when asked for the most. Ask her to say the question word out loud, more or less, before tapping.",
+    last_digit: "Even or odd is told by the last digit only. Say it together: 0, 2, 4, 6 and 8 are even. 1, 3, 5, 7 and 9 are odd."
   };
 
   function classCounts(list) {

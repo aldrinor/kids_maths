@@ -63,6 +63,6 @@ ok("no number given is a guess", MS.classify(q1, NaN) === "guess" && MS.classify
 for (const c of MS.CLASSES) { const s = MS.leadSentence(c); ok(`lead sentence for ${c} has no digits and is one short sentence`, typeof s === "string" && !/\d/.test(s) && s.length < 70 && s.length > 10, s); }
 ok("unknown class falls back to a guess sentence", MS.leadSentence("zzz") === MS.leadSentence("guess"));
 ok("every class has a plain label", MS.CLASSES.every(c => MS.label(c).length > 8));
-ok("lead sentences are a short finite list", MS.sentences().length <= 7);
+ok("lead sentences are a short finite list", MS.sentences().length <= 9);       // 9 since 23 Oct 2026 (wrong_end and last_digit for the number-sense kinds)
 console.log(`RESULT ${pass}/${pass + fail} passed`);
 process.exit(fail ? 1 : 0);

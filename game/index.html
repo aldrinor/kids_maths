@@ -391,7 +391,7 @@ function nextQ() {
       si++; continue;                                    // an answer the keypad cannot type is skipped
     }
     const q = pickQuestion(item);
-    if (q) { prevKey = q.key; q.alt = !!set.alt && item === set.target && !!HintLadder.picture(q); return q; }
+    if (q) { prevKey = q.key; q.alt = !!set.alt && item === set.target && !q.noLine && !!HintLadder.picture(q) /* a question with no number line has nowhere to swap the second picture in: its help picture is in the hint */; return q; }
     si++;                                                // no story for this skill yet
   }
   return null;
@@ -455,7 +455,7 @@ function renderBody() {
   const b = $("#qbody"), bulb = `<button class="bulb" aria-label="Hint">${ICON.bulb}</button>`;
   const story = `<div class="story">${Q.story}${Q.ask ? `<br><b>${Q.ask}</b>` : ""}<span class="inbulb">${bulb}</span></div>`;
   const top = Q.kind === "choice"
-    ? `${story}${stripHtml()}<div class="bars">${Q.opts.map((o, i) => `<button class="opt${Q.picOpts ? " pic " + (Q.pics[o].bar ? Q.pics[o].bar.dir : "img") : ""}" data-v="${o}"${optAttrs(o)}>${KidMode.on() ? "" : `<small>${"abc"[i]})</small>`}${optInner(o)}</button>`).join("")}</div>`
+    ? `${story}${stripHtml()}<div class="bars">${Q.opts.map((o, i) => `<button class="opt${Q.picOpts ? " pic " + (Q.pics[o].bar ? Q.pics[o].bar.dir : "img") : ""}" data-v="${o}"${optAttrs(o)}>${KidMode.on() ? "" : `<small>${"abcd"[i]})</small>`}${optInner(o)}</button>`).join("")}</div>`
     : `${story}<div class="eq"><span class="box ${boxCls()}" id="ansBox">${QS.typed || "&nbsp;"}</span></div>`;
   const off = QS.phase === "shown" || QS.phase === "right" ? " disabled" : "";
   const sz = sign => QS.ruler ? `<b class="sz">${sign}${QS.hop}</b>` : "", hz = QS.ruler ? ` ${QS.hop}` : "";   // the hop size is on the button
@@ -925,7 +925,7 @@ async function tile() {
     const a = Q.kind === "choice" ? QS.pick : (QS.typed === "" ? null : +QS.typed);
     if (a == null) { say(Q.kind === "choice" ? "Tap an answer first." : "Type your answer first."); return; }
     if (QS.firstMs == null) QS.firstMs = Date.now() - QS.t0;
-    const hit = a === Q.ans, cls = hit || Q.parent ? "" : MissStudy.classify(Q, a);
+    const hit = Q.parent ? a === Q.ans : KS.isRight(Q, a), cls = hit || Q.parent ? "" : MissStudy.classify(Q, a);       // a typed estimate is right anywhere in its reasonable range (Q.range)
     logAnswer(a, hit, cls);
     if (hit) {
       QS.phase = "right"; QS.mark = "right"; finished(true); chime(); mascot("happy"); closeBoard();
@@ -981,7 +981,7 @@ function freshQuestion(old) {
 function swapFresh() {
   if (!QS || QS.swapped || !QS.missedFirst) return;
   QS.swapped = true; stopVoice(); closeBoard();
-  const q = freshQuestion(Q); prevKey = q.key; q.alt = QS.alt && !!HintLadder.picture(q);
+  const q = freshQuestion(Q); prevKey = q.key; q.alt = QS.alt && !q.noLine && !!HintLadder.picture(q);
   nextQuestion(q, { tries: 1, afterMiss: true, lead: HintLadder.NEW_ONE });
 }
 /* ---------- the connected path (journey.js): cards join maths, the little games and the play world. Every card waits for a tap; nothing moves on by itself. ---------- */

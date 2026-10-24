@@ -9,6 +9,8 @@
  *   choice_near  (tap questions) a wrong tap on an answer that is one or two away. The wrong choices are always made that way,
  *                so this says little about WHY; it is kept apart so the report does not call it a counting slip
  *   choice_far   (tap questions) a wrong tap on an answer further away
+ *   wrong_end    (more or less questions, Q.opposite) the child tapped the number at the other end: she read "more" as "less" or the other way round
+ *   last_digit   (even and odd questions, Q.parity) a wrong tap: the last digit tells even from odd
  *
  * Fixed order, first match wins: choice question -> copied -> wrong_op -> place_value -> slip -> guess.
  * (So 5 + 1 with 5 given is "copied", not "slip".)
@@ -18,7 +20,7 @@
  */
 (function (root) {
   "use strict";
-  const CLASSES = ["copied", "wrong_op", "place_value", "slip", "guess", "choice_near", "choice_far"];
+  const CLASSES = ["copied", "wrong_op", "place_value", "slip", "guess", "choice_near", "choice_far", "wrong_end", "last_digit"];
   const LEAD = {
     copied: "That number is in the story. We need to find a new number.",
     wrong_op: "Look at the sign first. Is it plus or minus?",
@@ -26,7 +28,9 @@
     slip: "So close! Let's count again, nice and slow.",
     guess: "Let's go one step at a time.",
     choice_near: "So close! Let's count again, nice and slow.",
-    choice_far: "Let's look at it together."
+    choice_far: "Let's look at it together.",
+    wrong_end: "Read the question once more. Is it more, or is it less?",
+    last_digit: "Look at the last digit. Does it make the number even or odd?"
   };
   const LABEL = {
     copied: "gave a number that was printed in the question",
@@ -35,7 +39,9 @@
     slip: "was out by one or two",
     guess: "gave an answer with no clear pattern",
     choice_near: "tapped an answer that was one or two away",
-    choice_far: "tapped an answer that was far away"
+    choice_far: "tapped an answer that was far away",
+    wrong_end: "tapped the other end (the least when asked for the most, or the most when asked for the least)",
+    last_digit: "tapped the wrong even or odd number (the last digit tells which)"
   };
 
   /* the numbers a child can see in the question */
@@ -74,6 +80,11 @@
     if (!Q || !Number.isFinite(given) || !Number.isFinite(Q.ans)) return "guess";
     if (Q.picOpts) return "guess";                                   // picture answers (patterns, size) are numbered 1, 2, 3 only to tell them apart: being "one away" means nothing
     const ans = Q.ans, d = Math.abs(given - ans);
+    if (Q.noNear) {                                                  // comparing, ordering, even or odd, estimating: the wrong taps are not "one or two away"
+      if (Q.opposite != null && given === Q.opposite) return "wrong_end";
+      if (Q.parity) return "last_digit";
+      return placeSlip(ans, given) ? "place_value" : "choice_far";
+    }
     if (Q.kind === "choice") return d <= 2 ? "choice_near" : "choice_far";
     const nums = shownNumbers(Q);
     if (nums.includes(given) && given !== ans) return "copied";
