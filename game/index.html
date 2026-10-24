@@ -622,7 +622,7 @@ function drawRuler(box) {
   const compact = box.clientWidth < 600;           // phones: the size buttons sit in the top left corner, beside the tens strip
   box.classList.add("ruler"); box.classList.toggle("compact", compact);
   const sizes = QS.big === 100 ? [1, 10, 100] : [1, 10], cur = QS.teaching && QS.lessonHop ? QS.lessonHop : QS.hop;
-  box.innerHTML = `<div class="hopsize" role="group" aria-label="Hop size">${sizes.map(z => `<button data-z="${z}" class="${z === cur ? "on" : ""}" aria-pressed="${z === cur}" aria-label="Hop ${z} at a time"><b>+${z}</b>${SIZE_ICON[z]}</button>`).join("")}</div><div class="nlsvg"></div>`;
+  box.innerHTML = `<div class="hopsize" role="group" aria-label="Hop size">${sizes.map(z => `<button data-z="${z}" class="${z === cur ? "on" : ""}" aria-pressed="${z === cur}" aria-label="Hop size ${z}: forward adds ${z}, back takes away ${z}"><b>±${z}</b>${SIZE_ICON[z]}</button>`).join("")}</div><div class="nlsvg"></div>`;
   box.querySelectorAll(".hopsize button").forEach(b => b.onclick = () => { if (QS.walking || QS.teaching) return; QS.hop = +b.dataset.z; renderBody(); });
   const host = box.querySelector(".nlsvg");
   rulerFollow(rulerDir());
@@ -643,7 +643,7 @@ function rulerSvg(host, k, [sL, topH]) {
   const X = v => pad + (v - lo) * cell, SX = v => sL + spad + (v - slo) / 100 * sW;
   const ink = css("--line-ink") || "#333", hopC = css("--hop") || "#e07a2e", labC = css("--hop-label") || hopC;
   const acc = css("--accent") || "#7ccfb8", accD = css("--accent-dark") || "#2f8a73", accS = css("--accent-soft") || "#e3f6f0";
-  const sy = 4 + sf + 8, y0 = Math.max(sy + 8 + (topH ? 6 : 10), topH), base = y0 + Math.max(lab + arcH * 1.15, fsz) + (topH ? 4 : 10), H = base + tick / 2 + bigF + (topH ? 6 : 12);
+  const sy = 4 + sf + 15, y0 = Math.max(sy + 8 + (topH ? 6 : 10), topH), base = y0 + Math.max(lab + arcH * 1.15, fsz) + (topH ? 4 : 10), H = base + tick / 2 + bigF + (topH ? 6 : 12);
   let s = `<svg viewBox="0 0 ${Wd} ${H}" height="${H}" role="img" aria-label="Number line from ${lo} to ${hi}. You are on ${line}." font-family="Lexend, sans-serif">`;
   /* the tens strip: where this ten sits */
   const every = sLabW > sW / 10 - 6 ? 20 : 10;

@@ -74,12 +74,12 @@ with sync_playwright() as p:
 
     # 2 default hop size: +1 when weak, +10 when strong; the buttons say the size
     level(pg, "sums.7", False); ask(pg, "sums.7", 47, 38, "+")
-    ok("weak skill starts on +1", pg.evaluate("()=>__game.QS.hop") == 1 and pg.inner_text(".hopsize button.on").strip().startswith("+1"))
+    ok("weak skill starts on +1", pg.evaluate("()=>__game.QS.hop") == 1 and pg.inner_text(".hopsize button.on").strip().startswith("±1"))
     ok("weak: Forward says +1", btn(pg, 1).replace(" ", "").startswith("Forward+1"), btn(pg, 1))
     pg.evaluate("()=>{__game.P.engine.skills['sums.7']={lvl:3,recent:[1,0],streak:0,n:5,right:4}}"); ask(pg, "sums.7", 47, 38, "+")
     ok("last answer wrong starts on +1", pg.evaluate("()=>__game.QS.hop") == 1)
     level(pg, "sums.7", True); ask(pg, "sums.7", 47, 38, "+")
-    ok("strong skill starts on +10", pg.evaluate("()=>__game.QS.hop") == 10 and pg.inner_text(".hopsize button.on").strip().startswith("+10"))
+    ok("strong skill starts on +10", pg.evaluate("()=>__game.QS.hop") == 10 and pg.inner_text(".hopsize button.on").strip().startswith("±10"))
     ok("strong: Forward says +10", btn(pg, 1).replace(" ", "").startswith("Forward+10"), btn(pg, 1))
     ok("strong: Back says -10", btn(pg, -1).replace(" ", "").startswith("Back−10"), btn(pg, -1))
 
