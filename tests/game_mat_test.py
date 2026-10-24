@@ -7,7 +7,7 @@ from playwright.sync_api import sync_playwright
 
 URL = sys.argv[1]
 ENGINE = sys.argv[2] if len(sys.argv) > 2 else "chromium"
-STUB = ("window.__demoFast=true;window.__noVoice=true;window.__noRewards=true;window.__noWorld=true;localStorage.clear();"
+STUB = ("window.__demoFast=true;window.__noVoice=true;window.__noRewards=true;window.__noWorld=true;window.__famAlways=true;localStorage.clear();"
         "window.speechSynthesis={speak(){},cancel(){},getVoices(){return[]}};window.SpeechSynthesisUtterance=function(){};window.AudioContext=window.webkitAudioContext=undefined;")
 res = []
 
@@ -49,6 +49,27 @@ with sync_playwright() as p:
         # the answer goes in with the keypad and Check, as before
         pg.evaluate("()=>{__game.QS.typed='85'}"); pg.evaluate("()=>document.getElementById('tile').click()"); pg.wait_for_timeout(500)
         ok(f"{who} a right answer is taken", pg.evaluate("()=>['right','final','shown'].includes(__game.QS.phase)"), pg.evaluate("()=>__game.QS.phase"))
+        # fact families: after a clean 47 + 38 the next question of that skill is 85 - 38, and after 83 - 26 it is 57 + 26
+        pg.evaluate("()=>{__game.P.game.fam=null; __game.ask('sums.7',47,38,'+'); __game.QS.typed='85'; document.getElementById('tile').click()}"); pg.wait_for_timeout(500)
+        ok(f"{who} a clean add sets up its take-away partner", pg.evaluate("()=>JSON.stringify(__game.fam)") == '{"skill":"sums.7","a":85,"b":38,"op":"-"}', pg.evaluate("()=>JSON.stringify(__game.fam)"))
+        q = pg.evaluate("()=>{const q=__game.make('sums.7');return [q.a,q.b,q.op,q.ans,!!q.fromFam]}")
+        ok(f"{who} the partner question is 85 - 38 = 47", q == [85, 38, "-", 47, True], q)
+        ok(f"{who} it is asked only once", pg.evaluate("()=>__game.fam") is None)
+        pg.evaluate("()=>{__game.ask('sums.7',83,26,'-'); __game.QS.typed='57'; document.getElementById('tile').click()}"); pg.wait_for_timeout(500)
+        q = pg.evaluate("()=>{const q=__game.make('sums.7');return [q.a,q.b,q.op,q.ans]}")
+        ok(f"{who} a clean take-away is followed by 57 + 26 = 83", q == [57, 26, "+", 83], q)
+        pg.evaluate("()=>{__game.ask('sums.7',47,38,'+'); __game.QS.typed='99'; document.getElementById('tile').click()}"); pg.wait_for_timeout(300)
+        ok(f"{who} a wrong answer sets up no partner", pg.evaluate("()=>__game.fam") is None)
+        # the blocks fade once the skill is known and the last three answers were right; a button brings them back (Marie only)
+        pg.evaluate("()=>{__game.P.engine.skills['sums.7']={lvl:4,recent:[1,1,1],streak:3,n:6,right:6}; __game.ask('sums.7',47,38,'+')}"); pg.wait_for_timeout(300)
+        faded = pg.evaluate("()=>[!!document.querySelector('.mat.faded'),document.querySelectorAll('.mat .mb').length]")
+        if who == "marie":
+            ok("marie the blocks are faded for a skill she knows", faded == [True, 0], faded)
+            pg.click(".mshow"); pg.wait_for_timeout(200)
+            ok("marie Show blocks brings the blocks back", counts(pg) == [0, 4, 7, 47], counts(pg))
+        else:
+            ok("kennedy never loses his blocks", faded == [False, 11], faded)
+        pg.evaluate("()=>{delete __game.P.engine.skills['sums.7']; __game.ask('sums.7',47,38,'+')}"); pg.wait_for_timeout(200)
         # three digits (Marie has +100 and -100)
         pg.evaluate("()=>__game.ask('sums.9',345,232,'+')"); pg.wait_for_timeout(300)
         ok(f"{who} 345 shows 3 boxes of 100, 4 of 10, 5 ones", counts(pg) == [3, 4, 5, 345], counts(pg))

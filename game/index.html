@@ -22,7 +22,7 @@
        little game and before the play world (at answer 25 the rest card is that card); the keepsake of a game is saved with the counters, shown on a card, on the world
        shelf and in the small room beside the coins; a break button; an end-of-day card. Every card waits for a tap.
      - Own save per child (kidsMaths.game.<child>); the old app's save is read once and never written. -->
-<link rel="stylesheet" href="theme.css?v=22">
+<link rel="stylesheet" href="theme.css?v=23">
 <link rel="stylesheet" href="kid_mode.css?v=3">
 <link rel="stylesheet" href="parent_area.css?v=2">
 <link rel="stylesheet" href="new_skills.css?v=2">
@@ -370,7 +370,24 @@ let set = null, si = 0, Q = null, QS = null, pen = null, prevKey = "";   // pen 
 /* the hopper starts on the given number; if that number is also the answer the picture gives the answer away (a child who cannot read
    sees the knight on 5 and 5 among the choices), so such a question is swapped for another one of the same skill (review item 3) */
 const startsOnAnswer = q => q.type !== "K" && Number.isFinite(q.a) && q.a === q.ans;     // "Which number is ...?" (K) starts at the left end instead
+/* fact families (as Reflex teaches them): after a clean answer to 47 + 38, the next question of that skill can be 85 - 38 (and after 85 - 38, 47 + 38).
+   One in three clean add/take-away answers sets one up; it is asked once, and only if the next question is the same skill. */
+function famQuestion(skill) {
+  const f = P && P.game && P.game.fam; if (!f) return null;
+  P.game.fam = null;
+  if (f.skill !== skill) return null;
+  const tpl = KS.templates(theme).find(t => !["K", "M", "N"].includes(t.type) && KS.usable(t, skill, f.op)); if (!tpl) return null;
+  try { const q = KS.build(skill, theme, tpl, f.a, f.b); q.fromFam = true; return q; } catch (e) { return null; }
+}
+function famSetup(correct, helped) {
+  if (!correct || helped || !Q || Q.parent || Q.fromFam || !/^sums\.[1-9]$/.test(Q.skill || "") || !["+", "-"].includes(Q.op) || ["K", "M", "N"].includes(Q.type) || !Number.isFinite(Q.result)) return;
+  const g = P.game; g.famN = (g.famN || 0) + 1;
+  if (!window.__famAlways && g.famN % 3 !== 0) return;
+  g.fam = Q.op === "+" ? { skill: Q.skill, a: Q.a + Q.b, b: Q.b, op: "-" } : { skill: Q.skill, a: Q.result, b: Q.b, op: "+" };
+  if (g.fam.a > (Q.scale || 99)) g.fam = null;
+}
 function pickQuestion(skill) {
+  const fam = famQuestion(skill); if (fam) return fam;
   let prev = prevKey, q = null;
   for (let i = 0; i < 40; i++) {
     q = KS.make(skill, theme, Math.random, prev);
@@ -553,10 +570,15 @@ const isRuler = q => !!q && !q.parent && (/^sums\.[5-9]$/.test(q.skill) || (q.sk
 const rulerDir = () => endOf() < startOf() ? -1 : 1;
 /* 2- and 3-digit sums are worked with blocks (hundreds, tens, ones): a box of 100, a box of 10, single ones. ?sums=line brings the older number line back. */
 const MAT_ON = !/[?&]sums=line(&|$)/.test(location.search);
+/* the blocks fade away once the skill is known and her last three answers were all right (the US review says to fade them only when she is accurate); a button brings them back */
+function matIsEasy() {
+  const st = P && P.engine && P.engine.skills[Q.skill]; if (!st || (st.lvl || 0) < KidsEngine.LV.KNOWS) return false;
+  const r = Array.isArray(st.recent) ? st.recent : []; return r.length >= 3 && r.slice(-3).every(x => x === 1);
+}
 function rulerSetup() {
   const big = Q.scale >= 999 ? 100 : 10, s = P && P.engine && P.engine.skills[Q.skill];
   const weak = !s || s.lvl < KidsEngine.LV.KNOWS || (s.recent && s.recent.length > 0 && s.recent[s.recent.length - 1] === 0);
-  Object.assign(QS, { mat: MAT_ON && /^sums\.[5-9]$/.test(Q.skill), matPrev: null, ruler: true, big, top: big === 100 ? 1000 : 100, hop: weak ? 1 : 10, trail: [], strail: [], stars: [] });
+  Object.assign(QS, { mat: MAT_ON && /^sums\.[5-9]$/.test(Q.skill), matPrev: null, matFade: !KidMode.on() && matIsEasy(), matShow: false, ruler: true, big, top: big === 100 ? 1000 : 100, hop: weak ? 1 : 10, trail: [], strail: [], stars: [] });
   rulerPlace(startOf(), rulerDir());
 }
 function rulerPlace(v, dir) {                      // put the hopper on v and the ruler on the ten that holds v
@@ -638,6 +660,11 @@ function drawMat(box) {
   const was = QS.matPrev || [H, T, O]; QS.matPrev = [H, T, O];
   const blocks = (cls, count, before) => Array.from({ length: count }, (_, i) => `<i class="mb ${cls}${i >= before ? " pop" : ""}"></i>`).join("");
   const col = (cls, head, word, count, before) => `<div class="mcol"><b class="mhead">${kid ? head : `${head} <small>${word}</small>`}</b><div class="mbin ${cls}s">${blocks(cls, count, before)}</div></div>`;
+  if (QS.matFade && !QS.matShow) {
+    box.innerHTML = `<div class="mat faded"><div class="mnum"><span>${n}</span></div><button class="mshow" type="button" aria-label="Show the blocks">Show blocks</button></div>`;
+    box.querySelector(".mshow").onclick = () => { QS.matShow = true; QS.matPrev = null; drawLine(); };
+    QS.fresh = false; QS.freshArc = false; QS.slide = 0; return;
+  }
   box.innerHTML = `<div class="mat" role="img" aria-label="${n} as blocks: ${H} boxes of a hundred, ${T} boxes of ten, ${O} ones">${QS.big === 100 ? col("mh", "100", "hundreds", H, was[0]) : ""}${col("mt", "10", "tens", T, was[1])}${col("mo", "1", "ones", O, was[2])}<div class="mnum"><span>${n}</span></div></div>`;
   const mat = box.querySelector(".mat"), vhU = Math.max(24, Math.min(42, innerHeight * .046)), need = QS.big === 100 ? 19.6 : 11.4, numW = box.clientWidth < 500 ? 96 : 150;
   mat.style.setProperty("--u", Math.max(13, Math.min(vhU, (box.clientWidth - numW - 20) / need)).toFixed(1) + "px");      // the blocks shrink to fit the width, so nothing is cut off
@@ -924,6 +951,7 @@ function finished(correct) {
   const taught = QS.tries > 0, helped = taught || QS.hintLevel >= 3;       // only the worked step (hint level 3) counts as help; a nudge or a picture keeps the answer clean
   const rush = !correct && QS.firstMs != null && QS.firstMs < 1500;
   const clean = correct && !helped;
+  famSetup(correct, helped);
   QS.knewBefore = ((st.skills[Q.skill] || {}).lvl || 0) >= KidsEngine.LV.KNOWS;     // a skill she already knows gets no lesson offer (item 15)
   if (Q.parent) { P.parentLog = (P.parentLog || []).concat({ q: Q.parent.q, a: Q.parent.a, firstTry: clean, day: dayKey(Date.now()) }).slice(-100); st.parentQs.shift(); }
   else if (set.kind === "place") KidsEngine.placementRecord(st, M, Q.skill, clean);
@@ -1327,7 +1355,7 @@ if ("serviceWorker" in navigator && /^https?:$/.test(location.protocol) && (!nav
   const hadHelper = !!navigator.serviceWorker.controller; let reloaded = false;
   navigator.serviceWorker.addEventListener("controllerchange", () => { if (hadHelper && !reloaded && !(QS && QS.teaching)) { reloaded = true; location.reload(); } });
 }
-window.__game = { make: pickQuestion, get Q() { return Q; }, get log() { return log; }, hint: openHint, grownups: openGrownups, get saveBlocked() { return saveBlocked; }, get QS() { return QS; }, get P() { return P; }, get set() { return set; }, M, start, doors,
+window.__game = { make: pickQuestion, get fam() { return P && P.game.fam; }, get Q() { return Q; }, get log() { return log; }, hint: openHint, grownups: openGrownups, get saveBlocked() { return saveBlocked; }, get QS() { return QS; }, get P() { return P; }, get set() { return set; }, M, start, doors,
   show(q) { nextQuestion(q); },
   lesson() { if (!Q) return; closeBoard(); QS.tries = 1; return teach(); },
   ask(skill, a, b, op) {                            // tests: show one exact sum, e.g. ask("sums.7", 47, 38, "+")
