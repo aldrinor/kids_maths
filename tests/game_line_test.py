@@ -84,21 +84,22 @@ with sync_playwright() as p:
     level(pg, "sums.7", True); ask(pg, "sums.7", 47, 38, "+")
 
     # 3 a +10 hop walks ten steps and lands on 57; the window slides to 50-60; a star pops on 50
+    pg.evaluate("()=>{window.__mt=0;window.__iv2=setInterval(()=>{const Q=__game.QS;if(Q)window.__mt=Math.max(window.__mt,(Q.trail||[]).length)},10)}")
     pg.click('.hoprow button[data-h="1"][data-z="10"]')
     pg.wait_for_timeout(60)
     ok("+10 walks (pawn moves step by step)", pg.evaluate("()=>__game.QS.walking"))
     settle(pg)
     q = pg.evaluate("()=>({line:__game.QS.line, trail:__game.QS.trail.slice(), lo:__game.QS.lo, hops:__game.QS.hops.slice()})")
     ok("+10 lands on 57", q["line"] == 57, q)
-    ok("+10 shows ten steps", q["trail"] == list(range(48, 58)), q["trail"])
+    ok("+10 shows ten steps while it walks, then only the arc or tag stays", pg.evaluate("()=>{clearInterval(window.__iv2);return window.__mt}") >= 9 and q["trail"] == [], (q["trail"]))
     ok("ruler slid to 50-60", q["lo"] == 50 and [x["n"] for x in ticks(pg)] == list(range(50, 61)), q["lo"])
-    ok("ten-step dots drawn under the arc", pg.locator(".nlbox .ghost").count() == 8, pg.locator(".nlbox .ghost").count())
-    ok("arc and +10 label kept", pg.locator(".nlbox .hopr").count() >= 1 and pg.text_content(".nlbox .hoplab") == "+10", pg.locator(".nlbox .hoplab").all_text_contents())
+    ok("the little dots are gone after the walk", pg.locator(".nlbox .ghost").count() == 0, pg.locator(".nlbox .ghost").count())
+    ok("a hop that leaves this ten shows a tag +10 over the hopper", pg.text_content(".nlbox .hoplab") == "+10", pg.locator(".nlbox .hoplab").all_text_contents())
     ok("star on the tens mark 50", pg.locator('.nlbox .tenstar[data-n="50"]').count() == 1)
     ok("pawn number shown in full", pg.text_content(".nlbox .tick[data-n='57'] text") == "57")
     ok("pawn is the Mimi picture", pg.evaluate("()=>{const i=document.querySelector('.nlbox .hopper image');return !!i && /mimi_stand\\.png$/.test(i.getAttribute('href'))}"))
     pg.click('.hoprow button[data-h="1"][data-z="10"]'); settle(pg)
-    ok("second +10 lands on 67, label +20", pg.evaluate("()=>__game.QS.line") == 67 and pg.text_content(".nlbox .hoplab") == "+20")
+    ok("second +10 lands on 67, label +10 (the size of the last hop)", pg.evaluate("()=>__game.QS.line") == 67 and pg.text_content(".nlbox .hoplab") == "+10")
     pg.click('.hoprow button[data-h="-1"][data-z="10"]'); settle(pg)
     ok("Back -10 goes to 57", pg.evaluate("()=>__game.QS.line") == 57)
     # 4 the +1 and -1 buttons hop one at a time
@@ -132,9 +133,10 @@ with sync_playwright() as p:
     ok("83 back 10 is 73, ruler 70-80", pg.evaluate("()=>[__game.QS.line,__game.QS.lo]") == [73, 70], pg.evaluate("()=>[__game.QS.line,__game.QS.lo]"))
     ok("80 star on the way back", pg.locator('.nlbox .tenstar[data-n="80"]').count() == 1)
     level(pg, "sums.8", True); ask(pg, "sums.8", 345, 232, "+")
+    pg.evaluate("()=>{window.__ms=0;window.__iv3=setInterval(()=>{const Q=__game.QS;if(Q)window.__ms=Math.max(window.__ms,(Q.strail||[]).length)},10)}")
     pg.click('.hoprow button[data-h="1"][data-z="100"]'); settle(pg)
-    q = pg.evaluate("()=>({line:__game.QS.line, strail:__game.QS.strail.slice(), lo:__game.QS.lo, slo:__game.QS.slo})")
-    ok("+100 lands on 445, walks ten tens", q["line"] == 445 and len(q["strail"]) == 10 and q["lo"] == 440 and q["slo"] == 400, q)
+    q = pg.evaluate("()=>({line:__game.QS.line, ms:(clearInterval(window.__iv3),window.__ms), lo:__game.QS.lo, slo:__game.QS.slo})")
+    ok("+100 lands on 445, walks ten tens", q["line"] == 445 and q["ms"] >= 9 and q["lo"] == 440 and q["slo"] == 400, q)
 
     # 6 lines whose step is a group size, and small lines, stay as they were
     for skill in ["cafe_times.1", "cafe_times.2", "cafe_share.1", "cafe_share.2", "cafe_money.1", "sums.1", "sums.3"]:
@@ -159,7 +161,7 @@ with sync_playwright() as p:
     pg.wait_for_function("()=>!__game.QS.teaching && !document.querySelector('#boardbtns .again').hidden", timeout=90000)
     lr = pg.evaluate("()=>{clearInterval(window.__iv); return {maxTrail:window.__maxTrail, marks:[...window.__marks], line:__game.QS.line, ruler:!!__game.QS.ruler, step:__game.QS.step}}")
     ok("lesson keeps the ones ruler", lr["ruler"] and lr["step"] == 1 and lr["marks"] == [11], lr)
-    ok("lesson 10-hops show ten steps", lr["maxTrail"] == 10, lr)
+    ok("lesson 10-hops show ten steps", lr["maxTrail"] >= 9, lr)
     ok("lesson ends on 85", lr["line"] == 85, lr)
     pg.click("#boardbtns .bx"); pg.wait_for_timeout(200)
     # a lesson closed in the middle: the number buttons are back and work

@@ -22,7 +22,7 @@
        little game and before the play world (at answer 25 the rest card is that card); the keepsake of a game is saved with the counters, shown on a card, on the world
        shelf and in the small room beside the coins; a break button; an end-of-day card. Every card waits for a tap.
      - Own save per child (kidsMaths.game.<child>); the old app's save is read once and never written. -->
-<link rel="stylesheet" href="theme.css?v=16">
+<link rel="stylesheet" href="theme.css?v=17">
 <link rel="stylesheet" href="kid_mode.css?v=3">
 <link rel="stylesheet" href="parent_area.css?v=2">
 <link rel="stylesheet" href="new_skills.css?v=2">
@@ -594,7 +594,7 @@ async function rulerWalk(to, z, alive = () => true) {   // z 1: one hop; z 10: t
     }
     QS.fresh = k === 10; drawLine();
   }
-  QS.walking = false; QS.sdot = null;
+  QS.walking = false; QS.sdot = null; QS.trail = []; QS.strail = []; drawLine();          // the ten little steps are shown while walking; afterwards only the arc stays
 }
 async function rulerLesson(from, to, step, live) {     // lessons hop on the same ruler, counting each landing number
   const dir = to > from ? 1 : -1, me = QS, stop = () => { me.lessonHop = null; if (QS === me && !me.walking) renderBody(); };
@@ -653,18 +653,22 @@ function rulerSvg(host, k, [sL, topH]) {
     const anchor = key && every > 10 ? (v === lo ? "end" : "start") : "middle", nx = anchor === "end" ? SX(v) + sLabW * .25 : anchor === "start" ? SX(v) - sLabW * .25 : SX(v);
     s += `<text class="slab" x="${nx}" y="${4 + sf}" font-size="${sf}" font-weight="${key ? 800 : 600}" text-anchor="${anchor}" fill="${ink}" opacity="${key ? 1 : .7}">${v}</text>`;
   }
-  QS.strail.forEach(v => { if (v >= slo && v <= slo + 100) s += `<circle class="sghost" cx="${SX(v)}" cy="${sy}" r="3" fill="${hopC}" opacity=".5"/>`; });
   s += `<circle class="posdot" data-n="${line}" cx="${SX(clamp(slo, QS.sdot != null ? QS.sdot : line, slo + 100))}" cy="${sy}" r="${Math.max(4.5, sf * .36)}" fill="${hopC}" stroke="#fff" stroke-width="1.5"/></g>`;
   /* the ruler in ones */
   s += `<svg x="0" y="0" width="${Wd}" height="${H}" overflow="hidden"><g class="marks${QS.slide ? (QS.slide > 0 ? " slidef" : " slideb") : ""}">`;
   s += `<line x1="4" y1="${base}" x2="${Wd - 4}" y2="${base}" stroke="${ink}" stroke-width="4" stroke-linecap="round"/>`;
   const s0 = startOf();
   QS.hops.forEach(([a, c, z], i) => {
-    if (Math.max(a, c) < lo || Math.min(a, c) > hi) return;
-    const last = i === QS.hops.length - 1, m = (X(a) + X(c)) / 2, h = arcH * (Math.abs(c - a) >= 10 ? 1.15 : .75), anim = last && QS.freshArc ? " new" : "";
+    const last = i === QS.hops.length - 1;
+    if (a < lo || a > hi || c < lo || c > hi) {      // a hop that starts or lands off this ten has no arc here: a small tag over the hopper says what was hopped
+      if (last && line >= lo && line <= hi) { const d = c - a; s += `<text class="hoplab" x="${clamp(lab * 1.4, X(line), Wd - lab * 1.4)}" y="${Math.max(topH + lab, base - fsz - 12)}" font-size="${lab}" font-weight="800" text-anchor="middle" fill="${labC}">${d > 0 ? `+${d}` : d < 0 ? `−${-d}` : "0"}</text>`; }
+      return;
+    }
+    const m = (X(a) + X(c)) / 2, h = arcH * (Math.abs(c - a) >= 10 ? 1.15 : .75), anim = last && QS.freshArc ? " new" : "";
     s += `<path class="hopr${anim}" pathLength="1" d="M${X(a)} ${base - 4} Q${m} ${base - 4 - h * 1.5} ${X(c)} ${base - 4}" stroke="${hopC}" stroke-width="${Math.max(3, cell * .05)}" fill="none" stroke-linecap="round" opacity="${last ? 1 : .45}"/>`;
+    s += `<path class="hoparrow" d="M${X(c) - 6} ${base - 17} L${X(c) + 6} ${base - 17} L${X(c)} ${base - 5} Z" fill="${hopC}" opacity="${last ? 1 : .45}"/>`;      // the arrow head: where the hop lands
     if (last) {
-      const d = c - (QS.hopFrom != null ? QS.hopFrom : s0), txt = d > 0 ? `+${d}` : d < 0 ? `−${-d}` : "0";
+      const d = c - a, txt = d > 0 ? `+${d}` : d < 0 ? `−${-d}` : "0";
       s += `<text class="hoplab" x="${clamp(lab * 1.4, m, Wd - lab * 1.4)}" y="${Math.max(topH + lab * .9, Math.min(base - 4 - h * .75 - 6, Math.abs(m - X(line)) < lab * 1.6 ? base - fsz - 6 : 1e9))}" font-size="${lab}" font-weight="800" text-anchor="middle" fill="${labC}">${txt}</text>`;
     }
   });
@@ -672,7 +676,7 @@ function rulerSvg(host, k, [sL, topH]) {
   for (let v = lo; v <= hi; v++) {
     const ten = v % 10 === 0, here = v === line, ly = base + tick / 2 + bigF * .95;
     s += `<g class="tick ${ten ? "ten" : "one"}" data-n="${v}"><rect x="${X(v) - cell / 2}" y="${base - tick}" width="${cell}" height="${H - base + tick}" fill="transparent"/>`;
-    if (QS.stars.includes(v)) s += `<g class="tenstar" data-n="${v}">${star(X(v), ly - bigF * .33, bigF * .95, "#ffe27a")}</g>`;
+    if (QS.stars.includes(v)) s += `<g class="tenstar" data-n="${v}">${star(X(v), base - tick * 1.25, bigF * .62, "#ffd24d")}</g>`;
     s += `<line x1="${X(v)}" y1="${base - (ten ? tick * .62 : tick * .34)}" x2="${X(v)}" y2="${base + (ten ? tick * .62 : tick * .34)}" stroke="${ink}" stroke-width="${ten ? 5 : 2.4}" stroke-linecap="round"/>`;
     const txt = ten || here ? String(v) : String(v % 10), fs = ten ? bigF : oneF;
     const hereF = Math.min(bigF, (cell * 1.75 - 8) / (txt.length * .62));

@@ -12,7 +12,7 @@
  */
 "use strict";
 /*FILES-BEGIN*/
-const VERSION = "v5ae45285";
+const VERSION = "v0a6b3df9";
 const FILES = [
   "index.html",
   "app.webmanifest",
@@ -58,7 +58,7 @@ const FILES = [
   "parent_area.js?v=2",
   "focus_guard.js?v=1",
   "journey.js?v=2",
-  "theme.css?v=16",
+  "theme.css?v=17",
   "kid_mode.css?v=3",
   "parent_area.css?v=2",
   "new_skills.css?v=2",
