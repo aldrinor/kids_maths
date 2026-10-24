@@ -320,10 +320,11 @@
     return steps.concat([[400, () => pose(S, "point")], [1400, () => pose(S, "stand")]]);
   };
   // a row of holders (jars, trays, tables ...) each with a few of the same thing, for questions about numbers that are too big to draw (comparing, ordering,
-  // even and odd, estimating, prices). It shows the holders and nothing about how many: n holders, the same small pile in each.
+  // even and odd, estimating, prices). It shows the holders and nothing about how many: n holders, empty (nothing in them to count).
   ACTS.lineup = (S, Q, sc) => {
     const gs = [];
-    for (let i = 0; i < sc.n; i++) gs.push(group(S.ctx, icons(S.ctx, sc.noun, 3, 1, 1), sc.holder || "tray", "h" + i));
+    // the holders stand empty: any pile drawn in them could equal, or hint at, the answer (3 coins when the answer is 3)
+    for (let i = 0; i < sc.n; i++) gs.push(emptyHolder(S.ctx, sc.holder || "tray", "h" + i));
     add(S, ...gs); fit(S);
     return [[200, () => pose(S, "carry")]].concat(gs.map(g => [S.ctx.reduced ? 120 : 340, () => reveal(S, g, "d")]), [[500, () => pose(S, "stand")]]);
   };

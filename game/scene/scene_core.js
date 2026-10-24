@@ -45,7 +45,7 @@
      money       coins: [[kind, count], ...] with kind "toonie" (2 dollars), "loonie" (1), "dime" (10 cents), "nickel" (5)
      change      price, paid                    a thing costs price dollars; a paid-dollar bill is given (paid: 5, 10, 20, 50 or 100)
      bills       coins: [[picture, count], ...] picture "bill_5" "bill_10" "bill_20" "bill_50" "bill_100" "toonie" "loonie"   (cafe, 23 Oct 2026)
-     lineup      n (1 to 4), holder             n holders with the same small pile in each; no amount is drawn (numbers too big to draw)   (cafe, 23 Oct 2026)
+     lineup      n (1 to 4), holder             n empty holders, nothing in them to count; no amount is drawn (numbers too big to draw)   (cafe, 23 Oct 2026)
      time        from, hours, dir ("later" | "earlier"), or from, to, dir "span"   whole hours on the wall clock
      fraction    n, parts (2 | 4), holder       n things; a whole cut in parts (half, quarter)
      count       seq: [x, x+1, x+2]             things counted one by one (what comes next?)   (castle)

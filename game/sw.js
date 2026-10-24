@@ -12,7 +12,7 @@
  */
 "use strict";
 /*FILES-BEGIN*/
-const VERSION = "v7e8429c8";
+const VERSION = "v13ec049e";
 const FILES = [
   "index.html",
   "app.webmanifest",

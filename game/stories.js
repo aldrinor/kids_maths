@@ -1152,6 +1152,7 @@
         const D = T[type], tb = toolbox(rng32(hashText(meta.name + type))), seen = new Set(), out = [];
         for (let i = 0; i < 8000 && out.length < (D.n || 40); i++) {
           const p = D.gen(tb); if (!p) continue;
+          const sc = D.scene(p); if (sc.act === "lineup" && sc.n > 1 && sc.n === D.q(p).ans) continue;   // the picture must never show as many holders as the answer
           const k = JSON.stringify(p); if (seen.has(k)) continue; seen.add(k); out.push(Object.assign({ type }, p));
         }
         if (out.length < (D.min || 12)) throw new Error("KS: too few number sets for " + type);
@@ -1353,6 +1354,15 @@
     HM: [["Mimi has {n} stickers. A friend gives her one hundred more.", "How many stickers does she have now?", "sticker:tray"], ["The jar holds {n} candies. Mimi adds one hundred more.", "How many candies are in the jar now?", "candy:jar"], ["The cafe sold {n} muffins. It sells one hundred more.", "How many muffins did it sell in all?", "muffin:tray"]],
     HL: [["Mimi has {n} candies. She gives away one hundred of them.", "How many candies are left?", "candy:jar"], ["The shop has {n} cups. One hundred cups go to the fair.", "How many cups are left?", "cup:table"], ["Mimi baked {n} cookies. She sells one hundred of them.", "How many cookies are left?", "cookie:tray"]]
   };
+  // ten more or less: when the tens digit is 9 (going up) or 0 (going down) the hundreds digit changes too, so the words must say so
+  const stepCrosses = (n, up) => (up ? td(n) === 9 : td(n) === 0);
+  const stepHint = (n, up, tens) => !tens ? "Only the hundreds digit changes. The tens and the ones stay the same."
+    : !stepCrosses(n, up) ? "Only the tens digit changes. The hundreds and the ones stay the same."
+    : up ? "Nine tens and one more ten make a new hundred. The hundreds digit goes up by one and the tens digit is zero. The ones stay the same."
+      : "There are no tens to take away, so use a hundred as ten tens. The hundreds digit goes down by one and the tens digit is nine. The ones stay the same.";
+  const stepTensLine = (n, up, ans) => !stepCrosses(n, up) ? `${n} has ${pl(td(n), "ten")} in the tens place. Now it has ${pl(td(ans), "ten")}.`
+    : up ? `${n} has 9 tens in the tens place. One more ten makes a new hundred, so the hundreds go up by one and the tens place is zero.`
+      : `${n} has no tens in the tens place. Take one hundred and make it ten tens. Then take away one ten, and nine tens are left.`;
   const stepType = (kind, up, tens) => {
     const by = tens ? 10 : 100;
     return {
@@ -1360,9 +1370,9 @@
       gen: tb => ({ n: up ? tb.int(100, 999 - by) : tb.int(100 + by, 999) }),
       bank: STEP_BANK[kind], scene: () => ({ act: "lineup", n: 1 }),
       q: ({ n }) => { const ans = up ? n + by : n - by; return { v: { n }, nums: [n], ans, eq: `${n} ${up ? "+" : MINUS} ${by} = ?`, op: up ? "+" : "-", fact: `${n} ${up ? "plus" : "minus"} ${by} is ${ans}.`,
-        hint: tens ? "Only the tens digit changes. The hundreds and the ones stay the same." : "Only the hundreds digit changes. The tens and the ones stay the same.", key: `${n}` }; },
+        hint: stepHint(n, up, tens), key: `${n}` }; },
       les: ({ n }, Q) => [tens ? `${up ? "Ten more" : "Ten less"} means ${up ? "one more ten" : "one ten fewer"}. Look at the tens digit.` : `${up ? "One hundred more" : "One hundred less"} means ${up ? "one more hundred" : "one hundred fewer"}. Look at the hundreds digit.`,
-        tens ? `${n} has ${pl(td(n), "ten")} in the tens place. Now it has ${pl(td(Q.ans), "ten")}.` : `${n} has ${pl(hd(n), "hundred")} in the hundreds place. Now it has ${pl(hd(Q.ans), "hundred")}.`, `${n} ${up ? "+" : MINUS} ${by} = ${Q.ans}`]
+        tens ? stepTensLine(n, up, Q.ans) : `${n} has ${pl(hd(n), "hundred")} in the hundreds place. Now it has ${pl(hd(Q.ans), "hundred")}.`, `${n} ${up ? "+" : MINUS} ${by} = ${Q.ans}`]
     };
   };
   const STEP_TYPES = { TM: stepType("TM", true, true), TL: stepType("TL", false, true), HM: stepType("HM", true, false), HL: stepType("HL", false, false) };
@@ -1527,7 +1537,7 @@
         return { v: { a, b }, nums: [a, b], ans, eq: "about = ?", fact: `${ra} ${sign ? "plus" : "minus"} ${rb} is ${ans}. ${rangeNote(lo, hi)}`,
           hint: `Round each number to the nearest ${unit === 10 ? "ten" : "hundred"}. Then ${sign ? "add" : "take away"}.`, key: `${a}:${b}`, range: [lo, hi] };
       },
-      les: ({ a, b }, Q) => [`Round each number to the nearest ${unit === 10 ? "ten" : "hundred"}. Then the sum is easy.`, `${r(a)} ${sign ? "plus" : "minus"} ${r(b)} is ${Q.ans}.`, `${r(a)} ${sign ? "+" : MINUS} ${r(b)} = ${Q.ans}`]
+      les: ({ a, b }, Q) => [`Round each number to the nearest ${unit === 10 ? "ten" : "hundred"}. Then ${sign ? "add" : "take away"}.`, `${r(a)} ${sign ? "plus" : "minus"} ${r(b)} is ${Q.ans}.`, `${r(a)} ${sign ? "+" : MINUS} ${r(b)} = ${Q.ans}`]
     };
   }
   const BENCH_TYPE = {
@@ -1567,7 +1577,7 @@
     q: ({ a, b, d1, d2 }) => { const ra = near10(a), rb = near10(b), ans = sign ? ra + rb : ra - rb;
       return { v: { a, b }, nums: [a, b], ans, eq: "best = ?", fact: `${ra} ${sign ? "plus" : "minus"} ${rb} is ${ans}. So ${ans} is a good estimate.`,
         hint: `Round each number to the nearest ten. Then ${sign ? "add" : "take away"}.`, key: `${a}:${b}:${d1}:${d2}`, pool: [d1, d2], want: 2, noNear: true }; },
-    les: ({ a, b }, Q) => ["Round each number to the nearest ten. Then the sum is easy.", `${near10(a)} ${sign ? "plus" : "minus"} ${near10(b)} is ${Q.ans}.`, `${near10(a)} ${sign ? "+" : MINUS} ${near10(b)} = ${Q.ans}`]
+    les: ({ a, b }, Q) => [`Round each number to the nearest ten. Then ${sign ? "add" : "take away"}.`, `${near10(a)} ${sign ? "plus" : "minus"} ${near10(b)} is ${Q.ans}.`, `${near10(a)} ${sign ? "+" : MINUS} ${near10(b)} = ${Q.ans}`]
   });
   const closestType = unit => ({
     n: 40, min: 20,
@@ -1670,9 +1680,11 @@
     [`Lunch costs {p|dollar}. A man gives Mimi a ${g} dollar bill.`, "How many dollars of change does he get?", "sandwich@customer"],
     [`A box of cupcakes costs {p|dollar}. A girl pays with a ${g} dollar bill.`, "How much change does she get?", "cupcake@customer"]
   ];
+  // counting up for change: through the next ten first only when there is a ten to stop at on the way
+  const payHint = (p, g) => p % 10 === 0 ? `Count up from ${p} to ${g} by tens.` : Math.ceil(p / 10) * 10 === g ? `Count up from ${p} to ${g}. It is only a few steps.` : `Count up from ${p} to ${g}. First to the next ten, then the rest.`;
   const payType = g => ({
     n: 40, min: 20, gen: tb => ({ p: g === 50 ? tb.int(11, 49) : tb.int(21, 99) }), bank: PAY_BANK(g), scene: ({ p }) => ({ act: "change", price: p, paid: g }),
-    q: ({ p }) => ({ v: { p }, nums: [p, g], ans: g - p, eq: `${g} ${MINUS} ${p} = ?`, op: "-", fact: `The change from ${g} dollars for ${pl(p, "dollar")} is ${pl(g - p, "dollar")}.`, hint: `Count up from ${p} to ${g}. First to the next ten, then the rest.`, key: `${g}-${p}` }),
+    q: ({ p }) => ({ v: { p }, nums: [p, g], ans: g - p, eq: `${g} ${MINUS} ${p} = ?`, op: "-", fact: `The change from ${g} dollars for ${pl(p, "dollar")} is ${pl(g - p, "dollar")}.`, hint: payHint(p, g), key: `${g}-${p}` }),
     les: ({ p }, Q) => [`Change is what is left. So it is ${g} minus ${p}. Count up from ${p} to ${g}.`, `From ${p} up to ${g} is ${pl(Q.ans, "dollar")}.`, `${p} + ${Q.ans} = ${g}`]
   });
   const TWOBILL_BANK = [

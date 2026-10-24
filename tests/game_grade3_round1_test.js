@@ -56,6 +56,9 @@ check("bill pictures: all five bills, the toonie and the loonie are in manifest.
   }));
 const sceneSource = fs.readFileSync(path.join(GAME, "scene", "scene_cafe.js"), "utf8");
 check("scene_cafe.js knows the pictures and the two new acts", ["bill_5:", "bill_50:", "bill_100:", "ACTS.bills", "ACTS.lineup"].filter(k => !sceneSource.includes(k)));
+// answer leak: the lineup draws EMPTY holders (nothing countable inside), so the number of drawn items can never equal or hint the answer
+const lineupSource = sceneSource.slice(sceneSource.indexOf("ACTS.lineup ="), sceneSource.indexOf("ACTS.count ="));
+check("the lineup act draws no countable items (only empty holders)", /icons\(|thing\(|amount\(|place\(/.test(lineupSource) || !/emptyHolder\(/.test(lineupSource) ? ["ACTS.lineup draws items"] : []);
 check("the offline file list names the new bills (run tools/make_offline_files.py)", ["item_bill_5.png", "item_bill_50.png", "item_bill_100.png"].filter(f => !fs.readFileSync(path.join(GAME, "sw.js"), "utf8").includes(f)));
 
 // ---------- every question ----------
@@ -283,6 +286,29 @@ ids.forEach(id => {
     if (id === "cafe_order.1" && t === "OR" && (Q.opts.length !== 4 || new Set(Q.nums).size !== 4)) bad(id, "answer", "four different numbers");
     if (id === "cafe_order.1" && t === "OT" && Q.nums.length !== 5) bad(id, "answer", "five numbers");
     if (id === "cafe_order.2") { if (Q.ans < 100 || Q.ans > 999) bad(id, "range", "three digits " + Q.ans); if (/\d/.test(Q.story.replace(String(p.n), ""))) bad(id, "story", "ten and a hundred are words here: " + Q.story); }
+    // hints and lessons must be TRUE for these very numbers (23 Oct 2026 checker: "the hundreds stay the same" was said for 399 + 10)
+    if (id === "cafe_order.2") {
+      const tens = t === "TM" || t === "TL", dg = x => [Math.floor(x / 100), Math.floor(x / 10) % 10, x % 10];
+      const [n0, n1, n2] = dg(p.n), [a0, a1, a2] = dg(Q.ans), words = [Q.hint].concat(KS.teach(Q, true).steps.map(x => x.say)).join(" ");
+      if (/hundreds? (digit )?(and the (tens|ones) )?stay the same|hundreds and the ones stay the same/.test(words) && a0 !== n0) bad(id, "hint", `says the hundreds stay the same but ${p.n} -> ${Q.ans} ` + tag);
+      if (/tens and the ones stay the same/.test(words) && (a1 !== n1 || a2 !== n2)) bad(id, "hint", `says the tens and ones stay the same but ${p.n} -> ${Q.ans} ` + tag);
+      if (/ones stay the same/.test(words) && a2 !== n2) bad(id, "hint", "ones change " + tag);
+      if (/Only the tens digit changes/.test(words) && (a0 !== n0 || a2 !== n2)) bad(id, "hint", `says only the tens digit changes: ${p.n} -> ${Q.ans} ` + tag);
+      if (tens && a0 !== n0 && !/new hundred|hundreds digit (goes|go) (up|down)|hundreds go up|one hundred and make it ten tens|hundred as ten tens/.test(words)) bad(id, "hint", `crossing a hundred (${p.n} -> ${Q.ans}) but the words never say the hundreds change ` + tag);
+      const has = words.match(/(\d+) has (\d+) tens in the tens place/);
+      if (has && (Number(has[1]) !== p.n || Number(has[2]) !== n1)) bad(id, "hint", `lesson says ${has[1]} has ${has[2]} tens, really ${n1} ` + tag);
+      const now = words.match(/Now it has (\d+) tens?/);
+      if (now && Number(now[1]) !== a1) bad(id, "hint", `lesson says now ${now[1]} tens, really ${a1} ` + tag);
+      if (/has 9 tens in the tens place/.test(words) && n1 !== 9) bad(id, "hint", "9 tens is wrong " + tag);
+      if (/has no tens in the tens place/.test(words) && n1 !== 0) bad(id, "hint", "no tens is wrong " + tag);
+      if (tens && a0 === n0 && /new hundred|ten tens/.test(words)) bad(id, "hint", "talks about crossing a hundred but nothing crosses " + tag);
+    }
+    if (id === "cafe_estimate.2" || id === "cafe_estimate.3") { if (/sum is easy/.test(texts(Q).join(" "))) bad(id, "text", "'the sum is easy' on a take-away or a rounding question " + tag); }
+    if (id === "cafe_bills.3" && (t === "PC" || t === "PH")) {
+      const g = t === "PC" ? 50 : 100, nextTen = Math.ceil(p.p / 10) * 10, steps = / First to the next ten, then the rest/.test(Q.hint);
+      if (steps && (nextTen === g || p.p % 10 === 0)) bad(id, "hint", `'first to the next ten' when ${p.p} to ${g} has no ten on the way ` + tag);
+      if (!steps && nextTen !== g && p.p % 10 !== 0) bad(id, "hint", `a hint without the next-ten step where there is one ${p.p} to ${g} ` + tag);
+    }
     // the scene never carries the answer; its act is known
     const S = Q.scene;
     if (!S || typeof S !== "object") bad(id, "scene", "no scene");
@@ -291,6 +317,7 @@ ids.forEach(id => {
       if ("ans" in S) bad(id, "scene", "scene carries ans");
       if (!KS.SCENE_NOUNS.cafe.includes(S.noun)) bad(id, "scene", "unknown noun " + S.noun);
       if (S.who !== undefined && !KS.SCENE_WHO.includes(S.who)) bad(id, "scene", "unknown who " + S.who);
+      if (S.act === "lineup" && S.n > 1 && S.n === Q.ans) bad(id, "scene", `the picture shows ${S.n} holders and the answer is ${Q.ans} ` + tag);
       if (S.act === "lineup") { if (!Number.isInteger(S.n) || S.n < 1 || S.n > 4 || Object.keys(S).some(k => !["act", "n", "noun", "noun2", "holder", "who"].includes(k))) bad(id, "scene", "lineup " + JSON.stringify(S)); }
       else if (S.act === "bills") { if (!Array.isArray(S.coins)) bad(id, "scene", "bills coins"); }
       else if (S.act === "change") { if (S.paid - S.price !== Q.ans) bad(id, "scene", "paid - price"); }

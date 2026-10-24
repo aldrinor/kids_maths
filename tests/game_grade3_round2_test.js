@@ -314,6 +314,7 @@ ids.forEach(id => {
     else {
       if (S.act !== "lineup" || !SCENE_ACTS.has(S.act)) bad(id, "scene", "act " + S.act);
       if ("ans" in S) bad(id, "scene", "scene carries ans");
+      if (S.n > 1 && S.n === Q.ans) bad(id, "scene", `the picture shows ${S.n} holders and the answer is ${Q.ans}`);
       if (!KS.SCENE_NOUNS.cafe.includes(S.noun)) bad(id, "scene", "unknown noun " + S.noun);
       if (S.holder && !HOLDERS.includes(S.holder)) bad(id, "scene", "unknown holder " + S.holder);
       if (!Number.isInteger(S.n) || S.n < 1 || S.n > 4 || Object.keys(S).some(k => !["act", "n", "noun", "noun2", "holder", "who"].includes(k))) bad(id, "scene", "lineup " + JSON.stringify(S));
