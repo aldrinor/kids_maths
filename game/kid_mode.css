@@ -102,3 +102,14 @@ body[data-who="kennedy"] .hoprow { --bw: var(--touch); --bh: var(--touch); }
   body[data-who="kennedy"] .hoprow .hgrp { justify-content: center; }
 }
 @media (max-width: 640px) and (max-height: 800px) { body[data-who="kennedy"] .hoprow { --bh: 50px; } }
+
+/* Kennedy's answers: big, wide, easy to hit with a small hand. Phones that are short keep the 64 px size. */
+@media (min-height: 700px) {
+  body[data-who="kennedy"] #qbody .bars { width: min(760px, 100%); gap: 16px; }
+  body[data-who="kennedy"] #qbody .bars:has(> .opt:nth-child(2):last-child) { width: min(520px, 100%); }
+  body[data-who="kennedy"] #qbody .opt { min-height: clamp(88px, 12vh, 124px); font-size: clamp(38px, 6vw, 56px); border-radius: 22px; }
+}
+@media (min-height: 700px) and (min-width: 700px) {
+  body[data-who="kennedy"] .hoprow { --bw: 92px; --bh: 84px; }
+  body[data-who="kennedy"] .hoprow button[data-h] { font-size: 30px; }
+}
