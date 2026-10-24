@@ -366,7 +366,7 @@ function rubberSVG(down) {
 }
 
 /* ---------- which question comes next: the engine picks a set of skills; each skill becomes a story ---------- */
-let set = null, si = 0, Q = null, QS = null, pen = PENS[0][0], prevKey = "";
+let set = null, si = 0, Q = null, QS = null, pen = null, prevKey = "";   // pen is null until a child taps a pencil or the rubber; tapping it again puts it away
 /* the hopper starts on the given number; if that number is also the answer the picture gives the answer away (a child who cannot read
    sees the knight on 5 and 5 among the choices), so such a question is swapped for another one of the same skill (review item 3) */
 const startsOnAnswer = q => q.type !== "K" && Number.isFinite(q.a) && q.a === q.ans;     // "Which number is ...?" (K) starts at the left end instead
@@ -1128,14 +1128,13 @@ function closeHint() { document.querySelectorAll(".bubble").forEach(b => { b.rem
 function buildTools() {
   const down = matchMedia(NARROW).matches;
   const kid = KidMode.on(), pens = kid ? PENS.slice(0, 1) : PENS;     // Kennedy: one pencil, the rubber, the bin and home
-  if (kid && pen !== "erase") pen = PENS[0][0];
   $("#tools").innerHTML = pens.map(([c, d]) => `<button class="pencil" data-c="${c}" aria-label="Colour pencil">${pencilSVG(c, d, down)}</button>`).join("")
     + `<button class="rubber" data-t="erase" aria-label="Rubber">${rubberSVG(down)}</button><div class="grow"></div><button class="bin breakbtn" data-t="break" aria-label="Take a break">${Journey.ICON.moon}</button><button class="bin" data-t="clear" aria-label="Clear the drawing">${ICON.bin}</button><button class="bin home" data-t="home" aria-label="Back to the start">${ICON.home}</button>`;
   $("#tools").querySelectorAll("button").forEach(b => b.onclick = () => {
     if (b.dataset.t === "clear") return clearDraw();
     if (b.dataset.t === "break") return takeBreak();
     if (b.dataset.t === "home") return KidMode.on() ? confirmHome() : doors();
-    pen = b.dataset.c || "erase"; markTools();
+    const pick = b.dataset.c || "erase"; pen = pen === pick ? null : pick; markTools();   // tap again to put the pen away: then a touch on the page does nothing
   });
   markTools();
 }
@@ -1147,7 +1146,7 @@ async function confirmHome() {
   stopVoice();
   if (v === "yes") doors();
 }
-function markTools() { $("#tools").querySelectorAll("button").forEach(b => b.classList.toggle("on", (b.dataset.c || b.dataset.t) === pen)); }
+function markTools() { $("#tools").querySelectorAll("button").forEach(b => { const on = pen !== null && (b.dataset.c || b.dataset.t) === pen; b.classList.toggle("on", on); if (b.dataset.c || b.dataset.t === "erase") b.setAttribute("aria-pressed", String(on)); }); }
 let gd = null;
 function sizeDraw() {
   const c = $("#draw"), r = c.getBoundingClientRect(), dpr = window.devicePixelRatio || 1;
@@ -1165,7 +1164,7 @@ function setupDraw() {
   const style = () => { const er = pen === "erase"; gd.globalCompositeOperation = er ? "destination-out" : "source-over";
     gd.strokeStyle = er ? "#000" : pen; gd.fillStyle = gd.strokeStyle; gd.lineWidth = er ? 30 : 5; gd.lineCap = gd.lineJoin = "round"; };
   w.addEventListener("pointerdown", e => {
-    if (!gd || id !== null || (e.target.closest && e.target.closest(SKIP))) return;
+    if (!gd || pen === null || id !== null || (e.target.closest && e.target.closest(SKIP))) return;
     id = e.pointerId; moved = false; last = at(e); fromX = e.clientX; fromY = e.clientY;
     try { w.setPointerCapture(e.pointerId); } catch (x) {}
     if (e.pointerType !== "touch") { style(); gd.beginPath(); gd.arc(last[0], last[1], gd.lineWidth / 2, 0, 7); gd.fill(); moved = true; }
@@ -1239,7 +1238,7 @@ async function doors() {
   }
 }
 async function start(w, forceFresh) {
-  who = PROFILES[w] ? w : "marie"; set = null; si = 0; prevKey = ""; lastAct = Date.now();
+  who = PROFILES[w] ? w : "marie"; pen = null; set = null; si = 0; prevKey = ""; lastAct = Date.now();
   try {
     P = loadSave(who, forceFresh);
     log = AnswerLog.open({ storage: store, key: LOG_KEY(who) });
@@ -1278,6 +1277,9 @@ if (TRY && PROFILES[TRY]) { start(TRY); P.coins = Math.max(P.coins, 300); save()
 if ("serviceWorker" in navigator && /^https?:$/.test(location.protocol) && (!navigator.webdriver || window.__swTest)) {
   const register = () => navigator.serviceWorker.register("sw.js", { scope: "./" }).catch(e => console.warn("offline helper not started", e));
   if (document.readyState === "complete") register(); else addEventListener("load", register);
+  /* a page that was opened before an update is still the old page: when a new helper takes over, load the new files once (saves are kept on the device) */
+  const hadHelper = !!navigator.serviceWorker.controller; let reloaded = false;
+  navigator.serviceWorker.addEventListener("controllerchange", () => { if (hadHelper && !reloaded && !(QS && QS.teaching)) { reloaded = true; location.reload(); } });
 }
 window.__game = { make: pickQuestion, get Q() { return Q; }, get log() { return log; }, hint: openHint, grownups: openGrownups, get saveBlocked() { return saveBlocked; }, get QS() { return QS; }, get P() { return P; }, get set() { return set; }, M, start, doors,
   show(q) { nextQuestion(q); },

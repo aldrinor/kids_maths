@@ -9,6 +9,7 @@ ENGINE = sys.argv[2] if len(sys.argv) > 2 else "chromium"
 STUB = ("window.__demoFast=true;window.__noVoice=true;window.__noRewards=true;window.__sayLog=[];localStorage.clear();"
         "window.speechSynthesis={speak(){},cancel(){},getVoices(){return[]}};window.SpeechSynthesisUtterance=function(){};"
         "window.AudioContext=window.webkitAudioContext=undefined;")
+CENTERP = "()=>{const r=document.querySelector('#tools .pencil').getBoundingClientRect();return [r.left+r.width/2,r.top+r.height/2]}"
 SIZES = [(810, 1080), (1180, 820), (390, 844)]
 res = []
 HIT = r"""() => { const bad = [];
@@ -85,7 +86,10 @@ with sync_playwright() as p:
                     spot = pg.evaluate("""()=>{const r=document.getElementById('work').getBoundingClientRect();
                       for(let y=r.top+r.height*0.3;y<r.bottom-10;y+=18)for(let x=r.left+12;x<r.right-12;x+=18){const e=document.elementFromPoint(x,y);
                         const clear=[[-14,0],[14,0],[0,-14],[0,14],[0,0]].every(([dx,dy])=>{const n=document.elementFromPoint(x+dx,y+dy);return n&&(n.id==='work'||n.id==='qbody'||n.id==='board'||n.tagName==='CANVAS')&&!n.closest('button')});if(clear)return [x,y]} return null}""")
+                    ok(f"{tag} no pen is chosen at the start", pg.evaluate("()=>!document.querySelector('#tools .on')"))
                     if spot:
+                        pg.touchscreen.tap(*pg.evaluate(CENTERP)); pg.wait_for_timeout(100)
+                        ok(f"{tag} tapping a pencil picks it", pg.evaluate("()=>!!document.querySelector('#tools .pencil.on')"))
                         pg.touchscreen.tap(spot[0], spot[1]); pg.wait_for_timeout(200)
                         ok(f"{tag} a finger tap on empty space leaves no mark", pg.evaluate(INK) == 0, pg.evaluate(INK))
                         cdp = pg.context.new_cdp_session(pg) if ENGINE == "chromium" else None
@@ -97,6 +101,14 @@ with sync_playwright() as p:
                             cdp.send("Input.dispatchTouchEvent", {"type": "touchEnd", "touchPoints": []})
                             pg.wait_for_timeout(200)
                             ok(f"{tag} a finger drag on empty space draws", pg.evaluate(INK) > 50, pg.evaluate(INK))
+                            pg.evaluate("()=>document.querySelector('#tools .pencil').click()"); pg.wait_for_timeout(100)   # CDP touch can leave a stuck finger, so this last tap is a plain click
+                            ok(f"{tag} tapping the pencil again puts it away", pg.evaluate("()=>!document.querySelector('#tools .on')"))
+                            pg.evaluate("()=>{const c=document.getElementById('draw');c.getContext('2d').clearRect(0,0,c.width,c.height)}")
+                            cdp.send("Input.dispatchTouchEvent", {"type": "touchStart", "touchPoints": [{"x": pts[0][0], "y": pts[0][1]}]})
+                            for x, y in pts[1:]:
+                                cdp.send("Input.dispatchTouchEvent", {"type": "touchMove", "touchPoints": [{"x": x, "y": y}]})
+                            cdp.send("Input.dispatchTouchEvent", {"type": "touchEnd", "touchPoints": []})
+                            ok(f"{tag} with the pen put away a drag leaves no mark", pg.evaluate(INK) == 0, pg.evaluate(INK))
                 except Exception as e:
                     ok(f"{tag} drawing check", False, str(e)[:160])
 
