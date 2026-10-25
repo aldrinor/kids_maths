@@ -17,6 +17,8 @@ URL = f"http://localhost:{PORT}/game/index.html"
 WHO = sys.argv[1] if len(sys.argv) > 1 else "marie"
 N = int(sys.argv[2]) if len(sys.argv) > 2 and sys.argv[2].isdigit() else 100
 WRONG_EVERY = 4 if "--wrong" in sys.argv else 0
+VP = next((a.split("=")[1] for a in sys.argv if a.startswith("--vp=")), "820x1180")
+VW, VH = [int(x) for x in VP.split("x")]
 STUB = ("window.__demoFast=true;window.__noVoice=true;window.speechSynthesis={speak(){},cancel(){},getVoices(){return[]}};"
         "window.SpeechSynthesisUtterance=function(){};window.AudioContext=window.webkitAudioContext=undefined;")
 LAYOUT = """() => {
@@ -34,7 +36,7 @@ STATE = """() => {
   return { go: !!g, kind: gk ? gk.dataset.kind : '', phase: __game.QS ? __game.QS.phase : 'none', teach: !!(__game.QS && __game.QS.teaching) };
 }"""
 QINFO = """() => { const Q = __game.Q; return { skill: Q.skill, type: Q.type, theme: Q.theme, kind: Q.kind, eq: Q.eq, story: Q.story,
-  ask: Q.ask, ans: Q.ans, opts: Q.opts || null, act: (Q.scene || {}).act, alt: Q.alt, hint: Q.hint }; }"""
+  ask: Q.ask, ans: Q.ans, opts: Q.opts || null, act: (Q.scene || {}).act, alt: Q.alt, hint: Q.hint, pics: [...document.querySelectorAll('#qbody svg, #qbody img, #qbody canvas, #qbody .nlbox:not(.noline)')].filter(e => !e.closest('button, .bubble') && e.getBoundingClientRect().height > 40 && e.getBoundingClientRect().width > 40).length }; }"""
 ANSWER = """(wr) => { const Q = __game.Q, v = wr ? Q.ans + 1 : Q.ans;
   if (Q.kind === 'choice') { __game.QS.pick = wr ? (Q.opts.find(o => o !== Q.ans)) : Q.ans; } else { __game.QS.typed = String(v); }
   document.getElementById('tile').click(); }"""
@@ -52,13 +54,13 @@ if not up():
         if up():
             break
         time.sleep(0.1)
-out = os.path.join(OUT_ROOT, WHO)
+out = os.path.join(OUT_ROOT, WHO + ("" if VP == "820x1180" else "_" + VP))
 os.makedirs(out, exist_ok=True)
 rows, issues, seen_types, cards, errs = [], collections.Counter(), set(), collections.Counter(), []
 try:
     with sync_playwright() as p:
         br = p.chromium.launch(args=["--mute-audio"])
-        ctx = br.new_context(viewport={"width": 820, "height": 1180})
+        ctx = br.new_context(viewport={"width": VW, "height": VH})
         pg = ctx.new_page()
         pg.on("pageerror", lambda e: errs.append(str(e)[:120]))
         pg.add_init_script(STUB)
@@ -108,6 +110,7 @@ try:
                 idle += 1
                 continue
             idle = 0
+            pg.evaluate("()=>document.querySelectorAll('.band').forEach(b=>b.remove())")
             q = pg.evaluate(QINFO)
             lay = pg.evaluate(LAYOUT)
             key = f'{q["skill"]}|{q["type"]}|{q["kind"]}|{q["act"]}'
@@ -141,8 +144,15 @@ rep.append("Skills: " + ", ".join(f"{k} x{v}" for k, v in sorted(sk.items())))
 rep.append("Themes: " + ", ".join(f"{k} x{v}" for k, v in collections.Counter(r["theme"] for r in rows).items()))
 rep.append("Question types (type/kind/act): " + ", ".join(f"{k} x{v}" for k, v in collections.Counter(f'{r["type"]}/{r["kind"]}/{r["act"]}' for r in rows).most_common()))
 rep.append("Unique equations: %d of %d" % (len(set(eqs)), len(eqs)))
-run = [i for i in range(1, len(eqs)) if eqs[i] == eqs[i - 1]]
-rep.append(f"Same question twice in a row: {len(run)} times" + (" at " + str(run[:8]) if run else ""))
+sks = [r["skill"] for r in rows]
+runs, cur = [], 1
+for i in range(1, len(sks)):
+    if sks[i] == sks[i - 1]:
+        cur += 1
+    else:
+        runs.append(cur); cur = 1
+runs.append(cur)
+rep.append(f"Longest run of one skill: {max(runs or [0])}; runs longer than 3: {len([x for x in runs if x > 3])}; runs total {len(runs)}")
 dup = [(k, v) for k, v in collections.Counter(eqs).most_common(5) if v > 2]
 rep.append("Repeated 3+ times: " + (", ".join(f"{k!r} x{v}" for k, v in dup) or "none"))
 stories = collections.Counter(r["story"] for r in rows if r["story"])
@@ -150,6 +160,8 @@ rep.append(f"Story sentences: {len(stories)} different in {sum(stories.values())
 nums = [r["ans"] for r in rows if isinstance(r["ans"], (int, float))]
 rep.append(f"Biggest answer {max(nums or [0])}; answers over 100: {len([n for n in nums if n > 100])}")
 rep.append(f"Questions with no hint text: {len([r for r in rows if not r.get('hint')])}")
+nopic = collections.Counter(r["skill"] for r in rows if not r.get("pics"))
+rep.append("No picture in the answer area (skill x count of %d): " % len(rows) + (", ".join(f"{k} x{v}" for k, v in nopic.most_common()) or "none"))
 rep.append("Layout flags (count of questions): " + (", ".join(f"{k} x{v}" for k, v in issues.most_common(10)) or "none"))
 rep.append("Page errors: " + (" | ".join(errs[:3]) or "none"))
 rep.append("Screenshots: " + out)

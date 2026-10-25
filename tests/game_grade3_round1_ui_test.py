@@ -101,7 +101,7 @@ with sync_playwright() as p:
             if S["act"] == "lineup":
                 n = pg.evaluate("()=>document.querySelectorAll('#scene .qs-stage [data-role^=\"h\"]').length")
                 ok(f"{tag} lineup draws {S['n']} holders", n == S["n"], n)
-                ok(f"{tag} lineup draws no running count or number", pg.evaluate("()=>!document.querySelector('#scene .qs-stage [data-count]') && !/\\d/.test(document.querySelector('#scene .qs-stage').textContent)"))
+                ok(f"{tag} lineup draws no running count, and no number except the story's own on a holder's tag", pg.evaluate("""()=>{const s=document.querySelector('#scene .qs-stage'); if (s.querySelector('[data-count]')) return false; const c=s.cloneNode(true); c.querySelectorAll('.qs-tag').forEach(e=>e.remove()); if (/\d/.test(c.textContent)) return false; const tags=[...s.querySelectorAll('.qs-tag')].map(e=>e.textContent), nums=(__game.Q.story.match(/\d[\d,]*/g)||[]).map(x=>x.split(',').join('')); return !tags.length || (tags.length===nums.length && tags.every((x,i)=>x===nums[i]))}"""))
             if S["act"] == "bills":
                 for kind, c in S["coins"]:
                     got = pg.evaluate("(k)=>{const g=document.querySelector('#scene .qs-stage [data-role=\"'+k+'\"]'); return g? g.querySelectorAll('img.qs-o').length : -1}", kind)

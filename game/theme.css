@@ -437,3 +437,28 @@ body[data-theme="castle"] .mb.mo { background: radial-gradient(circle at 35% 30%
 @media (max-width: 500px) { .mnum span { font-size: 26px; padding: 2px 8px; min-width: 0; } .mat { gap: calc(var(--u) * .3); } .mcol { padding: 0 calc(var(--u) * .25); } .mnum { padding-left: 0; } .mhead small { display: none; } }
 .mat.faded { align-items: center; gap: 18px; min-height: calc(var(--u) * 2.4); }
 .mshow { min-height: 48px; padding: 0 20px; border-radius: 999px; border: 2px solid var(--paper-edge); background: var(--paper); color: var(--ink); font-size: 18px; font-weight: 800; box-shadow: 0 3px 0 var(--paper-edge); }
+
+/* ---- Teach (25 Oct 2026): a big button right of Check, the same size as every button in the row; warm, so it is not mistaken for Check ---- */
+.hoprow .teachbtn { display: flex; align-items: center; justify-content: center; gap: 6px; background: var(--note); color: var(--ink); border: 2px solid var(--accent-dark); box-shadow: 0 3px 0 var(--accent-dark); font-weight: 800; }
+.hoprow .teachbtn .bk svg { width: 1.15em; height: 1.15em; display: block; }
+.hoprow:has(.teachbtn) { --bw: min(clamp(96px, 12.5vw, 128px), calc((100vw - clamp(88px, 12vw, 136px) - 100px) / 7)); }      /* seven buttons: the side bar, the page edges and the gaps are taken off first */
+.hoprow:has(.teachbtn):has(.hgrp button:nth-child(3)) { --bw: min(128px, calc((100vw - clamp(88px, 12vw, 136px) - 120px) / 9)); }
+@media (max-width: 820px) and (max-aspect-ratio: 3/4) {      /* a tablet held upright: the side bar sits above the page, so the row has the whole width */
+  .hoprow:has(.teachbtn) { --bw: min(clamp(96px, 12.5vw, 128px), calc((100vw - 100px) / 7)); }
+  .hoprow:has(.teachbtn):has(.hgrp button:nth-child(3)) { --bw: min(128px, calc((100vw - 120px) / 9)); }
+}
+@media (max-width: 640px) {
+  .hoprow:has(.teachbtn) { --bw: min(88px, calc((100vw - 48px) / 4)); }
+  .hoprow:has(.teachbtn):has(.hgrp button:nth-child(3)) { --bw: calc((100vw - 48px) / 6); }
+  .hoprow:has(.hgrp button:nth-child(3)) .teachbtn .bk { display: none; }      /* no room for the little book beside the word */
+}
+
+/* ---- the lesson (25 Oct 2026): step dots, and the two buttons at the end are the same size and never cut off ---- */
+#boardbtns .bdots { position: absolute; left: 16px; top: 16px; display: flex; gap: 7px; pointer-events: none; }
+#boardbtns .bdots i { width: 11px; height: 11px; border-radius: 50%; border: 2px solid var(--paper-edge); background: transparent; transition: background .25s; }
+#boardbtns .bdots i.on { background: var(--primary); border-color: var(--primary-dark); }
+#boardbtns .brow { padding: 0 14px; }
+#boardbtns .brow button { flex: 1 1 0; width: auto; min-width: 0; max-width: 240px; min-height: 52px; padding: 0 12px; justify-content: center; white-space: normal; line-height: 1.1; font-size: clamp(15px, 4.4vw, 21px); }
+@media (max-width: 640px) { #boardbtns .again .play { width: 28px; height: 28px; } #boardbtns .brow { gap: 8px; } }
+@media (max-width: 640px) { #app.lesson #scene { display: none !important; } }   /* a phone gives the lesson board the room the picture strip used */
+.hoprow:has(.hgrp button:nth-child(3)) .teachbtn .bk { display: none; }      /* the ruler row is full: the word alone */

@@ -12,7 +12,7 @@
  */
 "use strict";
 /*FILES-BEGIN*/
-const VERSION = "v37bee48d";
+const VERSION = "v134c72a8";
 const FILES = [
   "index.html",
   "app.webmanifest",
@@ -22,7 +22,7 @@ const FILES = [
   "icons/icon_maskable_512.png",
   "../modules/characters.js",
   "../modules/knight_art.js",
-  "../modules/engine.js?v=2",
+  "../modules/engine.js?v=3",
   "../topics/kinder.js",
   "stories.js?v=3",
   "figure.js?v=1",
@@ -43,7 +43,7 @@ const FILES = [
   "world/castle_grounds.js?v=1",
   "world/castle_world.js?v=3",
   "scene/scene_core.js",
-  "scene/scene_cafe.js?v=2",
+  "scene/scene_cafe.js?v=4",
   "scene/scene_castle.js?v=2",
   "game_save.js?v=2",
   "kid_mode.js?v=3",
@@ -59,11 +59,11 @@ const FILES = [
   "parent_area.js?v=2",
   "focus_guard.js?v=1",
   "journey.js?v=2",
-  "theme.css?v=24",
-  "kid_mode.css?v=5",
+  "theme.css?v=31",
+  "kid_mode.css?v=12",
   "parent_area.css?v=2",
   "new_skills.css?v=2",
-  "scene/scene.css?v=1",
+  "scene/scene.css?v=2",
   "journey.css?v=2",
   "rewards/reward_styles.css"
 ];

@@ -113,3 +113,9 @@ body[data-who="kennedy"] .hoprow { --bw: var(--touch); --bh: var(--touch); }
   body[data-who="kennedy"] .hoprow { --bw: 92px; --bh: 84px; }
   body[data-who="kennedy"] .hoprow button[data-h] { font-size: 30px; }
 }
+
+/* Teach for Kennedy: a picture button (an open book), the same size as the rest of his row */
+body[data-who="kennedy"] .hoprow .teachbtn .pic { display: grid; place-items: center; }
+body[data-who="kennedy"] .hoprow .teachbtn .pic svg { width: 40px; height: 40px; display: block; }
+@media (min-height: 700px) and (min-width: 700px) { body[data-who="kennedy"] .hoprow:has(.teachbtn) { --bw: min(92px, calc((100vw - 96px) / 7)); } }
+body[data-who="kennedy"] .hoprow .teachbtn { min-height: var(--touch); min-width: 0; }

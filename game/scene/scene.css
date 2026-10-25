@@ -143,3 +143,7 @@
 
 /* things in two rows stand on a shelf, not in the air (24 Oct 2026) */
 #scene .qs-rows2 { background: linear-gradient(to bottom, transparent calc(50% - 3px), #ecd0a8 calc(50% - 3px), #cfa26b calc(50% + 1px), transparent calc(50% + 1px)) no-repeat center / 100% 100%; border-radius: 4px; }
+
+/* a number tag on a holder (lineup questions whose story names one number per holder) */
+#scene .qs-g.qs-tagged { position: relative; }
+#scene .qs-tag { position: absolute; left: 50%; top: 4%; transform: translateX(-50%); z-index: 2; background: #fff; color: #563832; border: 2px solid #c9a37a; border-radius: 9px; padding: 0 7px; font: 800 calc(var(--u) * .46)/1.25 system-ui, sans-serif; white-space: nowrap; box-shadow: 0 2px 0 rgba(86,56,50,.18); }

@@ -209,13 +209,13 @@ with sync_playwright() as p:
         for i in range(3):
             pg.wait_for_function(f"()=>__game.QS && __game.QS.phase==='ask' && __game.P.game.answered==={i} && !__game.QS.teaching", timeout=60000)
             shown = pg.evaluate("()=>!document.querySelector('#scene').hidden && document.querySelector('#scene').dataset.act === __game.Q.scene.act")
+            probs = pg.evaluate(CHECK) if has else []      # looked at before the lesson opens: a phone gives the lesson board the strip's room (25 Oct 2026)
             if has:     # the lesson board keeps its room: the row gives way before the board is placed
                 pg.evaluate("()=>__game.lesson()"); pg.wait_for_function("()=>!__game.QS.teaching", timeout=60000)
                 bd = pg.evaluate("()=>{const b=document.querySelector('#board').getBoundingClientRect(), n=document.querySelector('#qbody .nlbox').getBoundingClientRect(); return [b.height, n.top - b.bottom]}")
                 ok(f"{who} q{i + 1} lesson board big enough, above the number line", bd[0] >= 110 and bd[1] >= -1, bd)
             if has:
                 ok(f"{who} q{i + 1} scene shows the question's act", shown)
-                probs = pg.evaluate(CHECK)
                 ok(f"{who} q{i + 1} scene checks", not probs or probs == ["OFF"], probs[:4])
             else:
                 ok(f"{who} q{i + 1} no {theme} scene: row hidden, mascot shows", pg.evaluate("()=>document.querySelector('#scene').hidden && getComputedStyle(document.querySelector('#mascot')).display !== 'none'"))

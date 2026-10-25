@@ -325,6 +325,10 @@
     const gs = [];
     // the holders stand empty: any pile drawn in them could equal, or hint at, the answer (3 coins when the answer is 3)
     for (let i = 0; i < sc.n; i++) gs.push(emptyHolder(S.ctx, sc.holder || "tray", "h" + i));
+    // when the story names exactly one number for each holder (520, 775, 749 and 301 on four shelves) the holder wears that number on a small tag: the numbers sit in the picture
+    // as well as in the words. The story already says them, so nothing is given away; a story with any other count of numbers leaves the holders bare.
+    const nums = String((Q && Q.story) || "").match(/\d[\d,]*/g);
+    if (nums && nums.length === sc.n) gs.forEach((g, i) => { const tag = h("span", "qs-tag"); tag.textContent = nums[i].split(",").join(""); g.classList.add("qs-tagged"); g.appendChild(tag); });
     add(S, ...gs); fit(S);
     return [[200, () => pose(S, "carry")]].concat(gs.map(g => [S.ctx.reduced ? 120 : 340, () => reveal(S, g, "d")]), [[500, () => pose(S, "stand")]]);
   };

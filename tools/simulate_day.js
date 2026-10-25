@@ -15,6 +15,7 @@
  * The day limit counts maths time only (answers and lessons); reward games and the world do not use it up, as in the game.
  */
 "use strict";
+const GAME_MIX = (() => { const m = /altRepair:\s*true,\s*mix:\s*(\d+)/.exec(require("fs").readFileSync(require("path").join(__dirname, "..", "game", "index.html"), "utf8")); return m ? Number(m[1]) : 0; })();   // the game's own setting, read so the tool cannot drift (SIM_NO_MIX=1 turns it off to compare)
 const fs = require("fs");
 const path = require("path");
 
@@ -94,7 +95,7 @@ function simulate(who, o, rules, real) {
     const day = { answers: 0, misses: 0, mathsSecs: 0, rewardGames: 0, worlds: 0, lessonSecs: 0, repairAlt: 0 };
     let now = t0 + d * E.DAY, guard = 0;
     while (day.mathsSecs < rules.dayLimitMin * 60 && guard++ < 400) {
-      const set = E.nextSet(st, M, now, rng, { altRepair: true });
+      const set = E.nextSet(st, M, now, rng, { altRepair: true, mix: process.env.SIM_NO_MIX ? 0 : GAME_MIX });
       if (!set.items.length) break;
       if (set.alt) day.repairAlt++;
       let si = 0;

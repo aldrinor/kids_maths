@@ -28,11 +28,11 @@ document.addEventListener("wheel",function(e){if(e.ctrlKey)e.preventDefault();},
        little game and before the play world (at answer 25 the rest card is that card); the keepsake of a game is saved with the counters, shown on a card, on the world
        shelf and in the small room beside the coins; a break button; an end-of-day card. Every card waits for a tap.
      - Own save per child (kidsMaths.game.<child>); the old app's save is read once and never written. -->
-<link rel="stylesheet" href="theme.css?v=24">
-<link rel="stylesheet" href="kid_mode.css?v=5">
+<link rel="stylesheet" href="theme.css?v=31">
+<link rel="stylesheet" href="kid_mode.css?v=12">
 <link rel="stylesheet" href="parent_area.css?v=2">
 <link rel="stylesheet" href="new_skills.css?v=2">
-<link rel="stylesheet" href="scene/scene.css?v=1">
+<link rel="stylesheet" href="scene/scene.css?v=2">
 <link rel="stylesheet" href="journey.css?v=2">
 </head>
 <body>
@@ -48,7 +48,7 @@ document.addEventListener("wheel",function(e){if(e.ctrlKey)e.preventDefault();},
 </div>
 <script src="../modules/characters.js"></script>
 <script src="../modules/knight_art.js"></script>
-<script src="../modules/engine.js?v=2"></script>
+<script src="../modules/engine.js?v=3"></script>
 <script src="../topics/kinder.js"></script>
 <script src="stories.js?v=3"></script>
 <script src="figure.js?v=1"></script>
@@ -73,7 +73,7 @@ document.addEventListener("wheel",function(e){if(e.ctrlKey)e.preventDefault();},
 <script src="world/castle_world.js?v=3"></script>
 <!-- the question scene above each question (game/scene/): the core, then one file per theme -->
 <script src="scene/scene_core.js"></script>
-<script src="scene/scene_cafe.js?v=2"></script>
+<script src="scene/scene_cafe.js?v=4"></script>
 <script src="scene/scene_castle.js?v=2"></script>
 <script src="game_save.js?v=2"></script>
 <script src="kid_mode.js?v=3"></script>
@@ -327,6 +327,7 @@ const ICON = {
   bulb: `<svg viewBox="0 0 24 24"><path d="M12 3a6 6 0 0 0-3.6 10.8c.6.5 1 1.2 1 2V17h5.2v-1.2c0-.8.4-1.5 1-2A6 6 0 0 0 12 3z" fill="#fff"/><rect x="9.4" y="18.2" width="5.2" height="2.4" rx="1" fill="#fff"/></svg>`,
   close: `<svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18" stroke="#fff" stroke-width="3" stroke-linecap="round"/></svg>`,
   play: `<svg viewBox="0 0 24 24"><path d="M7 4l13 8-13 8z" fill="currentColor"/></svg>`,
+  book: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 6.5v12.5M12 6.5C9.6 4.8 6 4.6 3 5.4v12.8c3-.8 6.6-.6 9 1.1 2.4-1.7 6-1.9 9-1.1V5.4c-3-.8-6.6-.6-9 1.1z"/></svg>`,
   bin: `<svg viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="7" width="12" height="14" rx="2"/><rect x="4" y="4" width="16" height="2.4" rx="1"/><rect x="9" y="2" width="6" height="2" rx="1"/></svg>`,
   home: `<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 3 2.5 11h2.8v9h5v-6h3.4v6h5v-9h2.8z"/></svg>`,
   coin: `<svg viewBox="0 0 32 32" aria-hidden="true"><circle cx="16" cy="16" r="14" fill="#f6c945" stroke="#c99a1e" stroke-width="2.5"/><circle cx="16" cy="16" r="9.5" fill="none" stroke="#e3ad25" stroke-width="2"/><path d="M11 12.5 L16 8.5 L21 12.5 L19.2 20.5 H12.8 Z" fill="#fff3c4" opacity=".9"/></svg>`,
@@ -406,7 +407,7 @@ function pickQuestion(skill) {
 function nextQ() {
   for (let guard = 0; guard < 40; guard++) {
     if (!set || si >= set.items.length) {
-      set = KidsEngine.nextSet(P.engine, M, Date.now(), Math.random, { altRepair: true }); si = 0;       // altRepair: a stuck skill with nothing underneath comes back with a second picture
+      set = KidsEngine.nextSet(P.engine, M, Date.now(), Math.random, { altRepair: true, mix: 4 }); si = 0;       // altRepair: a stuck skill with nothing underneath comes back with a second picture
       if (!set.items.length) return null;                 // paused, or nothing to play
     }
     const item = set.items[si];
@@ -432,6 +433,7 @@ function drawDots() {
 function drawCoins(pop) { const c = $("#coins"); c.innerHTML = `${ICON.coin}<b>${P ? P.coins : 0}</b>`; if (pop) { c.classList.remove("pop"); void c.offsetWidth; c.classList.add("pop"); } }
 /* carry: parts of the old question's state that go on to the next one (after a miss the new question keeps tries: 1) and a spoken lead-in */
 function nextQuestion(given, carry) {
+  document.querySelectorAll(".band").forEach(b => b.remove());      // a quick Next must not leave the old Correct! banner over the new question
   closeHint(); closeBoard(); clearDraw(); stopVoice();
   Q = given || nextQ();
   if (!Q) return showEnd("All done for now!", "There are no more questions today. See you tomorrow!");
@@ -503,6 +505,12 @@ function renderBody() {
     <div class="qbottom"><div class="nlbox${Q.noLine ? " noline" : ""}"${Q.noLine ? "" : ` aria-label="Number line"`}></div>
     <div class="hoprow${solo ? " solo" : ""}"><div class="hgrp minus">${minusBtns}</div><div class="hmid">${midBtns}</div><div class="hgrp plus">${plusBtns}</div></div></div>`;
   b.querySelector(".hmid").appendChild(tileEl);
+  const teachFits = !(kid && !none && matchMedia("(max-width: 640px)").matches);     // Kennedy's typed sums on a phone: four 64 px hop buttons plus Check already fill the row
+  if (QS.phase === "ask" && !QS.teaching && !Q.parent && teachFits) {          // "I do not know": a big Teach button right of Check, the same size
+    const tb = document.createElement("button"); tb.className = "teachbtn"; tb.setAttribute("aria-label", "Teach me");
+    tb.innerHTML = kid ? `<span class="pic">${KidMode.ICONS.teach}</span>` : `<span class="bk">${ICON.book}</span><span>Teach</span>`;
+    tb.onclick = teachNow; b.querySelector(".hmid").appendChild(tb);
+  }
   b.classList.toggle("rulerq", !!QS.ruler);       // the ruler is a little taller: the empty gap above it gives way
   drawLine();
   b.querySelectorAll(".bulb").forEach(x => x.onclick = e => { e.stopPropagation(); document.querySelector(".bubble") ? closeHint() : openHint(); });
@@ -773,10 +781,12 @@ function placeBoard() {
   Object.assign(bd.style, box); const bb = $("#boardbtns"); if (bb) Object.assign(bb.style, box);
   bd.style.setProperty("--rule", Math.max(28, Math.round(h / 6)) + "px");
 }
+/* Check is shown whenever a question waits for it; Kennedy taps his answers straight in, so his choice questions have none */
+function showTile() { const t = $("#tile"); t.hidden = !!(QS && QS.phase === "ask" && KidMode.on() && Q && Q.kind === "choice"); }
 function closeBoard() {
   const bd = $("#board"); if (bd) bd.remove(); const bb = $("#boardbtns"); if (bb) bb.remove();
   $("#app").classList.remove("lesson"); sizeDraw();
-  if (QS) { QS.board = false; QS.teachRun = (QS.teachRun || 0) + 1; QS.teaching = false; if (QS.phase === "right") $("#tile").hidden = false; }
+  if (QS) { QS.board = false; QS.teachRun = (QS.teachRun || 0) + 1; QS.teaching = false; showTile(); }
   if (bb) FocusGuard.leave(bb, "#tile");                     // after the screen is back, so focus can return to the button it came from
 }
 async function teach() {
@@ -788,7 +798,7 @@ async function teach() {
     bd.innerHTML = `<canvas></canvas>`;
     $("#work").appendChild(bd);
     const bb = document.createElement("div"); bb.id = "boardbtns";    // buttons above the drawing layer; the board below it
-    bb.innerHTML = `<button class="bx" aria-label="Close the lesson">✕</button><div class="brow"><button class="again" hidden aria-label="Watch again"><span class="play">${ICON.play}</span>${KidMode.on() ? "" : "Watch again"}</button><button class="bnext" hidden aria-label="Next">${KidMode.on() ? KidMode.ICONS.next : "Next ➜"}</button></div>`;
+    bb.innerHTML = `<div class="bdots" aria-hidden="true"></div><button class="bx" aria-label="Close the lesson">✕</button><div class="brow"><button class="again" hidden aria-label="Watch again"><span class="play">${ICON.play}</span>${KidMode.on() ? "" : "Watch again"}</button><button class="bnext" hidden aria-label="Next">${KidMode.on() ? KidMode.ICONS.next : "Next ➜"}</button></div>`;
     $("#work").appendChild(bb);
     bb.querySelector(".again").onclick = () => teach();
     bb.querySelector(".bnext").onclick = () => { if (QS && QS.missedFirst) swapFresh(); else if (QS && (QS.phase === "right" || QS.phase === "shown")) goNext(); };
@@ -802,7 +812,7 @@ async function teach() {
   const nb = bb.querySelector(".bnext"); nb.setAttribute("aria-label", QS.missedFirst ? "A new question" : "Next");   // after a miss the same button brings the new question
   if (!KidMode.on()) nb.textContent = QS.missedFirst ? "New question ➜" : "Next ➜";
   bb.querySelector(".again").hidden = true; bb.querySelector(".bx").hidden = false; bb.querySelector(".bnext").hidden = !nextOk;
-  if (QS.phase === "right") $("#tile").hidden = true;                  // the lesson card has its own Next
+  $("#tile").hidden = true;                                            // the lesson card has its own Next; Check waits until the lesson is done
   QS.teaching = true; $("#app").classList.add("locked");
   FocusGuard.leave(bb); FocusGuard.enter(bb, { label: "Lesson", first: nextOk ? bb.querySelector(".bnext") : bb.querySelector(".bx") });
   const cv = bd.querySelector("canvas"), r = bd.getBoundingClientRect(), dpr = window.devicePixelRatio || 1;
@@ -811,12 +821,14 @@ async function teach() {
   const W = r.width, H = r.height, plan = KS.teach(Q, QS.phase === "right" || !!QS.missedFirst), BTN = 66;     // after a miss the lesson ends on the fact, not on "Type 7": the new question comes next
   if (QS.missedFirst && QS.missCls) plan.steps.unshift({ say: MissStudy.leadSentence(QS.missCls), draw: [] });      // first, the help that matches this kind of mistake
   const draws = plan.steps.flatMap(s => s.draw || []);
-  const split = draws.some(d => d.split), maxRow = Math.max(0, ...draws.filter(d => d.tokens).map(d => d.row));
+  const hopLane = draws.some(d => d.hops);                     // the hops need row 1 to themselves: every written row from 1 down moves one row lower, so no arc crosses a number
+  if (hopLane) draws.forEach(d => { if (d.tokens && d.row >= 1) d.row += 1; });
+  const split = draws.some(d => d.split), maxRow = Math.max(hopLane ? 1 : 0, ...draws.filter(d => d.tokens).map(d => d.row));
   const lastRow = draws.some(d => d.answer) ? maxRow + 1 : maxRow;
-  const units = 1.25 + lastRow * 1.32 + 0.45 + (split ? 0.95 : 0);            // board height needed, in letter sizes
+  const units = 1.25 + lastRow * 1.32 + 0.45 + (split ? 0.95 : 0) + (hopLane ? 0.55 : 0);            // board height needed, in letter sizes
   const fs = Math.max(14, Math.min(56, (H - BTN) / units, W / 9.5)), ink = css("--board-ink") || "#2b3a55";
   const STEP = css("--board-step"), SPLIT = css("--board-split"), ANS = css("--board-answer"), HOP = css("--board-hop"), QM = css("--hop-label");
-  const rowY = i => fs * 1.25 + i * fs * 1.32 + (split && i >= 1 ? fs * 0.95 : 0);
+  const rowY = i => fs * 1.25 + i * fs * 1.32 + (split && i >= 1 ? fs * 0.95 : 0) + (hopLane && i >= 2 ? fs * 0.55 : 0);
   g.lineCap = g.lineJoin = "round";
   const font = (size, w = 400) => `${w} ${size}px "Patrick Hand", "Comic Sans MS", "Chalkboard SE", cursive`;
   const tokenX = {};
@@ -896,9 +908,11 @@ async function teach() {
       await Promise.all([say(String(v)), wait(450)]);
     }
   }
-  for (const st of plan.steps) {
+  const dots = bb.querySelector(".bdots"); dots.innerHTML = plan.steps.map(() => "<i></i>").join("");   // one dot per step: the filled ones are done
+  for (const [stepAt, st] of plan.steps.entries()) {
     if (!live()) return;
-    if (st === plan.steps[plan.steps.length - 1] && !QS.missedFirst) { QS.teaching = false; $("#app").classList.remove("locked"); }   // "Type 7": she can type now
+    if (dots.children[stepAt]) dots.children[stepAt].classList.add("on");
+    if (st === plan.steps[plan.steps.length - 1] && !QS.missedFirst) { QS.teaching = false; $("#app").classList.remove("locked"); showTile(); }   // "Type 7": she can type now
     const speech = say(st.say), drawing = (async () => {
       for (const d of st.draw || []) {
         if (d.tokens) await writeRow(d.row, d.tokens, d.row === 0 ? ink : STEP);
@@ -920,8 +934,9 @@ async function teach() {
     await wait(250);
   }
   if (!live()) return;
-  if (!QS.missedFirst) { QS.teaching = false; $("#app").classList.remove("locked"); }
+  if (!QS.missedFirst) { QS.teaching = false; $("#app").classList.remove("locked"); showTile(); }
   bb.querySelector(".again").hidden = false; bb.querySelector(".bx").hidden = false; bb.querySelector(".bnext").hidden = !(QS.phase === "right" || QS.missedFirst);
+  if (QS.missedFirst && !KidMode.on()) { mascot("happy"); await say("That is how it works. Now you try a new one."); if (!live()) return; }   // a warm end, then the new question
   if (QS.missedFirst) { await kidPrompt("next", me); }
 }
 
@@ -990,6 +1005,17 @@ async function kidPrompt(kind, me) {              // the spoken "what to tap now
   if (!KidMode.shouldPrompt(kind)) return;
   await say(KidMode.promptText(kind));
 }
+/* the child taps Teach: the same road as a first miss (the lesson, then a NEW question of the same skill that counts as taught), but nothing is marked wrong and the log says she asked */
+async function teachNow() {
+  if (!QS || QS.phase !== "ask" || QS.teaching || QS.submitting || !Q || Q.parent) return;
+  const me = QS; if (QS.firstMs == null) QS.firstMs = Date.now() - QS.t0;
+  logAnswer(null, false, "", "asked");
+  QS.tries++; QS.mark = null; QS.typed = ""; QS.pick = null; QS.teaching = true; QS.missedFirst = true; QS.missCls = "";
+  closeHint(); renderBody();
+  const words = "Let's work it out together.";
+  msg("try", words); await say(words); if (QS !== me) return;
+  teach();
+}
 const FINAL_WORDS = "Not yet. Let's see the answer.";
 async function tile() {
   if (!QS || QS.teaching) return;
@@ -1034,12 +1060,12 @@ async function tile() {
   if (QS.phase === "shown" || QS.phase === "right") goNext();
 }
 /* one line in the answer log for every answer given (a first miss, and the new question after it, are two lines) */
-function logAnswer(given, correct, cls) {
+function logAnswer(given, correct, cls, flag) {
   if (!log || saveBlocked || !Q) return;
   const first = QS.firstMs != null && !QS.loggedOne ? QS.firstMs : Date.now() - QS.t0;
   QS.loggedOne = true;
   const rush = !correct && QS.firstMs != null && QS.firstMs < 1500 && QS.tries === 0;
-  const f = []; if (rush) f.push("rush"); if (QS.afterMiss) f.push("fresh"); if (QS.alt) f.push("alt");
+  const f = []; if (rush) f.push("rush"); if (QS.afterMiss) f.push("fresh"); if (QS.alt) f.push("alt"); if (flag) f.push(flag);
   log.add({ t: Date.now(), s: Q.parent ? "parent" : Q.skill, q: Q.parent ? Q.parent.q : (Q.eq || Q.story), g: given, a: Q.ans, ok: correct ? 1 : 0, h: QS.hintLevel, r: QS.tries + 1,
     sc: Q.scene && Q.scene.act || "", ms: first, k: Q.kind === "choice" ? "c" : "t", c: cls || "", f });
 }

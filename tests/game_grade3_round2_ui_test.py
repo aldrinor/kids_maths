@@ -89,7 +89,7 @@ with sync_playwright() as p:
             pg.wait_for_timeout(60)
             S = Q["scene"]
             ok(f"{tag} scene is a lineup (or steps aside on a short screen)", pg.evaluate("(a)=>{const s=document.querySelector('#scene'); return !s || s.hidden || s.dataset.act===a}", S["act"]) and S["act"] == "lineup", S["act"])
-            ok(f"{tag} the scene prints no number", pg.evaluate("()=>{const s=document.querySelector('#scene .qs-stage'); return !s || !/\\d/.test(s.textContent)}"))
+            ok(f"{tag} the scene prints no number (a holder's tag may carry the story's own numbers)", pg.evaluate("""()=>{const s=document.querySelector('#scene .qs-stage'); if (!s) return true; const c=s.cloneNode(true); c.querySelectorAll('.qs-tag').forEach(e=>e.remove()); return !/\d/.test(c.textContent)}"""))
             if Q.get("figure"):
                 ok(f"{tag} the figure is drawn under the story", pg.evaluate("()=>!!document.querySelector('#qbody .figure svg.fig')"))
                 ok(f"{tag} the figure fits the screen", not on_screen(pg, "#qbody .figure svg.fig"), on_screen(pg, "#qbody .figure svg.fig"))

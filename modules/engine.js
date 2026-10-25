@@ -167,7 +167,15 @@
     const learnt = M.order.filter(id => strong(st, id) && usable(id));
     const filler = (exclude, n) => pickSome(learnt.filter(id => !exclude.includes(id)), n, rng);
     const left = id => rules(st).dailyCap - (st.dayCounts[id] || 0);
-    const make = (kind, target, n) => { n = Math.max(1, Math.min(n, left(target))); const items = Array(n).fill(target).concat(filler([target], 5 - n)); while (items.length < 5 && items.filter(x => x === target).length < left(target)) items.push(target); return finish(st, kind, target, shuffleKeepFirst(items, rng)); };
+    // opts.mix (the Kids Maths game only): a learning set holds opts.mix (3 or 4) of the skill and the rest of skills already known (T T K T K, or T T K T T),
+    // so one skill never fills a whole set and never runs on across two sets. Nothing known yet to mix in: the set stays as before.
+    const MIXED = ["learn", "new", "weak", "focus"];
+    const make = (kind, target, n) => {
+      if (opts && opts.mix && MIXED.includes(kind) && n === 5 && left(target) >= opts.mix) {
+        const known = filler([target], 5 - opts.mix);
+        if (known.length === 5 - opts.mix) return finish(st, kind, target, known.length === 2 ? [target, target, known[0], target, known[1]] : [target, target, known[0], target, target]);
+      }
+      n = Math.max(1, Math.min(n, left(target))); const items = Array(n).fill(target).concat(filler([target], 5 - n)); while (items.length < 5 && items.filter(x => x === target).length < left(target)) items.push(target); return finish(st, kind, target, shuffleKeepFirst(items, rng)); };
 
     // Speed practice: at most 2 sets in 10, on facts known for sure but not quick yet.
     const speedLately = recent.filter(k => k === "speed").length;
