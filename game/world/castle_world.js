@@ -2,7 +2,7 @@
  *
  * He gets 5 minutes here after every 25 answers and spends the coins he earned. No reading anywhere: every button is a
  * big picture (80 px or more), prices are a coin and a number, and the knight speaks every hint.
- *   hub     4 big picture cards: the Castle, the Stable, the Training yard, the Wall (defence).
+ *   hub     5 big picture cards: the Castle, the Stable, the Training yard, the Wall (defence), and My Grounds (castle_grounds.js).
  *   castle  his castle grows over visits. Glowing spots show where a part can go; tap one, then pick a part from the
  *           picture tray (towers, keep, walls, gates with a drawbridge, flags, banners, a moat, gardens). A locked part
  *           shows its price: tapping it buys it when he has the coins (happy pop), else a soft shake and "Not yet".
@@ -100,6 +100,9 @@
 
   var LINES = {
     hub: "Where shall we go?",
+    grounds: "Build things for your castle! Tap a picture, then drag it where you like.",
+    grounds_full: "Drag a thing to move it. Drop it in the bin to put it away. Tap it to see what it does!",
+    placed: "Drag it where you like!",
     castle: "Tap a glowing spot to build your castle!",
     castle_done: "What a castle! Tap a part to change it.",
     pick: "Pick a part.",
@@ -130,7 +133,8 @@
     ".cw-home{position:absolute;z-index:40;top:max(8px,env(safe-area-inset-top));left:10px;width:84px;height:84px;border-radius:24px;background:#fff8e6 !important;border:3px solid #3b2a33 !important;box-shadow:0 4px 0 rgba(59,42,51,.25)}",
     ".cw-home img{width:70px;height:70px;margin:4px auto 0}",
     /* hub */
-    ".cw-hub{position:absolute;left:12px;right:12px;top:96px;bottom:12px;display:grid;grid-template-columns:1fr 1fr;grid-template-rows:1fr 1fr;gap:12px}",
+    ".cw-hub{position:absolute;left:12px;right:12px;top:96px;bottom:12px;display:grid;grid-template-columns:1fr 1fr;grid-template-rows:1fr 1fr .8fr;gap:12px}",
+    ".cw-card.wide{grid-column:1/-1}",
     ".cw-card{position:relative;overflow:hidden;border-radius:28px;border:4px solid #3b2a33 !important;box-shadow:0 6px 0 rgba(59,42,51,.22);background:#e7eef5 !important;min-width:84px;min-height:84px}",
     ".cw-card .cw-bg{border-radius:24px}",
     ".cw-card .cw-pic{position:absolute;bottom:4%;transform:translateX(-50%)}",
@@ -390,7 +394,12 @@
     }
 
     /* ---------------------------------------------- places */
-    var PLACES = { hub: hubScene, castle: castleScene, stable: stableScene, yard: yardScene, wall: wallScene };
+    var PLACES = { hub: hubScene, castle: castleScene, stable: stableScene, yard: yardScene, wall: wallScene, grounds: groundsScene };
+    var groundsApi = {
+      el: el, img: img, NA: NA, root: root, wctx: wctx, C: C, snd: snd, say: say, tray: tray, closeTray: closeTray, buy: buy, nope: nope, drawCastle: drawCastle,
+      setResize: function (fn) { onResize = fn; }
+    };
+    function groundsScene(sc) { window.CastleGrounds.scene(sc, groundsApi); }
     var onResize = null;
     function go(place) {
       closeTray(); clearScene(); abortWave();
@@ -446,6 +455,9 @@
       var w = pic(c4, NA("defence_wall"), 18, 70, 18); w.style.transform = "translateX(-50%)";
       pic(c4, NA("goblin_walk_a"), 72, 44, 8);
       var pil = pic(c4, NA("pillow"), 46, 16, 56); pil.style.transform = "translateX(-50%) rotate(-20deg)";
+      var c5 = card("grounds", "My grounds: build things around the castle");
+      c5.classList.add("wide");
+      window.CastleGrounds.thumb(c5, groundsApi);
       say("hub", 20000);
     }
 

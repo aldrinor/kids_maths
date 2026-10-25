@@ -144,6 +144,7 @@ def main():
         with sync_playwright() as p:
             br = p.chromium.launch(args=["--mute-audio"]) if ENGINE == "chromium" else getattr(p, ENGINE).launch()   # silent: speech and Web Audio are stubbed
             run_flow(br)
+            run_grounds(br)
             run_layouts(br)
             br.close()
     finally:
@@ -172,7 +173,7 @@ def run_flow(br):
     ctx, pg = new_page(br, 390, 844, errs, bad)
     open_world(pg, give=200)
     ok("opens on the map", place(pg) == "hub")
-    ok("4 places on the map", pg.locator(".cw-card[data-go]").count() == 4)
+    ok("5 places on the map (castle, stable, yard, wall, grounds)", pg.locator(".cw-card[data-go]").count() == 5)
 
     # --- castle: build a tower for 20 coins
     go(pg, "castle")
@@ -303,6 +304,131 @@ def run_flow(br):
     ctx.close()
 
 
+def thing_box(pg, tid):
+    return pg.evaluate("(t)=>{const e=document.querySelector('.cg-thing[data-id=\"'+t+'\"]'); if(!e) return null; const r=e.getBoundingClientRect(); return [r.left,r.top,r.width,r.height]}", tid)
+
+
+def grounds_data(pg):
+    return pg.evaluate("()=>JSON.parse(JSON.stringify(((__game.P.world||{}).castle||{}).grounds||{owned:{},items:[]}))")
+
+
+def buy_and_place(pg, group, tid):
+    pg.click('.cg-grp[data-group="%s"]' % group)
+    pg.wait_for_selector(".cw-tray")
+    pg.click('.cw-tile[data-item="%s"]' % tid)
+    pg.wait_for_timeout(150)
+
+
+def reopen_world(pg):
+    pg.evaluate("()=>{PlayWorlds._finish()}")
+    pg.wait_for_function("()=>window.__worldDone===true", timeout=5000)
+    pg.evaluate("()=>{window.__worldDone=false; playWorld().then(()=>{window.__worldDone=true})}")
+    pg.wait_for_selector('.cw-root[data-art="ready"]')
+
+
+def run_grounds(br):
+    """My Grounds: buy once, place as many as wanted, drag to move, drop on the bin to put away, tap for a job, saved."""
+    for label, w, h in SIZES:
+        errs, bad = [], []
+        ctx, pg = new_page(br, w, h, errs, bad)
+        open_world(pg, give=300)
+        go(pg, "grounds")
+        L = "grounds " + label
+        ok(L + " starts empty with 4 group buttons", pg.locator(".cg-grp").count() == 4 and pg.locator(".cg-thing").count() == 0)
+        ok(L + " the first group button glows while empty", pg.locator(".cg-grp.glow").count() == 1)
+        fit(pg, L + " empty")
+        shot(pg, "grounds_empty_" + label)
+        all_things = pg.evaluate("()=>Object.keys(CastleGrounds.THINGS)")
+        ok(L + " 26 things in 4 groups", len(all_things) == 26 and pg.evaluate("()=>CastleGrounds.GROUPS.length") == 4)
+        for g in ("house", "farm", "fun", "nature"):
+            want = pg.evaluate("(g)=>Object.keys(CastleGrounds.THINGS).filter(k=>CastleGrounds.THINGS[k].g===g).length", g)
+            pg.click('.cg-grp[data-group="%s"]' % g)
+            pg.wait_for_selector(".cw-tray")
+            ok(L + " tray %s shows %d things" % (g, want), pg.locator(".cw-tile").count() == want, pg.locator(".cw-tile").count())
+            fit(pg, L + " tray " + g)
+            if g == "house":
+                shot(pg, "grounds_tray_" + label)
+            pg.click(".cw-x")
+            pg.wait_for_timeout(120)
+        c0 = coins(pg)
+        buy_and_place(pg, "house", "cottage")
+        pg.wait_for_timeout(200)
+        ok(L + " buying takes the price", coins(pg) == c0 - 25, "%s -> %s" % (c0, coins(pg)))
+        ok(L + " the thing is placed and the tray closed", pg.locator(".cg-thing").count() == 1 and pg.locator(".cw-tray").count() == 0)
+        gd = grounds_data(pg)
+        ok(L + " saved: owned and placed", gd["owned"].get("cottage") and len(gd["items"]) == 1, gd)
+        c1 = coins(pg)
+        buy_and_place(pg, "house", "cottage")
+        pg.wait_for_timeout(200)
+        ok(L + " an owned thing is free to place again", coins(pg) == c1 and pg.locator(".cg-thing").count() == 2)
+        pg.evaluate("()=>{__game.P.coins=2}")
+        buy_and_place(pg, "fun", "statue")
+        pg.wait_for_timeout(200)
+        ok(L + " not enough coins: refused", coins(pg) == 2 and pg.locator(".cg-thing").count() == 2 and pg.locator(".cw-tray").count() == 1)
+        pg.click(".cw-x")
+        pg.wait_for_timeout(120)
+        for tid in all_things:
+            gname = pg.evaluate("(t)=>CastleGrounds.THINGS[t].g", tid)
+            if pg.locator(".cg-thing").count() >= 38:
+                break
+            pg.evaluate("()=>{__game.P.coins=300}")
+            buy_and_place(pg, gname, tid)
+        small = pg.evaluate("()=>[...document.querySelectorAll('.cg-thing')].filter(e=>e.offsetWidth<71.5).map(e=>e.dataset.t)")
+        ok(L + " every placed thing is at least 72 px wide", not small, small)
+        bad_art = pg.evaluate("()=>[...document.querySelectorAll('.cg-thing')].filter(e=>!e.querySelector('svg')||e.querySelector('svg').getBoundingClientRect().height<20).map(e=>e.dataset.t)")
+        ok(L + " every thing has a picture", not bad_art, bad_art)
+        out = pg.evaluate("()=>{const W=innerWidth,H=innerHeight; return [...document.querySelectorAll('.cg-thing')].filter(e=>{const r=e.getBoundingClientRect(); return r.right<10||r.left>W-10||r.bottom<10||r.top>H}).map(e=>e.dataset.t)}")
+        ok(L + " every thing is on the screen", not out, out)
+        ok(L + " all 26 kinds were bought", len(grounds_data(pg)["owned"]) == 26, len(grounds_data(pg)["owned"]))
+        shot(pg, "grounds_full_" + label)
+        pg.evaluate("()=>{const G=__game.P.world.castle.grounds; G.items=G.items.slice(0,3)}")
+        reopen_world(pg)
+        go(pg, "grounds")
+        ok(L + " things come back after the world is closed and opened", pg.locator(".cg-thing").count() == 3)
+        tid = grounds_data(pg)["items"][0]["id"]
+        b = thing_box(pg, tid)
+        cx, cy = b[0] + b[2] / 2, b[1] + b[3] / 2
+        pg.mouse.move(cx, cy)
+        pg.mouse.down()
+        pg.mouse.move(cx + 40, cy + 20, steps=4)
+        pg.mouse.move(cx + 90, cy - 30, steps=4)
+        ok(L + " the bin shows while dragging", pg.locator(".cg-bin.on").count() == 1)
+        pg.mouse.up()
+        pg.wait_for_timeout(150)
+        b2 = thing_box(pg, tid)
+        ok(L + " drag moves it", abs((b2[0] - b[0]) - 90) < 25, (b, b2))
+        ok(L + " the bin is hidden again", pg.locator(".cg-bin.on").count() == 0)
+        it = [i for i in grounds_data(pg)["items"] if i["id"] == tid][0]
+        ok(L + " the new spot is saved", 0 <= it["x"] <= 1 and 0 <= it["y"] <= 1, it)
+        b3 = thing_box(pg, tid)
+        pg.mouse.click(b3[0] + b3[2] / 2, b3[1] + b3[3] / 2)
+        pg.wait_for_timeout(120)
+        ok(L + " a tap does its job", pg.evaluate("()=>document.querySelector('.cw-root').dataset.lastact") == "cottage")
+        b4 = thing_box(pg, tid)
+        ok(L + " a tap does not move it", abs(b4[0] - b3[0]) < 3 and abs(b4[1] - b3[1]) < 3)
+        n0 = pg.locator(".cg-thing").count()
+        bin_box = pg.evaluate("()=>{const e=document.querySelector('.cg-bin'); e.classList.add('on'); const r=e.getBoundingClientRect(); e.classList.remove('on'); return [r.left,r.top,r.width,r.height]}")
+        b5 = thing_box(pg, tid)
+        pg.mouse.move(b5[0] + b5[2] / 2, b5[1] + b5[3] / 2)
+        pg.mouse.down()
+        pg.mouse.move(b5[0] + b5[2] / 2 + 30, b5[1] + 30, steps=3)
+        pg.mouse.move(bin_box[0] + bin_box[2] / 2, bin_box[1] + bin_box[3] / 2, steps=6)
+        pg.mouse.up()
+        pg.wait_for_timeout(200)
+        ok(L + " dropped on the bin: put away", pg.locator(".cg-thing").count() == n0 - 1 and thing_box(pg, tid) is None)
+        ok(L + " put away but still owned", grounds_data(pg)["owned"].get("cottage") and len(grounds_data(pg)["items"]) == n0 - 1)
+        c2 = coins(pg)
+        buy_and_place(pg, "house", "cottage")
+        pg.wait_for_timeout(200)
+        ok(L + " placing it again costs nothing", coins(pg) == c2 and pg.locator(".cg-thing").count() == n0)
+        go(pg, "hub")
+        ok(L + " the map card shows the placed things", pg.locator('.cw-card[data-go="grounds"] .cg-thing').count() >= 1)
+        fit(pg, L + " map")
+        ok("no page errors (grounds " + label + ")", not errs, " | ".join(errs[:5]))
+        ok("no missing pictures (grounds " + label + ")", not bad, " | ".join(bad[:5]))
+        ctx.close()
+
+
 def run_layouts(br):
     for label, w, h in SIZES:
         errs, bad = [], []
@@ -318,7 +444,7 @@ def run_layouts(br):
         pg.wait_for_timeout(400)
         fit(pg, "hub " + label)
         shot(pg, "hub_" + label)
-        for where in ("castle", "stable", "yard", "wall"):
+        for where in ("castle", "stable", "yard", "wall", "grounds"):
             go(pg, where)
             fit(pg, where + " " + label)
             shot(pg, where + "_" + label)

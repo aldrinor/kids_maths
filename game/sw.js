@@ -12,7 +12,7 @@
  */
 "use strict";
 /*FILES-BEGIN*/
-const VERSION = "v7b4189d9";
+const VERSION = "v626cbd43";
 const FILES = [
   "index.html",
   "app.webmanifest",
@@ -40,7 +40,8 @@ const FILES = [
   "rewards/castle_kitty_tower.js",
   "world/world_core.js?v=2",
   "world/cafe_world.js?v=3",
-  "world/castle_world.js?v=2",
+  "world/castle_grounds.js?v=1",
+  "world/castle_world.js?v=3",
   "scene/scene_core.js",
   "scene/scene_cafe.js?v=2",
   "scene/scene_castle.js?v=2",
