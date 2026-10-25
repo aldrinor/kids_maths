@@ -37,7 +37,7 @@ body[data-theme="castle"] {
 /* ---------------- base ---------------- */
 * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
 html, body { margin: 0; height: 100%; overflow: hidden; overflow-x: clip; background: var(--bg); color: var(--ink);
-  font-family: var(--ui); touch-action: manipulation; user-select: none; -webkit-user-select: none; }
+  font-family: var(--ui); touch-action: pan-x pan-y; user-select: none; -webkit-user-select: none; }
 button { font: inherit; color: inherit; cursor: pointer; }
 button:focus-visible { outline: 3px solid var(--accent-dark); outline-offset: 2px; }
 [hidden] { display: none !important; }

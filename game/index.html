@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <meta name="robots" content="noindex">
 <link rel="manifest" href="app.webmanifest">
 <meta name="theme-color" content="#fff4e0">
@@ -11,6 +11,12 @@
 <meta name="apple-mobile-web-app-title" content="Kids Maths">
 <link rel="apple-touch-icon" href="icons/apple_touch_icon_180.png">
 <title>Kids Maths</title>
+<script>
+// No zoom: a pinch or a double tap must never change the size of the page.
+["gesturestart","gesturechange","gestureend"].forEach(function(n){document.addEventListener(n,function(e){e.preventDefault();},{passive:false});});
+document.addEventListener("touchmove",function(e){if(e.touches&&e.touches.length>1)e.preventDefault();},{passive:false});
+document.addEventListener("wheel",function(e){if(e.ctrlKey)e.preventDefault();},{passive:false});
+</script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Lexend:wght@400;500;600;700;800&family=Sniglet:wght@400;800&family=Germania+One&family=Patrick+Hand&display=swap">
 <!-- Kids Maths game (21 Oct 2026). Plan: 16_kids_maths/kids_maths_game_plan_2026-10-21.md.
@@ -22,7 +28,7 @@
        little game and before the play world (at answer 25 the rest card is that card); the keepsake of a game is saved with the counters, shown on a card, on the world
        shelf and in the small room beside the coins; a break button; an end-of-day card. Every card waits for a tap.
      - Own save per child (kidsMaths.game.<child>); the old app's save is read once and never written. -->
-<link rel="stylesheet" href="theme.css?v=23">
+<link rel="stylesheet" href="theme.css?v=24">
 <link rel="stylesheet" href="kid_mode.css?v=5">
 <link rel="stylesheet" href="parent_area.css?v=2">
 <link rel="stylesheet" href="new_skills.css?v=2">
